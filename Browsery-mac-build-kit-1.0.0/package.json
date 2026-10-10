@@ -1,0 +1,60 @@
+{
+  "name": "browsery-magic-cursor",
+  "productName": "Browsery",
+  "private": true,
+  "version": "1.0.0",
+  "description": "A real desktop browser with a Saturn new-tab experience.",
+  "main": "electron/main.cjs",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "vite build",
+    "preview": "vite preview --host 0.0.0.0",
+    "desktop": "electron .",
+    "package:win": "vite build && node scripts/package-desktop.mjs",
+    "package:mac": "node scripts/package-macos.mjs",
+    "package:mac:signed": "node scripts/package-macos.mjs --signed"
+  },
+  "dependencies": {
+    "@vitejs/plugin-react": "latest",
+    "react": "latest",
+    "react-dom": "latest",
+    "three": "latest",
+    "typescript": "latest",
+    "vite": "latest"
+  },
+  "devDependencies": {
+    "@electron/packager": "^20.3.0",
+    "electron": "^44.7.0",
+    "electron-builder": "^26.15.3"
+  },
+  "build": {
+    "appId": "com.browsery.desktop",
+    "productName": "Browsery",
+    "artifactName": "Browsery-${version}-${arch}.${ext}",
+    "directories": {
+      "output": "outputs/desktop"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "package.json"
+    ],
+    "asar": true,
+    "win": {
+      "target": [
+        "portable"
+      ]
+    },
+    "mac": {
+      "category": "public.app-category.productivity",
+      "darkModeSupport": true,
+      "target": [
+        {
+          "target": "dmg",
+          "arch": ["arm64", "x64"]
+        }
+      ]
+    }
+  }
+}

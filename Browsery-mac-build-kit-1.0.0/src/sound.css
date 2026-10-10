@@ -1,0 +1,114 @@
+.sound-preview-card {
+  display: flex;
+  min-height: 58px;
+  align-items: center;
+  gap: 11px;
+  margin-top: 12px;
+  padding: 9px 12px;
+  border: 1px solid #27384a;
+  border-radius: 11px;
+  background: linear-gradient(115deg, rgba(16, 29, 44, .95), rgba(11, 18, 29, .94));
+}
+
+.sound-preview-indicator {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
+  place-items: center;
+  border: 1px solid #2c3d51;
+  border-radius: 10px;
+  color: #718398;
+  background: #111a26;
+  transition: color .25s, border-color .25s, box-shadow .25s;
+}
+
+.sound-preview-indicator.ready {
+  color: #8fe4ff;
+  border-color: #426d87;
+  box-shadow: 0 0 18px #59c6f326, inset 0 0 12px #59c6f313;
+}
+
+.sound-preview-card>div {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sound-preview-card>div b {
+  color: #dce8f5;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.sound-preview-card>div small {
+  color: #7f91a6;
+  font-size: 9px;
+  line-height: 1.4;
+}
+
+.sound-preview-card>button {
+  min-width: 70px;
+  height: 31px;
+  padding: 0 11px;
+  border: 1px solid #38526a;
+  border-radius: 8px;
+  color: #c7eaff;
+  background: #172638;
+  font-size: 9px;
+  cursor: pointer;
+}
+
+.sound-preview-card>button:hover:not(:disabled) {
+  border-color: #5e91b2;
+  background: #1b3045;
+}
+
+.sound-preview-card>button:disabled {
+  opacity: .45;
+  cursor: not-allowed;
+}
+
+.sound-visualizer {
+  position: absolute;
+  z-index: 24;
+  right: 19px;
+  bottom: 13px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  padding: 4px 9px;
+  border: 1px solid rgba(132, 198, 231, .2);
+  border-radius: 8px;
+  color: #a9bdcd;
+  background: rgba(8, 14, 22, .76);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, .22);
+  backdrop-filter: blur(8px);
+  pointer-events: none;
+}
+
+.sound-visualizer span {
+  color: #8799aa;
+  font-size: 7px;
+  letter-spacing: .12em;
+  white-space: nowrap;
+}
+
+.sound-visualizer canvas {
+  display: block;
+  width: 76px;
+  height: 21px;
+}
+
+@media (max-width: 620px) {
+  .sound-visualizer { right: 10px; bottom: 9px; scale: .9; transform-origin: bottom right; }
+  .sound-preview-card { gap: 8px; padding: 8px; }
+  .sound-preview-card>div small { font-size: 8px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sound-preview-indicator { transition: none; }
+}

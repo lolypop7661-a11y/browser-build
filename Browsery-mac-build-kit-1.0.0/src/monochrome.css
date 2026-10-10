@@ -1,0 +1,125 @@
+/* The supplied film is the scene. A static transform tilts it without re-encoding,
+   pointer-driven redraws, a color wash, or cropping the planet with object-fit:cover. */
+.desktop-browser .new-tab { background: #000; }
+.desktop-browser .new-tab:after { display: none; }
+.desktop-browser .saturn-video {
+  inset: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  object-fit: contain;
+  object-position: center;
+  transform: translateX(-17%) rotate(var(--saturn-tilt,-24deg));
+  transform-origin: center;
+  filter: brightness(var(--video-brightness,1)) contrast(var(--video-contrast,1));
+  transition: transform .6s cubic-bezier(.25,1,.5,1),filter .25s;
+  pointer-events: none;
+}
+
+/* Neutral UI tokens, scoped to Browsery chrome. Never filter the shell, media,
+   native webviews, search photos, or third-party websites to fake monochrome. */
+.desktop-browser[data-accent="monochrome"] {
+  --cockpit-bg: #000;
+  --cockpit-surface: #111;
+  --cockpit-text: #fff;
+  --cockpit-muted: #a3a3a3;
+  --cockpit-line: #383838;
+  color: #fff;
+  background: #000;
+}
+.desktop-browser[data-accent="monochrome"] :is(.browser-shell,.viewport) { background: #000; }
+.desktop-browser[data-accent="monochrome"] :is(.tabs-row,.toolbar) { background: #080808; border-color: #2e2e2e; }
+.desktop-browser[data-accent="monochrome"] .brand { color: #fff; }
+.desktop-browser[data-accent="monochrome"] .brand-orb { background: conic-gradient(from 60deg,#fff,#777,#fff,#aaa,#fff); box-shadow: none; }
+.desktop-browser[data-accent="monochrome"] .brand-orb i { background: #080808; }
+.desktop-browser[data-accent="monochrome"] .tab { color: #aaa; }
+.desktop-browser[data-accent="monochrome"] .tab.selected { background: linear-gradient(125deg,#232323,#151515); border-color: #444; color: #fff; box-shadow: inset 0 1px #ffffff20; }
+.desktop-browser[data-accent="monochrome"] :is(.tab-favicon,.tab-close,.nav-controls,.toolbar-actions,.icon-button,.window-controls button) { color: #bdbdbd; }
+.desktop-browser[data-accent="monochrome"] :is(.icon-button:hover,.icon-button.active,.window-controls button:hover) { color: #fff; background: #252525; border-color: #444; }
+.desktop-browser[data-accent="monochrome"] .window-close:hover { background: #3c3c3c; }
+.desktop-browser[data-accent="monochrome"] .omnibox { background: #141414; border-color: #494949; }
+.desktop-browser[data-accent="monochrome"] .omnibox.focused { background: #1c1c1c; border-color: #eee; box-shadow: 0 0 0 3px #ffffff12; }
+.desktop-browser[data-accent="monochrome"] :is(.omnibox input,.omnibox>svg) { color: #eee; }
+.desktop-browser[data-accent="monochrome"] .omnibox-spark { color: #fff; }
+.desktop-browser[data-accent="monochrome"] input::placeholder { color: #929292; }
+.desktop-browser[data-accent="monochrome"] .profile { background: #242424; border-color: #666; color: #fff; }
+.desktop-browser[data-accent="monochrome"] .analyze-toolbar { background: #181818; border-color: #414141; color: #ddd; }
+.desktop-browser[data-accent="monochrome"] .analyze-toolbar svg { color: #fff; }
+.desktop-browser[data-accent="monochrome"] .analyze-toolbar:hover { background: #2a2a2a; border-color: #888; }
+.desktop-browser[data-accent="monochrome"] .loading-line:after { background: #fff; }
+.desktop-browser[data-accent="monochrome"] :is(.ambient-title,.bottom-status) { color: #c7c7c7; }
+.desktop-browser[data-accent="monochrome"] .ambient-title span { color: #888; }
+.desktop-browser[data-accent="monochrome"] .bottom-status i { background: #fff; box-shadow: 0 0 10px #ffffff33; }
+.desktop-browser[data-accent="monochrome"] .command-plane {
+  background: linear-gradient(145deg,rgb(31 31 31 / .96),rgb(8 8 8 / var(--panel-opacity,.82)) 65%);
+  border-color: var(--border-glow,#fff);
+  box-shadow: 9px 8px 0 #282828,10px 9px 0 #737373,17px 16px 0 #0e0e0e,18px 17px 0 #454545,0 32px 72px #0009,inset 0 1px #ffffff22;
+}
+.desktop-browser[data-accent="monochrome"] .plane-label { border-color: #ffffff30; }
+.desktop-browser[data-accent="monochrome"] :is(.plane-label span,.plane-label b,.time-block time) { color: #fff; }
+.desktop-browser[data-accent="monochrome"] :is(.plane-label em,.command-plane .time-block p) { color: #aaa; }
+.desktop-browser[data-accent="monochrome"] .command-plane .home-search { background: linear-gradient(120deg,#262626,#111); border-color: #888; }
+.desktop-browser[data-accent="monochrome"] :is(.home-search input,.home-search>svg) { color: #eee; }
+.desktop-browser[data-accent="monochrome"] .home-search input::placeholder { color: #aaa; }
+.desktop-browser[data-accent="monochrome"] .home-search button { background: #fff; border-color: #fff; color: #080808; box-shadow: 0 5px 18px #0006,inset 0 1px #fff; }
+.desktop-browser[data-accent="monochrome"] .favorite { --accent: #eee !important; }
+.desktop-browser[data-accent="monochrome"] .favorite>span { background: linear-gradient(145deg,#303030,#101010); border-color: #555; color: #eee; }
+.desktop-browser[data-accent="monochrome"] .favorite b { color: #ccc; }
+.desktop-browser[data-accent="monochrome"] :is(.cursor-ring,.cursor-dot) { border-color: #fff; background-color: transparent; }
+.desktop-browser[data-accent="monochrome"] .cursor-dot { background: #fff; }
+
+/* Drawers and native browser essentials share the same restrained palette. */
+.desktop-browser[data-accent="monochrome"] :is(.drawer,.settings-drawer,.drawer:not(.settings-drawer),.suggestions,.find-bar,.browser-load-state,.toast) { background: rgb(12 12 12 / .98); border-color: #555; color: #ddd; }
+.desktop-browser[data-accent="monochrome"] .settings-drawer { box-shadow: 12px 16px 0 #141414,13px 17px 0 #444,0 36px 80px #0009,inset 0 1px #ffffff20; }
+.desktop-browser[data-accent="monochrome"] :is(.drawer,.suggestions,.find-bar) * { border-color: #383838; }
+.desktop-browser[data-accent="monochrome"] :is(.drawer-head h2,.setting-row,.setting-range b,.controls-title,.library-item-copy b,.data-section-head h3,.cookie-copy strong,.data-action-list button b,.vpn-setup-body h3,.vpn-setup-steps b) { color: #eee; }
+.desktop-browser[data-accent="monochrome"] :is(.drawer-kicker,.drawer-footer,.setting-range em,.drawer small,.drawer p,.drawer em,.drawer-footer span,.library-item-copy small,.library-item-copy em,.find-count,.cookie-copy span,.cookie-copy small) { color: #aaa; }
+.desktop-browser[data-accent="monochrome"] :is(.controls,.data-section,.setting-row select,.setting-text,.library-filter,.library-favicon,.data-profile-select,.data-filter,.cookie-site-mark,.data-section-icon,.privacy-data-icon,.find-bar input,.suggestions button:hover,.suggestions .suggestion-selected) { background: #191919; color: #ddd; border-color: #3c3c3c; }
+.desktop-browser[data-accent="monochrome"] :is(.setting-row select,.setting-text,.library-filter input,.data-filter input,.find-bar input) { color: #eee; }
+.desktop-browser[data-accent="monochrome"] .settings-nav button { background: #171717; border-color: #3d3d3d; color: #aaa; }
+.desktop-browser[data-accent="monochrome"] .settings-nav button.active { background: #303030; border-color: #888; color: #fff; }
+.desktop-browser[data-accent="monochrome"] .settings-section-head span { color: #999; }
+.desktop-browser[data-accent="monochrome"] .settings-content { scrollbar-color: #666 transparent; }
+.desktop-browser[data-accent="monochrome"] .settings-dock button { background: #171717; color: #aaa; border-color: #444; }
+.desktop-browser[data-accent="monochrome"] :is(.settings-dock button.active,.settings-dock button:hover) { background: #333; color: #fff; border-color: #999; }
+.desktop-browser[data-accent="monochrome"] .switch { background: #2b2b2b; border-color: #555; }
+.desktop-browser[data-accent="monochrome"] .switch i { background: #bbb; }
+.desktop-browser[data-accent="monochrome"] .switch.on { background: #eee; border-color: #fff; }
+.desktop-browser[data-accent="monochrome"] .switch.on i { background: #111; }
+.desktop-browser[data-accent="monochrome"] :is(.motion-preview b,.motion-preview small) { color: #bbb; }
+.desktop-browser[data-accent="monochrome"] :is(.motion-preview-button,.vpn-setup-mark,.vpn-open-settings,.vpn-proton-guide,.vpn-honest-state,.vpn-setup-message,.data-refresh,.cookie-remove,.history-clear-row button,.data-clear-all,.data-message,.privacy-data-link button,.library-head-actions>button:not(.icon-button)) { color: #eee; border-color: #666; background: #252525; }
+.desktop-browser[data-accent="monochrome"] :is(.vpn-honest-state b,.vpn-honest-state span,.vpn-setup-steps li>span,.vpn-manual summary) { color: #bbb; }
+.desktop-browser[data-accent="monochrome"] .vpn-honest-state>i { background: #eee; }
+.desktop-browser[data-accent="monochrome"] :is(.ai-saved-key,.ai-key-card,.ai-key-input,.ai-key-actions button,.analysis-page-card,.analysis-status,.analysis-run,.analysis-finding,.analysis-clear,.browser-load-error) { background: #191919; border-color: #555; color: #ddd; }
+.desktop-browser[data-accent="monochrome"] :is(.analysis-page-card b,.analysis-page-card small,.analysis-status b,.analysis-status small,.analysis-summary p,.analysis-finding b,.analysis-finding p,.analysis-finding small,.analysis-finding span,.ai-key-card b,.ai-key-card label,.browser-load-error p) { color: #bbb; }
+.desktop-browser[data-accent="monochrome"] :is(.analysis-status-icon,.analysis-summary>span,.browser-load-error button) { background: #333; color: #eee; border-color: #666; }
+.desktop-browser[data-accent="monochrome"] :is(.ai-saved-key b,.ai-saved-key small,.ai-saved-key div>span,.ai-saved-check) { color: #ddd; }
+.desktop-browser[data-accent="monochrome"] .ai-saved-check { background: #333; }
+.desktop-browser[data-accent="monochrome"] .browser-load-orbit { border-color: #444; border-top-color: #fff; }
+.desktop-browser[data-accent="monochrome"] :is(.sound-visualizer,.audio-status) { color: #aaa; border-color: #444; background: #111; }
+.desktop-browser[data-accent="monochrome"] :is(.sound-preview-card,.sound-preview-indicator,.sound-preview-card>button) { color: #ccc; border-color: #555; background: #202020; }
+.desktop-browser[data-accent="monochrome"] .sound-preview-indicator.ready { color: #fff; box-shadow: 0 0 18px #ffffff16; }
+.desktop-browser[data-accent="monochrome"] :is(.sound-preview-card>div b,.sound-preview-card>div small) { color: #bbb; }
+.desktop-browser[data-accent="monochrome"] .spatial-grid { background-image: linear-gradient(#ffffff22 1px,transparent 1px),linear-gradient(90deg,#ffffff22 1px,transparent 1px); }
+.browsery-click-ring { box-shadow: 0 0 15px color-mix(in srgb,var(--cyan),transparent 67%),inset 0 0 9px color-mix(in srgb,var(--cyan),transparent 87%); }
+.browsery-click-ring.ring-2 { color: color-mix(in srgb,var(--cyan),white 40%); }
+
+/* A genuinely different light chrome, without recoloring Saturn or websites. */
+.desktop-browser.light[data-accent="monochrome"] :is(.tabs-row,.toolbar) { background: #fff; border-color: #ccc; color: #111; }
+.desktop-browser.light[data-accent="monochrome"] .brand { color: #000; }
+.desktop-browser.light[data-accent="monochrome"] .brand-orb { background: conic-gradient(#000,#aaa,#000); }
+.desktop-browser.light[data-accent="monochrome"] .brand-orb i { background: #fff; }
+.desktop-browser.light[data-accent="monochrome"] .tab { color: #555; }
+.desktop-browser.light[data-accent="monochrome"] .tab.selected { background: #e8e8e8; border-color: #bbb; color: #111; }
+.desktop-browser.light[data-accent="monochrome"] :is(.tab-favicon,.tab-close,.icon-button,.window-controls button,.omnibox>svg,.omnibox-spark) { color: #333; }
+.desktop-browser.light[data-accent="monochrome"] :is(.icon-button:hover,.icon-button.active,.window-controls button:hover) { color: #000; background: #dedede; border-color: #bbb; }
+.desktop-browser.light[data-accent="monochrome"] .omnibox { background: #f3f3f3; border-color: #bbb; }
+.desktop-browser.light[data-accent="monochrome"] .omnibox.focused { background: #fff; border-color: #222; box-shadow: 0 0 0 3px #00000014; }
+.desktop-browser.light[data-accent="monochrome"] .omnibox input { color: #111; }
+.desktop-browser.light[data-accent="monochrome"] :is(.profile,.analyze-toolbar) { background: #e8e8e8; border-color: #bbb; color: #111; }
+.desktop-browser.light[data-accent="monochrome"] .analyze-toolbar svg { color: #111; }
+
+@media(max-width:900px) { .desktop-browser .saturn-video { transform: translate(-15%,-12%) rotate(var(--saturn-tilt,-24deg)); } }
+@media(max-width:620px) { .desktop-browser .saturn-video { transform: translate(0,-26%) rotate(var(--saturn-tilt,-24deg)); } }
+@media(prefers-reduced-motion:reduce) { .desktop-browser .saturn-video { transition: none; } }
