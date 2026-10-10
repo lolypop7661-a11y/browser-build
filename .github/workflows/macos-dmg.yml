@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 defaults:
   run:
@@ -39,3 +39,12 @@ jobs:
           if-no-files-found: error
           compression-level: 0
           retention-days: 7
+      - name: Publish DMG release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >-
+          gh release create v1.0.0-macos
+          --target "$GITHUB_SHA"
+          --title "Browsery 1.0.0 for macOS"
+          --notes "Browsery disk images for macOS. Choose arm64 for Apple Silicon (M1/M2/M3/M4) or x64 for Intel Macs. This release is not Apple-notarized."
+          outputs/macos/*.dmg
