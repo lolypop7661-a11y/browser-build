@@ -2,7 +2,7 @@
   "name": "browsery-magic-cursor",
   "productName": "Browsery",
   "private": true,
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "A real desktop browser with a Saturn new-tab experience.",
   "main": "electron/main.cjs",
   "type": "module",
@@ -12,7 +12,6 @@
     "preview": "vite preview --host 0.0.0.0",
     "desktop": "electron .",
     "package:win": "vite build && node scripts/package-desktop.mjs",
-    "package:win:installer": "vite build && node scripts/build-proton-helper.mjs && electron-builder --win nsis",
     "package:mac": "node scripts/package-macos.mjs",
     "package:mac:signed": "node scripts/package-macos.mjs --signed"
   },
@@ -44,13 +43,8 @@
     "asar": true,
     "win": {
       "target": [
-        "nsis"
+        "portable"
       ]
-    },
-    "nsis": {
-      "oneClick": true,
-      "perMachine": false,
-      "allowToChangeInstallationDirectory": false
     },
     "mac": {
       "category": "public.app-category.productivity",
@@ -58,7 +52,10 @@
       "target": [
         {
           "target": "dmg",
-          "arch": ["arm64", "x64"]
+          "arch": [
+            "arm64",
+            "x64"
+          ]
         }
       ]
     }

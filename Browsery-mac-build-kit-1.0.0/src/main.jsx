@@ -38,6 +38,9 @@ const Icon = ({ name, size = 18, stroke = 1.7 }) => {
     alert: <><path d="M12 3 2.8 20h18.4L12 3Z"/><path d="M12 9v4m0 3h.01"/></>,
     grid: <><rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/></>,
     volume: <><path d="M4 10v4h4l5 4V6l-5 4Z"/><path d="M16 9a4 4 0 0 1 0 6M18.5 6.5a8 8 0 0 1 0 11"/></>,
+    music: <><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="2.7"/><path d="M6 5.5 7.7 8M18 16l1.7 2.5M18.5 5.5 16.3 8M5.5 18.5 8 16.3"/></>,
+    previous: <><path d="m19 6-8 6 8 6V6ZM5 6v12"/></>,
+    next: <><path d="m5 6 8 6-8 6V6Zm14 0v12"/></>,
     cookie: <><path d="M20.5 13.2A8.5 8.5 0 1 1 10.8 3.5a3 3 0 0 0 4 4 3 3 0 0 0 2.7 4.3 3 3 0 0 0 3 1.4Z"/><circle cx="8" cy="9" r=".8"/><circle cx="7.5" cy="14" r=".8"/><circle cx="12" cy="17" r=".8"/></>,
     database: <><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/><path d="M4 8c0 1.7 3.6 3 8 3s8-1.3 8-3"/></>,
   };
@@ -68,7 +71,7 @@ const settingsSchema = [
   { id:'spatial', label:'Spatial UI', icon:'spark', items:[
     ['blur','Glass blur','range',64],['glow','Border glow','color','#ffffff'],['opacity','Panel opacity','range',74],['tilt','Spatial tilt angle','range',38],['speed','Animation speed','range',62],['motionStrength','Click energy','range',78],['trail','Cursor trail','select','Ribbon'],['refraction','Dynamic refraction','toggle',true],['parallax','Spatial overlay parallax','toggle',true],['shards','Floating shards','toggle',true],['corners','Corner geometry','select','Soft'] ]},
   { id:'privacy', label:'Privacy', icon:'shield', items:[
-    ['adblock','Ad blocker','toggle',true],['trackers','Tracker blocking','select','Strict'],['https','HTTPS enforcement','toggle',true],['cookies','Cookie purge timer','select','24 hours'],['private','Private session mode','toggle',false],['doh','DNS over HTTPS','toggle',true],['fingerprint','Fingerprint defense','toggle',true],['webrtc','WebRTC protection','toggle',true],['telemetry','Anonymous telemetry','toggle',false] ]},
+    ['adblock','Ad blocker','toggle',true],['trackers','Tracker blocking','select','Strict'],['https','HTTPS enforcement','toggle',true],['phishing','Suspicious-link guard','toggle',true],['cookies','Cookie purge timer','select','24 hours'],['private','Private session mode','toggle',false],['doh','DNS over HTTPS','toggle',true],['fingerprint','Fingerprint defense','toggle',true],['webrtc','WebRTC protection','toggle',true],['telemetry','Anonymous telemetry','toggle',false] ]},
   { id:'browser', label:'Browser', icon:'globe', items:[
     ['tabs','Tab layout','select','Horizontal'],['engine','Search engine','select','Browsery'],['homepage','Homepage','select','New Space'],['homepageUrl','Custom homepage URL','text','https://example.com'],['path','Download path','select','Downloads'],['suggestions','Search suggestions','toggle',true],['sleep','Sleeping tabs','toggle',true],['restore','Restore last session','toggle',true],['preload','Predictive preload','toggle',false],['compact','Compact tab mode','toggle',false],['closewarn','Close warning','toggle',true] ]},
   { id:'ai', label:'AI Overview', icon:'spark', items:[
@@ -174,6 +177,22 @@ function resolveAddress(input, engine='Browsery') {
   if(engine==='Browsery' && window.browseryDesktop?.isDesktop)return `browsery://search/?q=${encodeURIComponent(value)}`;
   const endpoints={Browsery:'https://www.mojeek.com/search?q=',Mojeek:'https://www.mojeek.com/search?q=',DuckDuckGo:'https://duckduckgo.com/?q=',Bing:'https://www.bing.com/search?q='};
   return `${endpoints[engine]||endpoints.Browsery}${encodeURIComponent(value)}`;
+}
+
+// This is deliberately a local URL check, not a pretend virus scanner. It
+// catches a few high-confidence phishing patterns before a webview loads them.
+function suspiciousUrl(value) {
+  try {
+    const url=new URL(value);
+    if(!/^https?:$/.test(url.protocol))return null;
+    const host=url.hostname.toLowerCase();
+    const ipHost=/^(?:\d{1,3}\.){3}\d{1,3}$/.test(host);
+    if(url.username||url.password)return 'This address hides credentials before the real destination.';
+    if(host.includes('xn--'))return 'This address uses an internationalized look-alike domain.';
+    if(ipHost&&/(login|signin|verify|wallet|account|password)/i.test(`${url.pathname}${url.search}`))return 'A sign-in or account page is being served from a raw IP address.';
+    if(/(?:secure|verify|account|login|signin|wallet|password)[.-](?:secure|verify|account|login|signin|wallet|password)/i.test(host))return 'This address combines account and verification terms often used in phishing links.';
+  } catch {}
+  return null;
 }
 
 const favorites = [
@@ -766,7 +785,28 @@ function VpnPanel({open,onClose,onOpenGuide}) {
 
 function Toast({message}) { return <div className={`toast ${message?'show':''}`}><Icon name="spark" size={16}/>{message}</div> }
 
-function NewTab({onSearch, settings, pointer}) {
+function LocalMusicPlayer({compact=false}) {
+  const inputRef=useRef(null),audioRef=useRef(null),objectUrl=useRef(null);
+  const [track,setTrack]=useState(null),[playing,setPlaying]=useState(false),[progress,setProgress]=useState(0),[duration,setDuration]=useState(0);
+  useEffect(()=>()=>{if(objectUrl.current)URL.revokeObjectURL(objectUrl.current)},[]);
+  const choose=()=>inputRef.current?.click();
+  const load=event=>{const file=event.target.files?.[0];if(!file)return;if(objectUrl.current)URL.revokeObjectURL(objectUrl.current);const url=URL.createObjectURL(file);objectUrl.current=url;setTrack({name:file.name.replace(/\.[^.]+$/,''),url});setProgress(0);setDuration(0);requestAnimationFrame(()=>audioRef.current?.play().catch(()=>{}));};
+  const toggle=()=>{const audio=audioRef.current;if(!audio)return;if(audio.paused)audio.play().catch(()=>{});else audio.pause()};
+  const seek=event=>{const audio=audioRef.current;if(!audio||!duration)return;audio.currentTime=Number(event.target.value);setProgress(audio.currentTime)};
+  return <section className={`local-music-player ${compact?'is-compact':''}`} aria-label="Ad-free local music player">
+    <audio ref={audioRef} src={track?.url} onPlay={()=>setPlaying(true)} onPause={()=>setPlaying(false)} onEnded={()=>setPlaying(false)} onLoadedMetadata={e=>setDuration(e.currentTarget.duration||0)} onTimeUpdate={e=>setProgress(e.currentTarget.currentTime||0)}/>
+    <input ref={inputRef} className="music-file-input" type="file" accept="audio/*" onChange={load}/>
+    <button className="music-art" onClick={choose} aria-label="Choose a music file"><Icon name="music" size={20}/></button>
+    <div className="music-copy"><b>{track?.name||'Your local music'}</b><span>{track?'Playing from this device · no ads':'Choose an audio file · no ads'}</span></div>
+    <div className="music-wave" aria-hidden="true">{Array.from({length:18},(_,index)=><i key={index} style={{'--wave':`${24+(index*37)%68}%`}}/>)}</div>
+    <div className="music-controls"><button onClick={choose} aria-label="Choose track"><Icon name="previous" size={15}/></button><button className="music-play" onClick={toggle} aria-label={playing?'Pause music':'Play music'}><Icon name={playing?'pause':'play'} size={16}/></button><button onClick={choose} aria-label="Choose another track"><Icon name="next" size={15}/></button></div>
+    {track&&<input className="music-progress" type="range" min="0" max={Math.max(duration,1)} step="0.1" value={Math.min(progress,duration||0)} onChange={seek} aria-label="Music progress"/>}
+  </section>;
+}
+
+function MusicDrawer({open,onClose}) { return <aside className={`drawer music-drawer ${open?'open':''}`}><div className="drawer-head"><div><span className="drawer-kicker">LOCAL, AD-FREE</span><h2>Music</h2></div><GlassButton icon="close" label="Close music" onClick={onClose}/></div><div className="music-drawer-body"><LocalMusicPlayer/><p>Your files stay on this device. Browsery does not use a streaming service, ads, or an account for this player.</p></div></aside> }
+
+function NewTab({onSearch, onOpenMusic, settings, pointer}) {
   const [query,setQuery]=useState(''); const [time,setTime]=useState('10:09');
   const videoRef=useRef(null),tiltState=useRef({frame:0,rect:null,x:0,y:0});
   useEffect(()=>{const f=()=>setTime(new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',hour12:settings.clockStyle==='12-hour'}));f();const i=setInterval(f,1000);return()=>clearInterval(i)},[settings.clockStyle]);
@@ -788,15 +828,18 @@ function NewTab({onSearch, settings, pointer}) {
         {settings.clockStyle!=='Hidden'&&<div className="time-block"><time>{time}</time><p>Where do you want to go?</p></div>}
         <form className="home-search" onSubmit={e=>{e.preventDefault();onSearch(query)}}><Icon name="search"/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder={`Search ${settings.engine==='Browsery'?'Browsery':settings.engine} or enter an address`}/><SpringButton aria-label="Search"><Icon name="forward"/></SpringButton></form>
       </div>
-      {settings.showFavorites&&<div className="favorites spatial-shortcut-dock">{favorites.map((f,i)=><SpringButton onClick={()=>onSearch(favoriteUrls[f.label])} className="favorite" key={f.label} style={{'--accent':f.color,'--dock-index':i}} hoverScale={1.09} pressScale={.91}><span><FavoriteIcon name={f.label}/></span><b>{f.label}</b></SpringButton>)}</div>}
+      {settings.showFavorites&&<div className="favorites spatial-shortcut-dock">{favorites.map((f,i)=><SpringButton onClick={()=>f.label==='Music'?onOpenMusic?.():onSearch(favoriteUrls[f.label])} className="favorite" key={f.label} style={{'--accent':f.color,'--dock-index':i}} hoverScale={1.09} pressScale={.91}><span><FavoriteIcon name={f.label}/></span><b>{f.label}</b></SpringButton>)}</div>}
     </section>
+    <div className="new-tab-music"><LocalMusicPlayer compact/></div>
     {settings.showStatus&&<div className="bottom-status"><span><i/> Desktop browser ready</span><span>{settings.engine} · Saturn {(.5+(settings.videoSpeed??50)/100).toFixed(1)}×</span></div>}
   </main>;
 }
 
-function BrowserTabContents({tab,active,onSearch,onPageUpdate,onFindUpdate,settings,pointer,register}) {
+function BrowserTabContents({tab,active,onSearch,onOpenMusic,onPageUpdate,onFindUpdate,settings,pointer,register}) {
   const webviewRef=useRef(null),source=useRef(tab.url),mountAddress=useRef(tab.url),isDesktop=Boolean(window.browseryDesktop?.isDesktop);
   const [loadError,setLoadError]=useState(false);
+  const [safetyAlert,setSafetyAlert]=useState(null);
+  const bypassSafety=useRef('');
   const [pageReady,setPageReady]=useState(false);
   const guest=useRef(null),visibility=useRef({active,muted:settings.mutetabs});
   visibility.current={active,muted:settings.mutetabs};
@@ -822,22 +865,23 @@ function BrowserTabContents({tab,active,onSearch,onPageUpdate,onFindUpdate,setti
       if(controller.pendingUrl){const target=controller.pendingUrl;controller.pendingUrl=null;view.loadURL(target).catch(()=>{});return}
       setPageReady(true);
     };
-    const nav=event=>{const nextUrl=event.url||currentUrl();if(nextUrl)source.current=nextUrl;setLoadError(false);onPageUpdate(tab.id,{url:nextUrl})};
+    const nav=event=>{const nextUrl=event.url||currentUrl();if(nextUrl)source.current=nextUrl;setSafetyAlert(null);setLoadError(false);onPageUpdate(tab.id,{url:nextUrl})};
+    const guard=event=>{const nextUrl=event.url;if(bypassSafety.current===nextUrl){bypassSafety.current='';return}const reason=settings.phishing?suspiciousUrl(nextUrl):null;if(reason){event.preventDefault();setSafetyAlert({url:nextUrl,reason});onPageUpdate(tab.id,{loading:false});}};
     const title=event=>onPageUpdate(tab.id,{title:event.title,currentUrl:currentUrl()});
     const start=()=>{setLoadError(false);setPageReady(false);onPageUpdate(tab.id,{loading:true})};
     const stop=()=>{const address=currentUrl();if(address)source.current=address;if(controller.ready)setPageReady(true);onPageUpdate(tab.id,{loading:false,...(address?{url:address}:{})})};
     const fail=event=>{if(event.isMainFrame&&event.errorCode!==-3){setLoadError(true);setPageReady(true)}};
     const found=event=>{if(visibility.current.active)onFindUpdate?.({matches:event.matches||0,active:event.activeMatchOrdinal||0})};
-    view.addEventListener('dom-ready',ready);view.addEventListener('did-navigate',nav);view.addEventListener('did-navigate-in-page',nav);view.addEventListener('page-title-updated',title);view.addEventListener('did-start-loading',start);view.addEventListener('did-stop-loading',stop);view.addEventListener('did-fail-load',fail);view.addEventListener('found-in-page',found);
-    return()=>{controller.ready=false;guest.current=null;register(tab.id,null);view.removeEventListener('dom-ready',ready);view.removeEventListener('did-navigate',nav);view.removeEventListener('did-navigate-in-page',nav);view.removeEventListener('page-title-updated',title);view.removeEventListener('did-start-loading',start);view.removeEventListener('did-stop-loading',stop);view.removeEventListener('did-fail-load',fail);view.removeEventListener('found-in-page',found)};
-  },[tab.id,shouldLoad,settings.private,isDesktop,onPageUpdate,onFindUpdate,register]);
-  if(!tab.url)return <div className={`browser-tab-surface ${active?'is-active':''}`} style={{display:active?'flex':'none'}}>{active?<NewTab onSearch={onSearch} settings={settings} pointer={pointer}/>:null}</div>;
+    view.addEventListener('dom-ready',ready);view.addEventListener('will-navigate',guard);view.addEventListener('did-navigate',nav);view.addEventListener('did-navigate-in-page',nav);view.addEventListener('page-title-updated',title);view.addEventListener('did-start-loading',start);view.addEventListener('did-stop-loading',stop);view.addEventListener('did-fail-load',fail);view.addEventListener('found-in-page',found);
+    return()=>{controller.ready=false;guest.current=null;register(tab.id,null);view.removeEventListener('dom-ready',ready);view.removeEventListener('will-navigate',guard);view.removeEventListener('did-navigate',nav);view.removeEventListener('did-navigate-in-page',nav);view.removeEventListener('page-title-updated',title);view.removeEventListener('did-start-loading',start);view.removeEventListener('did-stop-loading',stop);view.removeEventListener('did-fail-load',fail);view.removeEventListener('found-in-page',found)};
+  },[tab.id,shouldLoad,settings.private,settings.phishing,isDesktop,onPageUpdate,onFindUpdate,register]);
+  if(!tab.url)return <div className={`browser-tab-surface ${active?'is-active':''}`} style={{display:active?'flex':'none'}}>{active?<NewTab onSearch={onSearch} onOpenMusic={onOpenMusic} settings={settings} pointer={pointer}/>:null}</div>;
   if(!shouldLoad)return <div className="browser-tab-surface" style={{display:'none'}} aria-hidden="true"/>;
   let failedQuery='';try{failedQuery=new URL(tab.url).searchParams.get('q')||''}catch{}
-  return <div className={`browser-tab-surface ${active?'is-active':''}`} style={{display:active?'flex':'none'}} aria-hidden={!active}>{isDesktop?<webview ref={webviewRef} key={`${tab.id}-${settings.private?'private':'normal'}`} src={mountAddress.current} partition={settings.private?'browsery-private':'persist:browsery'} webpreferences="contextIsolation=yes,sandbox=yes"/>:<iframe title={tab.title} src={tab.url} />}{isDesktop&&!pageReady&&!loadError&&<div className="browser-load-state" role="status"><span className="browser-load-orbit"/><h2>{tab.url?.startsWith('browsery:')?'Opening Browsery Search…':'Opening page…'}</h2><p>{failedQuery||addressHost(tab.url)}</p></div>}{loadError&&<div className="browser-load-error" role="alert"><span className="browser-load-error-icon"><Icon name="alert" size={19}/></span><h2>{tab.url?.startsWith('browsery:')?'Browsery Search did not load':'This page did not load'}</h2><p>The page request failed before Browsery received any content. Your tabs and saved browser data are unchanged.</p><div><SpringButton onClick={()=>onSearch(tab.url)}>Retry</SpringButton>{failedQuery&&<SpringButton onClick={()=>onSearch(`https://www.bing.com/search?q=${encodeURIComponent(failedQuery)}`)}>Try another search source</SpringButton>}</div></div>}</div>;
+  return <div className={`browser-tab-surface ${active?'is-active':''}`} style={{display:active?'flex':'none'}} aria-hidden={!active}>{isDesktop?<webview ref={webviewRef} key={`${tab.id}-${settings.private?'private':'normal'}`} src={mountAddress.current} partition={settings.private?'browsery-private':'persist:browsery'} webpreferences="contextIsolation=yes,sandbox=yes"/>:<iframe title={tab.title} src={tab.url} />}{isDesktop&&!pageReady&&!loadError&&!safetyAlert&&<div className="browser-load-state" role="status"><span className="browser-load-orbit"/><h2>{tab.url?.startsWith('browsery:')?'Opening Browsery Search…':'Opening page…'}</h2><p>{failedQuery||addressHost(tab.url)}</p></div>}{safetyAlert&&<div className="browser-safety-alert" role="alert"><span><Icon name="shield" size={25}/></span><h2>Browsery paused this link</h2><p>{safetyAlert.reason} Browsery has not loaded the page.</p><small>Local phishing checks are not antivirus protection. Groq can explain a page after it is opened, but does not decide this warning.</small><div><SpringButton onClick={()=>{bypassSafety.current=safetyAlert.url;setSafetyAlert(null);webviewRef.current?.loadURL?.(safetyAlert.url).catch(()=>{})}}>Open anyway</SpringButton><SpringButton onClick={()=>onSearch('')}>Return to search</SpringButton></div></div>}{loadError&&<div className="browser-load-error" role="alert"><span className="browser-load-error-icon"><Icon name="alert" size={19}/></span><h2>{tab.url?.startsWith('browsery:')?'Browsery Search did not load':'This page did not load'}</h2><p>The page request failed before Browsery received any content. Your tabs and saved browser data are unchanged.</p><div><SpringButton onClick={()=>onSearch(tab.url)}>Retry</SpringButton>{failedQuery&&<SpringButton onClick={()=>onSearch(`https://www.bing.com/search?q=${encodeURIComponent(failedQuery)}`)}>Try another search source</SpringButton>}</div></div>}</div>;
 }
 
-const BrowserViewport=React.forwardRef(function BrowserViewport({tabs,active,onSearch,onPageUpdate,onFindUpdate,settings,pointer},ref){
+const BrowserViewport=React.forwardRef(function BrowserViewport({tabs,active,onSearch,onOpenMusic,onPageUpdate,onFindUpdate,settings,pointer},ref){
   const views=useRef(new Map());
   const register=useCallback((id,view)=>{if(view)views.current.set(id,view);else views.current.delete(id)},[]);
   React.useImperativeHandle(ref,()=>{
@@ -851,7 +895,7 @@ const BrowserViewport=React.forwardRef(function BrowserViewport({tabs,active,onS
       zoom:step=>{if(!current()?.ready)return null;const factor=invoke('getZoomFactor')||1;if(step==='read')return Math.round(factor*100);const next=step===0?1:Math.max(.5,Math.min(2,factor+step));invoke('setZoomFactor',next);return Math.round(next*100)},
     };
   },[active]);
-  return <div className="browser-page browser-viewport-stack">{tabs.map(tab=><BrowserTabContents key={tab.id} tab={tab} active={tab.id===active} onSearch={onSearch} onPageUpdate={onPageUpdate} onFindUpdate={onFindUpdate} settings={settings} pointer={pointer} register={register}/>)}</div>;
+  return <div className="browser-page browser-viewport-stack">{tabs.map(tab=><BrowserTabContents key={tab.id} tab={tab} active={tab.id===active} onSearch={onSearch} onOpenMusic={onOpenMusic} onPageUpdate={onPageUpdate} onFindUpdate={onFindUpdate} settings={settings} pointer={pointer} register={register}/>)}</div>;
 });
 
 function readList(key) { try { const value=JSON.parse(localStorage.getItem(key)||'[]');return Array.isArray(value)?value.filter(item=>item&&typeof item.url==='string'):[] } catch { return [] } }
@@ -993,6 +1037,7 @@ function App() {
         <GlassButton icon="find" label="Find in page · Ctrl+F" active={findOpen} onClick={()=>handleShortcut('find')}/>
         <GlassButton icon="cookie" label="Cookies & site data" active={panel==='data'} onClick={()=>togglePanel('data')}/>
         <GlassButton icon="shield" label="Privacy shield" active={panel==='protection'} onClick={()=>togglePanel('protection')}/>
+        <GlassButton icon="music" label="Ad-free local music" active={panel==='music'} onClick={()=>togglePanel('music')}/>
         <SpringButton className="analyze-toolbar" aria-label="Analyze with Groq" onClick={openAnalysis}><Icon name="spark" size={17}/><span>Analyze with Groq</span></SpringButton>
         <GlassButton icon="download" label="Downloads · Ctrl+J" active={panel==='downloads'} onClick={()=>togglePanel('downloads')}/>
         <GlassButton icon="settings" label="Settings" active={panel==='settings'} onClick={()=>togglePanel('settings')}/>
@@ -1000,8 +1045,8 @@ function App() {
         <SpringButton className="profile" onClick={()=>{setTheme(current=>current==='dark'?'light':'dark');notify('Theme shifted')}} aria-label="Toggle theme">MK</SpringButton>
       </div>
     </div>
-    <div className="loading-line"/><div className="viewport"><FindBar open={findOpen} onClose={()=>setFindOpen(false)} onFind={find} count={findCounts.matches} active={findCounts.active}/><BrowserViewport ref={browserRef} tabs={tabs} active={active} onSearch={go} onPageUpdate={pageUpdate} onFindUpdate={onFindUpdate} settings={settings} pointer={pointer}/></div>
-     <AnalyzeDrawer open={panel==='analyze'} onClose={()=>setPanel(null)} tab={activeTab} result={screenAnalysis} onAnalyze={analyzeVisiblePage}/><SettingsDrawer open={panel==='settings'||panel==='privacy'} initialSection={panel==='privacy'?'privacy':'graphics'} onClose={()=>setPanel(null)} onManageData={()=>setPanel('data')} onManageProtection={()=>setPanel('protection')} values={settings} setValues={setSettings} audioEngine={audioEngine} audioReady={audioReady}/><ProtectionDrawer open={panel==='protection'} onClose={()=>setPanel(null)} tab={activeTab} onOpenSettings={()=>setPanel('privacy')}/><BrowserDataDrawer open={panel==='data'} onClose={()=>setPanel(null)} history={settings.private?[]:history} onClearHistory={()=>setHistory([])}/><DownloadDrawer open={panel==='downloads'} onClose={()=>setPanel(null)} audioEngine={audioEngine}/><VpnPanel open={panel==='vpn'} onClose={()=>setPanel(null)} onOpenGuide={()=>go(window.browseryDesktop?.platform==='darwin'?'https://protonvpn.com/download-macos':'https://protonvpn.com/download-windows')}/>
+    <div className="loading-line"/><div className="viewport"><FindBar open={findOpen} onClose={()=>setFindOpen(false)} onFind={find} count={findCounts.matches} active={findCounts.active}/><BrowserViewport ref={browserRef} tabs={tabs} active={active} onSearch={go} onOpenMusic={()=>togglePanel('music')} onPageUpdate={pageUpdate} onFindUpdate={onFindUpdate} settings={settings} pointer={pointer}/></div>
+     <AnalyzeDrawer open={panel==='analyze'} onClose={()=>setPanel(null)} tab={activeTab} result={screenAnalysis} onAnalyze={analyzeVisiblePage}/><SettingsDrawer open={panel==='settings'||panel==='privacy'} initialSection={panel==='privacy'?'privacy':'graphics'} onClose={()=>setPanel(null)} onManageData={()=>setPanel('data')} onManageProtection={()=>setPanel('protection')} values={settings} setValues={setSettings} audioEngine={audioEngine} audioReady={audioReady}/><ProtectionDrawer open={panel==='protection'} onClose={()=>setPanel(null)} tab={activeTab} onOpenSettings={()=>setPanel('privacy')}/><MusicDrawer open={panel==='music'} onClose={()=>setPanel(null)}/><BrowserDataDrawer open={panel==='data'} onClose={()=>setPanel(null)} history={settings.private?[]:history} onClearHistory={()=>setHistory([])}/><DownloadDrawer open={panel==='downloads'} onClose={()=>setPanel(null)} audioEngine={audioEngine}/><VpnPanel open={panel==='vpn'} onClose={()=>setPanel(null)} onOpenGuide={()=>go(window.browseryDesktop?.platform==='darwin'?'https://protonvpn.com/download-macos':'https://protonvpn.com/download-windows')}/>
     <LibraryDrawer open={panel==='history'} onClose={()=>setPanel(null)} title="History" historyMode items={settings.private?[]:history} onSelect={go} onRemove={address=>setHistory(current=>current.filter(item=>item.url!==address))} onClear={()=>setHistory([])}/>
     <LibraryDrawer open={panel==='bookmarks'} onClose={()=>setPanel(null)} title="Bookmarks" items={bookmarks} onSelect={go} onRemove={address=>setBookmarks(current=>current.filter(item=>item.url!==address))}/>
   </div><Toast message={toast}/></div>;
