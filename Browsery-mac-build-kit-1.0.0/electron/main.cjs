@@ -4,9 +4,16 @@ const path = require('path');
 const { randomUUID } = require('node:crypto');
 const { pathToFileURL } = require('url');
 const { getApiKeyStatus, saveApiKey, clearApiKey, createOverview, analyzePageScreenshot } = require('./ai-overview.cjs');
+const { createAdblocker } = require('./adblocker.cjs');
 
-// Portable output folders can change; the installed user's encrypted profile must not.
-if (app.isPackaged) {
+// QA gets its own profile, so captures can never touch a person's live tabs,
+// cookies, downloads, or encrypted AI credential. Portable output folders can
+// change; the installed user's encrypted profile must not.
+if (process.env.BROWSERY_QA_DIR) {
+  const qaProfileDirectory = path.join(process.env.BROWSERY_QA_DIR, 'profile');
+  fs.mkdirSync(qaProfileDirectory, { recursive: true });
+  app.setPath('userData', qaProfileDirectory);
+} else if (app.isPackaged) {
   const profileDirectory = path.join(app.getPath('appData'), 'Browsery');
   fs.mkdirSync(profileDirectory, { recursive: true });
   app.setPath('userData', profileDirectory);
@@ -16,8 +23,22 @@ const activeDownloads = new Map();
 const browserySearchCursors = new Map();
 const searchRequests = new WeakMap();
 const imageRequests = new Map();
+const DOWNLOAD_HISTORY_LIMIT = 120;
+const cookiePurgeIntervals = new Map([
+  ['1 hour', 60 * 60 * 1000],
+  ['24 hours', 24 * 60 * 60 * 1000],
+  ['7 days', 7 * 24 * 60 * 60 * 1000],
+]);
 let mainWindow;
+let adblocker;
 let browserPreferences = { adblock: true, trackers: 'Strict', https: true, aiOverview: true, aiModel: 'openai/gpt-oss-120b', downloadPath: 'Downloads', systemContrast: true };
+let completedDownloads = [];
+let downloadHistoryWriteTimer = null;
+let cookiePurgePreference = '24 hours';
+let lastCookiePurgeAt = Date.now();
+let cookiePurgeTimer = null;
+let cookiePurgeInFlight = null;
+let bypassCookiePurgeOnQuit = false;
 const primaryInstance = app.requestSingleInstanceLock();
 if (!primaryInstance) app.quit();
 else app.on('second-instance', () => {
@@ -26,6 +47,91 @@ else app.on('second-instance', () => {
   mainWindow.show();
   mainWindow.focus();
 });
+
+function profileFile(name) {
+  return path.join(app.getPath('userData'), name);
+}
+
+function readProfileJson(name, fallback) {
+  try { return JSON.parse(fs.readFileSync(profileFile(name), 'utf8')); }
+  catch { return fallback; }
+}
+
+function writeProfileJson(name, value) {
+  try {
+    const target = profileFile(name);
+    const temporary = `${target}.${process.pid}.${Date.now()}.tmp`;
+    fs.mkdirSync(path.dirname(target), { recursive: true });
+    fs.writeFileSync(temporary, JSON.stringify(value));
+    fs.renameSync(temporary, target);
+  } catch (error) {
+    // Browsing must remain usable when a profile folder is temporarily read-only.
+    console.warn(`Browsery could not save ${name}:`, error.code || error.name);
+  }
+}
+
+function normalizeCompletedDownload(value) {
+  if (!value || typeof value !== 'object') return null;
+  const name = typeof value.name === 'string' ? path.basename(value.name).trim() : '';
+  const savePath = typeof value.savePath === 'string' && path.isAbsolute(value.savePath) ? value.savePath : '';
+  const completedAt = Number.isFinite(value.completedAt) && value.completedAt > 0 ? value.completedAt : 0;
+  if (!name || !savePath || !completedAt) return null;
+  const received = Math.max(0, Number(value.received) || 0);
+  const total = Math.max(received, Number(value.total) || 0);
+  return {
+    id: typeof value.id === 'string' && value.id.length <= 120 ? value.id : randomUUID(),
+    name: name.slice(0, 255),
+    savePath,
+    received,
+    total,
+    progress: 100,
+    speed: 0,
+    paused: false,
+    state: 'completed',
+    completedAt,
+  };
+}
+
+function loadCompletedDownloads() {
+  const values = readProfileJson('download-history.json', []);
+  completedDownloads = Array.isArray(values) ? values.map(normalizeCompletedDownload).filter(Boolean)
+    .sort((left, right) => right.completedAt - left.completedAt).slice(0, DOWNLOAD_HISTORY_LIMIT) : [];
+}
+
+function saveCompletedDownloads() {
+  if (downloadHistoryWriteTimer) {
+    clearTimeout(downloadHistoryWriteTimer);
+    downloadHistoryWriteTimer = null;
+  }
+  writeProfileJson('download-history.json', completedDownloads);
+}
+
+function scheduleCompletedDownloadsSave() {
+  if (downloadHistoryWriteTimer) return;
+  downloadHistoryWriteTimer = setTimeout(saveCompletedDownloads, 350);
+  downloadHistoryWriteTimer.unref?.();
+}
+
+function rememberCompletedDownload(download) {
+  const normalized = normalizeCompletedDownload({ ...download, completedAt: Date.now() });
+  if (!normalized) return;
+  completedDownloads = [normalized, ...completedDownloads.filter(item => item.savePath !== normalized.savePath)].slice(0, DOWNLOAD_HISTORY_LIMIT);
+  scheduleCompletedDownloadsSave();
+}
+
+function loadCookiePurgeState() {
+  const state = readProfileJson('browser-data-state.json', {});
+  cookiePurgePreference = cookiePurgeIntervals.has(state?.cookiePurge) || state?.cookiePurge === 'On close' ? state.cookiePurge : '24 hours';
+  lastCookiePurgeAt = Number.isFinite(state?.lastCookiePurgeAt) && state.lastCookiePurgeAt > 0 ? state.lastCookiePurgeAt : Date.now();
+}
+
+function saveCookiePurgeState() {
+  writeProfileJson('browser-data-state.json', { cookiePurge: cookiePurgePreference, lastCookiePurgeAt });
+}
+
+function isTrustedShell(event) {
+  return Boolean(mainWindow && !mainWindow.isDestroyed() && event?.sender === mainWindow.webContents && event.senderFrame === mainWindow.webContents.mainFrame);
+}
 
 const spaceSearchCss = `
   #browsery-overview-notice[hidden]{display:none!important}
@@ -163,11 +269,7 @@ async function getBrowseryResults(query, browserSession, cursorId = null) {
   if (cached) requests.delete(key);
   while (requests.size >= 64) requests.delete(requests.keys().next().value);
   const entry = { pending: true, expiresAt: 0, value: null };
-  entry.value = fetchBrowseryResults(query, browserSession, cursorId).then(async page => {
-    if (!cursorId && query && !page.results.length) {
-      const backup = await fetchMwmblResults(query, browserSession);
-      if (backup.results.length || page.error === 'no-results') page = backup;
-    }
+  entry.value = (cursorId ? fetchBrowseryResults(query, browserSession, cursorId) : fetchInitialBrowseryResults(query, browserSession)).then(page => {
     entry.pending = false;
     if (page.results.length) entry.expiresAt = Date.now() + 90_000;
     else requests.delete(key);
@@ -175,6 +277,33 @@ async function getBrowseryResults(query, browserSession, cursorId = null) {
   }, error => { requests.delete(key); throw error; });
   requests.set(key, entry);
   return entry.value;
+}
+
+// DuckDuckGo remains the primary source because it supplies continuation
+// cursors. Start the independent fallback only when the primary source is
+// slow or empty, then return whichever useful response arrives first. This
+// avoids the former 2.5s + 4s sequential failure path.
+async function fetchInitialBrowseryResults(query, browserSession) {
+  const primary = fetchBrowseryResults(query, browserSession);
+  const slow = Symbol('primary-search-slow');
+  const early = await Promise.race([
+    primary,
+    new Promise(resolve => setTimeout(() => resolve(slow), 650)),
+  ]);
+  if (early !== slow) {
+    if (early.results.length) return early;
+    const backup = await fetchMwmblResults(query, browserSession);
+    return backup.results.length ? backup : early;
+  }
+
+  const backup = fetchMwmblResults(query, browserSession);
+  const first = await Promise.race([
+    primary.then(page => ({ provider: 'primary', page })),
+    backup.then(page => ({ provider: 'backup', page })),
+  ]);
+  if (first.page.results.length) return first.page;
+  const second = await (first.provider === 'primary' ? backup : primary);
+  return second.results.length ? second : first.page;
 }
 
 async function fetchBrowseryResults(query, browserSession, cursorId = null) {
@@ -236,7 +365,7 @@ function mwmblPage(query, browserSession, items, startIndex = 0) {
 
 async function fetchMwmblResults(query, browserSession) {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 4000);
+  const timeout = setTimeout(() => controller.abort(), 3250);
   try {
     // One user-initiated API request; subsequent pages use this finite cached collection.
     const response = await browserSession.fetch(`https://api.mwmbl.org/api/v2/search/?q=${encodeURIComponent(query)}`, {
@@ -510,6 +639,50 @@ function cookieMetadata(cookie, partition) {
   };
 }
 
+async function clearSessionCookies(browserSession) {
+  const cookies = await browserSession.cookies.get({});
+  for (const cookie of cookies) await browserSession.cookies.remove(cookieRemovalUrl(cookie), cookie.name);
+  await browserSession.cookies.flushStore();
+  return cookies.length;
+}
+
+function markCookiesPurged() {
+  lastCookiePurgeAt = Date.now();
+  saveCookiePurgeState();
+}
+
+function scheduleCookiePurge() {
+  if (cookiePurgeTimer) {
+    clearTimeout(cookiePurgeTimer);
+    cookiePurgeTimer = null;
+  }
+  const interval = cookiePurgeIntervals.get(cookiePurgePreference);
+  if (!interval) return;
+  const delay = Math.max(1000, interval - Math.max(0, Date.now() - lastCookiePurgeAt));
+  cookiePurgeTimer = setTimeout(async () => {
+    cookiePurgeTimer = null;
+    try { await purgeRegularCookies(); }
+    catch (error) { console.warn('Browsery could not run the scheduled cookie purge:', error.code || error.name); scheduleCookiePurge(); }
+  }, delay);
+  cookiePurgeTimer.unref?.();
+}
+
+function updateCookiePurgePreference(value) {
+  cookiePurgePreference = cookiePurgeIntervals.has(value) || value === 'On close' ? value : '24 hours';
+  saveCookiePurgeState();
+  scheduleCookiePurge();
+}
+
+function purgeRegularCookies() {
+  if (cookiePurgeInFlight) return cookiePurgeInFlight;
+  cookiePurgeInFlight = clearSessionCookies(session.fromPartition('persist:browsery')).then(removed => {
+    markCookiesPurged();
+    scheduleCookiePurge();
+    return removed;
+  }).finally(() => { cookiePurgeInFlight = null; });
+  return cookiePurgeInFlight;
+}
+
 function uniqueDownloadPath(directory, filename) {
   const extension = path.extname(filename);
   const stem = path.basename(filename, extension);
@@ -518,7 +691,7 @@ function uniqueDownloadPath(directory, filename) {
   return candidate;
 }
 
-function attachDownloadManager(browserSession) {
+function attachDownloadManager(browserSession, { persistHistory = true } = {}) {
   browserSession.on('will-download', (_event, item) => {
     const id = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
     let lastBytes = 0;
@@ -545,7 +718,11 @@ function attachDownloadManager(browserSession) {
       const speed = Math.max(0, ((received - lastBytes) / elapsed) * 1000);
       lastBytes = received;
       lastAt = now;
-      send('download:update', { id, name: item.getFilename(), savePath: item.getSavePath(), received, total, progress: total ? Math.round((received / total) * 100) : 0, speed, paused: item.isPaused(), state });
+      const update = { id, name: item.getFilename(), savePath: item.getSavePath(), received, total, progress: total ? Math.round((received / total) * 100) : 0, speed, paused: item.isPaused(), state };
+      // A private tab can still show its download while Browsery is open, but
+      // its transfer must never become part of the regular download library.
+      if (state === 'completed' && persistHistory) rememberCompletedDownload(update);
+      send('download:update', update);
     };
     item.on('updated', () => publish());
     item.once('done', (_event, state) => { publish(state); activeDownloads.delete(id); });
@@ -553,23 +730,20 @@ function attachDownloadManager(browserSession) {
   });
 }
 
-function configureBrowserSession(browserSession) {
+function configureBrowserSession(browserSession, options) {
   browserSession.protocol.handle('browsery', request => handleBrowseryRequest(request, browserSession));
   browserSession.webRequest.onBeforeRequest({ urls: ['http://*/*', 'https://*/*'] }, (details, callback) => {
     try {
       const url = new URL(details.url);
       const host = url.hostname.toLowerCase();
-      const adHosts = ['doubleclick.net', 'googlesyndication.com', 'adservice.google.com', 'amazon-adsystem.com'];
-      const trackerHosts = ['google-analytics.com', 'analytics.google.com', 'connect.facebook.net', 'segment.io', 'api.mixpanel.com'];
-      const matches = list => list.some(blocked => host === blocked || host.endsWith(`.${blocked}`));
-      if (browserPreferences.adblock && matches(adHosts)) return callback({ cancel: true });
-      if (browserPreferences.trackers !== 'Standard' && matches(trackerHosts)) return callback({ cancel: true });
+      const blocked = adblocker?.shouldBlock(details, browserPreferences);
+      if (blocked) return callback({ cancel: true });
       if (browserPreferences.https && url.protocol === 'http:' && host !== 'localhost' && host !== '127.0.0.1') return callback({ redirectURL: details.url.replace(/^http:/, 'https:') });
     } catch {}
     callback({});
   });
   browserSession.setPermissionRequestHandler((_contents, _permission, callback) => callback(false));
-  attachDownloadManager(browserSession);
+  attachDownloadManager(browserSession, options);
 }
 
 function createWindow() {
@@ -610,8 +784,16 @@ async function saveCapture(win, filePath) {
 
 async function runQa(win, qaDir) {
   try {
-    await win.webContents.executeJavaScript(`localStorage.removeItem('browsery:settings'); location.reload()`);
-    await sleep(2200);
+    // Reload through Electron rather than navigating from executeJavaScript.
+    // The latter destroys its own isolated world mid-evaluation and made the
+    // optional packaged-app QA capture flaky on some Electron versions.
+    await win.webContents.executeJavaScript(`localStorage.removeItem('browsery:settings')`);
+    await new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => reject(new Error('Timed out reloading the Browsery shell for QA.')), 10000);
+      win.webContents.once('did-finish-load', () => { clearTimeout(timeout); resolve(); });
+      win.webContents.reload();
+    });
+    await sleep(1200);
     const initial = await win.webContents.executeJavaScript(`(() => {
       const video = document.querySelector('.saturn-video');
       const settings = JSON.parse(localStorage.getItem('browsery:settings') || '{}');
@@ -659,13 +841,23 @@ async function runQa(win, qaDir) {
 }
 
 if (primaryInstance) app.whenReady().then(() => {
+  adblocker = createAdblocker({ statePath: path.join(app.getPath('userData'), 'adblock-allowlist.json') });
+  loadCompletedDownloads();
+  loadCookiePurgeState();
   const trustedShell = event => event.sender === mainWindow?.webContents && event.senderFrame === mainWindow.webContents.mainFrame;
   const { createProtonController } = require('./proton-vpn.cjs');
   const proton = createProtonController({ helperPath: path.join(__dirname, 'native', 'Browsery.ProtonConnect.exe').replace(`app.asar${path.sep}`, `app.asar.unpacked${path.sep}`) });
   const deniedProtonAction = { ok: false, status: 'unavailable', message: 'Control Proton from Browsery’s VPN panel, not from a webpage.' };
+  const deniedProtectionAction = { ok: false, message: 'Protection controls are only available from Browsery.' };
+  const deniedProtectionStatus = { enabled: false, adblockEnabled: false, trackerMode: 'Standard', blockedCount: 0, adsBlocked: 0, trackersBlocked: 0, allowlisted: false, allowlistCount: 0, lastBlockedAt: null };
   ipcMain.handle('vpn:proton-status', event => trustedShell(event) ? proton.getStatus() : { installed: false, canConnect: false });
   ipcMain.handle('vpn:proton-open', event => trustedShell(event) ? proton.open() : deniedProtonAction);
   ipcMain.handle('vpn:proton-connect', event => trustedShell(event) ? proton.connect() : deniedProtonAction);
+  ipcMain.handle('protection:status', (event, site) => trustedShell(event) ? adblocker.getStatus(browserPreferences, site) : deniedProtectionStatus);
+  ipcMain.handle('protection:allow-site', (event, site) => trustedShell(event) ? adblocker.allowSite(site, browserPreferences) : deniedProtectionAction);
+  ipcMain.handle('protection:remove-site', (event, site) => trustedShell(event) ? adblocker.removeAllowedSite(site, browserPreferences) : deniedProtectionAction);
+  ipcMain.handle('protection:list-allowed-sites', event => trustedShell(event) ? { ok: true, sites: adblocker.listAllowedSites() } : deniedProtectionAction);
+  ipcMain.handle('protection:reset-stats', event => trustedShell(event) ? { ok: true, ...adblocker.resetStats(browserPreferences) } : deniedProtectionAction);
   ipcMain.handle('vpn:open-settings', async event => {
     if (!trustedShell(event)) return { ok: false, message: 'Open VPN settings from Browsery’s VPN panel.' };
     if (process.platform !== 'win32') return { ok: false, message: 'Windows VPN settings are only available on Windows.' };
@@ -697,11 +889,14 @@ if (primaryInstance) app.whenReady().then(() => {
       return { status: 'invalid-image' };
     }
   });
-  ipcMain.handle('browser-data:list-cookies', async (_event, partition) => {
+  ipcMain.handle('downloads:list', event => trustedShell(event) ? completedDownloads.map(item => ({ ...item })) : []);
+  ipcMain.handle('browser-data:list-cookies', async (event, partition) => {
+    if (!trustedShell(event)) return [];
     const cookies = await browserDataSession(partition).cookies.get({});
     return cookies.map(cookie => cookieMetadata(cookie, partition)).sort((a, b) => a.domain.localeCompare(b.domain) || a.name.localeCompare(b.name));
   });
-  ipcMain.handle('browser-data:remove-cookie', async (_event, { partition, name, domain, path: cookiePath } = {}) => {
+  ipcMain.handle('browser-data:remove-cookie', async (event, { partition, name, domain, path: cookiePath } = {}) => {
+    if (!trustedShell(event)) return { ok: false, removed: 0 };
     if (typeof name !== 'string' || typeof domain !== 'string') throw new Error('Choose a valid cookie.');
     const browserSession = browserDataSession(partition);
     const normalizedDomain = domain.toLowerCase();
@@ -710,16 +905,19 @@ if (primaryInstance) app.whenReady().then(() => {
     await browserSession.cookies.flushStore();
     return { ok: true, removed: matching.length };
   });
-  ipcMain.handle('browser-data:clear', async (_event, { partition, types } = {}) => {
+  ipcMain.handle('browser-data:clear', async (event, { partition, types } = {}) => {
+    if (!trustedShell(event)) return { ok: false, cleared: [] };
     const browserSession = browserDataSession(partition);
     const requested = new Set(Array.isArray(types) ? types : []);
     const allowed = new Set(['cookies', 'siteData', 'cache', 'auth']);
     for (const type of requested) if (!allowed.has(type)) throw new Error('Unknown browser-data category.');
     const completed = [];
     if (requested.has('cookies')) {
-      const cookies = await browserSession.cookies.get({});
-      for (const cookie of cookies) await browserSession.cookies.remove(cookieRemovalUrl(cookie), cookie.name);
-      await browserSession.cookies.flushStore();
+      await clearSessionCookies(browserSession);
+      if (partition === 'regular') {
+        markCookiesPurged();
+        scheduleCookiePurge();
+      }
       completed.push('cookies');
     }
     const operations = [];
@@ -729,8 +927,8 @@ if (primaryInstance) app.whenReady().then(() => {
     await Promise.all(operations);
     return { ok: true, cleared: completed };
   });
-  configureBrowserSession(session.fromPartition('persist:browsery'));
-  configureBrowserSession(session.fromPartition('browsery-private'));
+  configureBrowserSession(session.fromPartition('persist:browsery'), { persistHistory: true });
+  configureBrowserSession(session.fromPartition('browsery-private'), { persistHistory: false });
   app.on('web-contents-created', (_event, contents) => {
     if (contents.getType() !== 'webview') return;
     contents.setBackgroundThrottling(true);
@@ -762,28 +960,46 @@ if (primaryInstance) app.whenReady().then(() => {
   });
   session.defaultSession.setPermissionRequestHandler((_contents, _permission, callback) => callback(false));
   attachDownloadManager(session.defaultSession);
+  scheduleCookiePurge();
+  app.on('before-quit', event => {
+    saveCompletedDownloads();
+    if (bypassCookiePurgeOnQuit || cookiePurgePreference !== 'On close') return;
+    event.preventDefault();
+    bypassCookiePurgeOnQuit = true;
+    purgeRegularCookies().catch(error => console.warn('Browsery could not clear cookies on exit:', error.code || error.name)).finally(() => app.quit());
+  });
 
   createWindow();
   app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });
 });
 
-ipcMain.on('window:action', (_event, action) => {
-  if (!mainWindow) return;
+ipcMain.on('window:action', (event, action) => {
+  if (!isTrustedShell(event) || !mainWindow) return;
   if (action === 'minimize') mainWindow.minimize();
   if (action === 'maximize') mainWindow.isMaximized() ? mainWindow.unmaximize() : mainWindow.maximize();
   if (action === 'close') mainWindow.close();
 });
 
-ipcMain.on('download:command', (_event, { id, action, savePath }) => {
+ipcMain.on('download:command', (event, { id, action } = {}) => {
+  if (!isTrustedShell(event) || typeof id !== 'string') return;
   const item = activeDownloads.get(id);
-  if (action === 'open' && savePath) return shell.showItemInFolder(savePath);
+  // Never trust a renderer-supplied file path. Resolve the requested transfer
+  // from the live manager or Browsery's own persisted history instead.
+  if (action === 'open') {
+    const historical = completedDownloads.find(download => download.id === id);
+    const downloadPath = item?.getSavePath?.() || historical?.savePath;
+    if (typeof downloadPath === 'string' && path.isAbsolute(downloadPath) && fs.existsSync(downloadPath)) shell.showItemInFolder(downloadPath);
+    return;
+  }
   if (!item) return;
   if (action === 'pause') item.pause();
   if (action === 'resume') item.resume();
   if (action === 'cancel') item.cancel();
 });
 
-ipcMain.on('settings:update', (_event, settings) => {
+ipcMain.on('settings:update', (event, settings) => {
+  if (!isTrustedShell(event)) return;
+  if (typeof settings?.cookies === 'string') updateCookiePurgePreference(settings.cookies);
   browserPreferences = {
     adblock: Boolean(settings?.adblock),
     trackers: settings?.trackers || 'Standard',

@@ -127,10 +127,12 @@
   transform: perspective(1300px) translate3d(var(--spring-x, 0px),0,0) rotateX(calc(var(--panel-rx, -1deg) * .22)) rotateY(var(--spring-angle)) translateZ(calc(var(--spatial-depth, 42px) * .3)) scale(var(--spring-depth-scale));
   transform-origin: right 50%;
   opacity: var(--spring-opacity, 0);
-  filter: blur(var(--spring-blur, 8px)) drop-shadow(0 0 calc(24px * var(--bloom-strength,.44)) color-mix(in srgb,var(--border-glow),transparent 78%));
+  /* A full-drawer blur forces a large texture repaint every spring frame. Keep the
+     depth shadow, but move the sheet with compositor-only transform + opacity. */
+  filter: drop-shadow(0 0 calc(24px * var(--bloom-strength,.44)) color-mix(in srgb,var(--border-glow),transparent 78%));
   transition: none;
   backface-visibility: hidden;
-  will-change: transform, opacity, filter;
+  will-change: transform, opacity;
 }
 
 .desktop-browser .drawer.open {
@@ -182,9 +184,7 @@
   scale: 1.65;
 }
 
-.desktop-browser .spring-interactive:hover {
-  filter: brightness(1.12);
-}
+.desktop-browser .spring-interactive:hover { filter: none; }
 
 .desktop-browser .omnibox.focused,
 .desktop-browser .home-search:focus-within {
@@ -339,6 +339,7 @@
 .find-bar .icon-button{width:28px;height:28px;}
 .desktop-browser .saturn-video{will-change:transform;}
 .desktop-browser .webgl canvas{contain:strict;}
+.cursor-canvas{contain:layout style paint;}
 .browser-viewport-stack{position:relative;isolation:isolate;}
 .browser-tab-surface{position:absolute;inset:0;min-width:0;min-height:0;overflow:hidden;}
 .browser-tab-surface>.new-tab,.browser-tab-surface>webview,.browser-tab-surface>iframe{width:100%;height:100%;}

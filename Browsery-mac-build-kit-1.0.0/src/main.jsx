@@ -214,15 +214,21 @@ function WebGLScene({ pointer, settings }) {
         scene.add(violetLight);
 
         const palettes = [0x76e7ff, 0x8f7dff, 0xee87e7, 0xb9f3ff];
+        // Keep the geometry stable while the density sliders move. Recreating a WebGL
+        // context on every range input event was the largest avoidable hitch here.
+        const maxShardCount = 14;
+        const maxStarCount = 560;
+        const shardCountFor = live => live.shards
+          ? Math.min(maxShardCount, Math.round(7 + (Number(live.particles) || 0) * .075))
+          : 0;
+        const starCountFor = live => Math.max(0, Math.min(maxStarCount, Math.round(160 + (Number(live.particles) || 0) * 4)));
         const shardGeometry = new THREE.IcosahedronGeometry(.56, 0);
         const edgeGeometry = new THREE.EdgesGeometry(shardGeometry, 14);
-        const shardCount = settings.shards ? Math.min(14, Math.round(7 + (settings.particles || 0) * .075)) : 0;
         const shardMaterials = palettes.map(color => new THREE.MeshStandardMaterial({ color, transparent: true, opacity: .34, roughness: .32, metalness: .12, emissive: color, emissiveIntensity: .1, side: THREE.DoubleSide, depthWrite: false }));
         const edgeMaterials = palettes.map(color => new THREE.LineBasicMaterial({ color, transparent: true, opacity: .68, depthWrite: false }));
-        const shards = Array.from({ length: shardCount }, (_, index) => {
-          const angle = (index / Math.max(1, shardCount)) * Math.PI * 2;
+        const shards = Array.from({ length: maxShardCount }, (_, index) => {
+          const angle = (index / maxShardCount) * Math.PI * 2;
           const radius = 4.45 + (index % 4) * .62;
-          const color = palettes[index % palettes.length];
           const materialIndex = index % palettes.length;
           const mesh = new THREE.Mesh(shardGeometry, shardMaterials[materialIndex]);
           const edges = new THREE.LineSegments(edgeGeometry, edgeMaterials[materialIndex]);
@@ -249,9 +255,8 @@ function WebGLScene({ pointer, settings }) {
           orbitRings.push(ring);
         });
 
-        const starCount = Math.round(160 + (settings.particles || 0) * 4);
         const starsGeometry = new THREE.BufferGeometry();
-        const positions = new Float32Array(starCount * 3);
+        const positions = new Float32Array(maxStarCount * 3);
         for (let index = 0; index < positions.length; index += 3) {
           positions[index] = (Math.random() - .5) * 23;
           positions[index + 1] = (Math.random() - .5) * 14;
@@ -266,6 +271,21 @@ function WebGLScene({ pointer, settings }) {
         let lastFrame = 0;
         let elapsed = 0;
         let inView = true;
+        let visibleShardCount = -1;
+        let visibleStarCount = -1;
+        const applyDensity = live => {
+          const nextShardCount = shardCountFor(live);
+          if (nextShardCount !== visibleShardCount) {
+            visibleShardCount = nextShardCount;
+            shards.forEach((shard, index) => { shard.visible = index < nextShardCount; });
+          }
+          const nextStarCount = starCountFor(live);
+          if (nextStarCount !== visibleStarCount) {
+            visibleStarCount = nextStarCount;
+            starsGeometry.setDrawRange(0, nextStarCount);
+          }
+        };
+        applyDensity(liveSettings.current);
         const visibilityObserver = new IntersectionObserver(entries => {
           inView = entries[0]?.isIntersecting ?? true;
           if (inView && !document.hidden && !frame) frame = requestAnimationFrame(render);
@@ -292,17 +312,19 @@ function WebGLScene({ pointer, settings }) {
             const delta = Math.min((now - lastFrame) / 16.67, 2);
             lastFrame = now;
             const speed = .35 + (live.speed || 60) / 70;
+            applyDensity(live);
             elapsed += .016 * delta * speed;
             const intensity = .11 + ((live.depth || 50) / 100) * .18;
             const pointerFollow = 1 - Math.exp(-.13 * delta);
             scene.rotation.y += ((live.parallax ? pointer.current.x : 0) * intensity - scene.rotation.y) * pointerFollow;
             scene.rotation.x += (-(live.parallax ? pointer.current.y : 0) * intensity * .78 - scene.rotation.x) * pointerFollow;
-            shards.forEach((shard, index) => {
+            for (let index = 0; index < visibleShardCount; index += 1) {
+              const shard = shards[index];
               shard.rotation.x += .004 * delta * (1 + index % 3) * speed;
               shard.rotation.y += .006 * delta * speed;
               shard.position.y = shard.userData.baseY + Math.sin(elapsed * 1.7 + shard.userData.phase) * .22;
               shard.position.x += Math.sin(elapsed + shard.userData.phase) * .0012 * delta;
-            });
+            }
             orbitGroup.rotation.z = Math.sin(elapsed * .16) * .09;
             orbitRings.forEach((ring, index) => { ring.rotation.z += (index % 2 ? -1 : 1) * .00055 * delta * speed; });
             stars.rotation.z = Math.sin(elapsed * .08) * .012;
@@ -332,45 +354,51 @@ function WebGLScene({ pointer, settings }) {
           starsMaterial.dispose();
           renderer.domElement.remove();
           renderer.dispose();
+          renderer.forceContextLoss?.();
+          scene.clear();
         };
       } catch (error) {
         console.warn('Browsery spatial scene could not initialize:', error.message);
       }
     }).catch(error => console.warn('Browsery could not load its spatial renderer:', error.message));
     return () => { cancelled = true; cleanup(); };
-  }, [pointer, settings.gpu, settings.power, settings.aa, settings.particles, settings.dpr, settings.shards]);
+  }, [pointer, settings.gpu, settings.power, settings.aa, settings.dpr]);
   return <div className="webgl" ref={mount} aria-hidden="true"/>;
 }
 
 function MagicCursor({settings}) {
   const canvas=useRef(null);
+  const liveSettings=useRef(settings);
+  liveSettings.current=settings;
   useEffect(()=>{
     if(!settings.cursorEnabled||settings.power)return undefined;
     const surface=canvas.current,ctx=surface?.getContext('2d',{alpha:true,desynchronized:true});
     if(!ctx)return undefined;
-    let particles=[],frame=0,lastFrame=0,lastSpawn=0,dirty=null,activeHue=0;
-    const pixelRatio=1,density=Math.max(0,settings.particles||0)/100;
-    const hue=settings.trail==='Comet'?38:settings.trail==='Dust'?205:285;activeHue=hue;
-    const cap=Math.min(24,Math.max(6,Math.round(6+density*14)));
-    const resize=()=>{surface.width=Math.round(innerWidth*pixelRatio);surface.height=Math.round(innerHeight*pixelRatio);surface.style.width=`${innerWidth}px`;surface.style.height=`${innerHeight}px`;ctx.setTransform(pixelRatio,0,0,pixelRatio,0,0);ctx.clearRect(0,0,innerWidth,innerHeight);dirty=null};
-    const schedule=()=>{if(!frame)frame=requestAnimationFrame(draw)};
-    const particleScale=.75+(settings.cursorSize||46)*.006;
-    const spawn=(x,y,count=1)=>{for(let i=0;i<count;i++){const angle=Math.random()*Math.PI*2,speed=.35+Math.random()*(settings.trail==='Dust'?1.2:.72);particles.push({x,y,vx:Math.cos(angle)*speed,vy:Math.sin(angle)*speed,life:1,size:(Math.random()*1.6+.8)*particleScale,hue:activeHue+Math.random()*24})}if(particles.length>cap)particles.splice(0,particles.length-cap);schedule()};
-    const move=e=>{const now=performance.now();if(now-lastSpawn<30||Math.hypot(e.movementX||0,e.movementY||0)<1)return;lastSpawn=now;const underPointer=document.elementFromPoint(e.clientX,e.clientY);activeHue=underPointer?.closest('button,a,[role="button"],input,select')?190:hue;spawn(e.clientX,e.clientY)};
+    let particles=[],frame=0,lastFrame=0,lastSpawn=0,dirty=null,activeHue=0,lastX=Number.NaN,lastY=Number.NaN,width=0,height=0;
+    const pixelRatio=1;
+    const trailHue=trail=>trail==='Comet'?38:trail==='Dust'?205:285;
+    const capFor=live=>Math.min(20,Math.max(6,Math.round(6+Math.max(0,Number(live.particles)||0)/100*12)));
+    const resize=()=>{width=innerWidth;height=innerHeight;surface.width=Math.round(width*pixelRatio);surface.height=Math.round(height*pixelRatio);surface.style.width=`${width}px`;surface.style.height=`${height}px`;ctx.setTransform(pixelRatio,0,0,pixelRatio,0,0);ctx.clearRect(0,0,width,height);dirty=null};
+    const schedule=()=>{if(!frame&&!document.hidden)frame=requestAnimationFrame(draw)};
+    const spawn=(x,y,count=1)=>{const live=liveSettings.current,trail=live.trail||'Ribbon',particleScale=.75+(Number(live.cursorSize)||46)*.006;for(let i=0;i<count;i++){const angle=Math.random()*Math.PI*2,speed=.35+Math.random()*(trail==='Dust'?1.2:.72);particles.push({x,y,vx:Math.cos(angle)*speed,vy:Math.sin(angle)*speed,life:1,size:(Math.random()*1.6+.8)*particleScale,hue:activeHue+Math.random()*24})}const cap=capFor(live);if(particles.length>cap)particles.splice(0,particles.length-cap);schedule()};
+    const move=e=>{if(document.hidden)return;const now=performance.now(),x=e.clientX,y=e.clientY,dx=x-lastX,dy=y-lastY;if(now-lastSpawn<34||(Number.isFinite(dx)&&dx*dx+dy*dy<9))return;lastSpawn=now;lastX=x;lastY=y;const target=e.target;const overControl=target instanceof Element&&target.closest('button,a,[role="button"],input,select');activeHue=overControl?190:trailHue(liveSettings.current.trail);spawn(x,y)};
     const down=e=>spawn(e.clientX,e.clientY,4);
     const draw=now=>{
       frame=0;
+      if(document.hidden)return;
       if(now-lastFrame<32){schedule();return}
       lastFrame=now;
       if(dirty)ctx.clearRect(dirty.left,dirty.top,dirty.right-dirty.left,dirty.bottom-dirty.top);
+      const live=liveSettings.current,trail=live.trail||'Ribbon',saturation=live.accentPreset==='Monochrome'?0:100;
       let left=Infinity,top=Infinity,right=-Infinity,bottom=-Infinity;
-      for(let i=particles.length-1;i>=0;i--){const p=particles[i];p.x+=p.vx;p.y+=p.vy;p.vx*=.986;p.vy*=.986;p.life*=settings.trail==='Comet' ? .965 : settings.trail==='Dust' ? .91 : .94;if(p.life<.06){particles.splice(i,1);continue}const radius=p.size*p.life;ctx.beginPath();ctx.fillStyle=`hsla(${p.hue},${settings.accentPreset==='Monochrome'?0:100}%,${68+p.life*16}%,${p.life*.72})`;ctx.arc(p.x,p.y,radius,0,Math.PI*2);ctx.fill();left=Math.min(left,p.x-radius-3);top=Math.min(top,p.y-radius-3);right=Math.max(right,p.x+radius+3);bottom=Math.max(bottom,p.y+radius+3)}
-      dirty=Number.isFinite(left)?{left:Math.max(0,left),top:Math.max(0,top),right:Math.min(innerWidth,right),bottom:Math.min(innerHeight,bottom)}:null;
+      for(let i=particles.length-1;i>=0;i--){const p=particles[i];p.x+=p.vx;p.y+=p.vy;p.vx*=.986;p.vy*=.986;p.life*=trail==='Comet' ? .965 : trail==='Dust' ? .91 : .94;if(p.life<.06){particles.splice(i,1);continue}const radius=p.size*p.life;ctx.beginPath();ctx.fillStyle=`hsla(${p.hue},${saturation}%,${68+p.life*16}%,${p.life*.72})`;ctx.arc(p.x,p.y,radius,0,Math.PI*2);ctx.fill();left=Math.min(left,p.x-radius-3);top=Math.min(top,p.y-radius-3);right=Math.max(right,p.x+radius+3);bottom=Math.max(bottom,p.y+radius+3)}
+      dirty=Number.isFinite(left)?{left:Math.max(0,left),top:Math.max(0,top),right:Math.min(width,right),bottom:Math.min(height,bottom)}:null;
       if(particles.length)schedule();
     };
-    resize();addEventListener('pointermove',move,{passive:true});addEventListener('pointerdown',down,{passive:true});addEventListener('resize',resize,{passive:true});
-    return()=>{if(frame)cancelAnimationFrame(frame);removeEventListener('pointermove',move);removeEventListener('pointerdown',down);removeEventListener('resize',resize)};
-  },[settings.cursorEnabled,settings.power,settings.particles,settings.trail,settings.cursorSize,settings.accentPreset]);
+    const visibility=()=>{if(document.hidden){if(frame)cancelAnimationFrame(frame);frame=0;particles=[];dirty=null;ctx.clearRect(0,0,width,height)}else if(particles.length)schedule()};
+    resize();activeHue=trailHue(liveSettings.current.trail);addEventListener('pointermove',move,{passive:true});addEventListener('pointerdown',down,{passive:true});addEventListener('resize',resize,{passive:true});document.addEventListener('visibilitychange',visibility);
+    return()=>{if(frame)cancelAnimationFrame(frame);removeEventListener('pointermove',move);removeEventListener('pointerdown',down);removeEventListener('resize',resize);document.removeEventListener('visibilitychange',visibility)};
+  },[settings.cursorEnabled,settings.power]);
   if(!settings.cursorEnabled||settings.power)return null;
   return <canvas className="cursor-canvas" ref={canvas} aria-hidden="true"/>;
 }
@@ -463,9 +491,10 @@ function AiOverviewCredentials({open}) {
   </section>;
 }
 
-function SettingsDrawer({open,onClose,values,setValues,onManageData,audioEngine,audioReady}) {
+function SettingsDrawer({open,onClose,values,setValues,onManageData,onManageProtection,initialSection='graphics',audioEngine,audioReady}) {
   const panelRef=useSpringPresence(open,{preset:'fluid',offset:90});
-  const [section,setSection]=useState('graphics');
+  const [section,setSection]=useState(initialSection);
+  useEffect(()=>{if(open)setSection(initialSection)},[open,initialSection]);
   const category=settingsSchema.find(s=>s.id===section); const change=(id,v)=>setValues(x=>({...x,[id]:v}));
   const resetSection=()=>setValues(current=>({...current,...Object.fromEntries(category.items.map(([id,,,value])=>[id,value]))}));
   const resetAll=()=>setValues(initialSettings);
@@ -473,7 +502,7 @@ function SettingsDrawer({open,onClose,values,setValues,onManageData,audioEngine,
   return <aside ref={panelRef} className={`drawer settings-drawer ${open?'open':''}`} aria-hidden={!open}>
     <nav className="settings-nav" aria-label="Settings categories">{settingsSchema.map(s=><SpringButton spring="fluid" hoverScale={1.025} pressScale={.98} className={section===s.id?'active':''} onClick={()=>setSection(s.id)} key={s.id}><Icon name={s.icon}/><span>{s.label}</span><em>{s.items.length}</em></SpringButton>)}</nav>
     <div className="drawer-head"><div><span className="drawer-kicker">Live spatial control surface</span><h2>Settings</h2></div><GlassButton icon="close" label="Close settings" onClick={onClose}/></div>
-    <div className="settings-body"><div className="settings-content" key={section}><div className="settings-section-head"><h3>{category.label}</h3><span>{category.items.length} controls</span></div><div className="controls">{category.items.map(item=><Control key={item[0]} item={item} value={values[item[0]]} onChange={change}/>)}</div>{section==='sound'&&<div className="sound-preview-card"><span className={`sound-preview-indicator ${audioReady&&values.ambience&&values.ambienceVolume>0&&values.master>0?'ready':''}`}><Icon name="volume" size={17}/></span><div><b>{values.ambience&&values.ambienceVolume>0&&values.master>0?'Space ambience enabled':'Space ambience paused'}</b><small>{audioReady?'Live, procedural audio · no download required':'Audio wakes on your first click or Preview'}</small></div><SpringButton disabled={values.master===0} onClick={()=>audioEngine.preview()}>Preview</SpringButton></div>}{section==='privacy'&&<div className="privacy-data-link"><span className="privacy-data-icon"><Icon name="cookie" size={17}/></span><div><b>Cookies &amp; site data</b><small>Review cookies, storage, cache and history</small></div><SpringButton onClick={onManageData}><Icon name="chevron" size={16}/><span>Manage</span></SpringButton></div>}{section==='ai'&&<AiOverviewCredentials open={open}/>}</div></div>
+    <div className="settings-body"><div className="settings-content" key={section}><div className="settings-section-head"><h3>{category.label}</h3><span>{category.items.length} controls</span></div><div className="controls">{category.items.map(item=><Control key={item[0]} item={item} value={values[item[0]]} onChange={change}/>)}</div>{section==='sound'&&<div className="sound-preview-card"><span className={`sound-preview-indicator ${audioReady&&values.ambience&&values.ambienceVolume>0&&values.master>0&&values.ambience?'ready':''}`}><Icon name="volume" size={17}/></span><div><b>{values.ambience&&values.ambienceVolume>0&&values.master>0?'Space ambience enabled':'Space ambience paused'}</b><small>{audioReady?'Live, procedural audio · no download required':'Audio wakes on your first click or Preview'}</small></div><SpringButton disabled={values.master===0} onClick={()=>audioEngine.preview()}>Preview</SpringButton></div>}{section==='privacy'&&<><div className="privacy-data-link protection-settings-link"><span className="privacy-data-icon"><Icon name="shield" size={17}/></span><div><b>Protection dashboard</b><small>See blocked ads, tracker rules, and your site allowlist</small></div><SpringButton onClick={onManageProtection}><Icon name="chevron" size={16}/><span>Open</span></SpringButton></div><div className="privacy-data-link"><span className="privacy-data-icon"><Icon name="cookie" size={17}/></span><div><b>Cookies &amp; site data</b><small>Review cookies, storage, cache and history</small></div><SpringButton onClick={onManageData}><Icon name="chevron" size={16}/><span>Manage</span></SpringButton></div></>}{section==='ai'&&<AiOverviewCredentials open={open}/>}</div></div>
     {section==='spatial'&&<div className="motion-preview"><div><b>Click energy · {values.motionStrength}%</b><small>{values.power?'Low-power mode is on':'Press. Pulse. Spring back.'}</small></div><SpringButton className="motion-preview-button" aria-label="Try click animation"><Icon name="spark" size={17}/> Try a click</SpringButton></div>}
     <div className="settings-dock" aria-label="Quick spatial settings"><SpringButton className={values.power?'active':''} onClick={()=>change('power',!values.power)} aria-pressed={values.power}><Icon name="spark"/><span>{values.power?'Low power':'Full motion'}</span></SpringButton><SpringButton className={values.refraction?'active':''} onClick={()=>change('refraction',!values.refraction)}><Icon name="grid"/><span>Depth</span></SpringButton><SpringButton className={values.cursorEnabled?'active':''} onClick={()=>change('cursorEnabled',!values.cursorEnabled)}><Icon name="sliders"/><span>Cursor</span></SpringButton><SpringButton onClick={resetAll}><Icon name="reload"/><span>Reset all</span></SpringButton></div>
     <div className="drawer-footer"><span>{total} settings · Changes save instantly</span><SpringButton onClick={resetSection}>Reset {category.label}</SpringButton></div>
@@ -516,13 +545,13 @@ function DownloadDrawer({open,onClose,audioEngine}) {
   const panelRef=useSpringPresence(open,{preset:'fluid',offset:90});
   const desktop=window.browseryDesktop; const [items,setItems]=useState([]);
   const completed=useRef(new Set());
-  useEffect(()=>desktop?.onDownload(update=>{setItems(current=>{const exists=current.some(item=>item.id===update.id);return exists?current.map(item=>item.id===update.id?{...item,...update}:item):[{...update},...current]});if(update.state==='completed'&&!completed.current.has(update.id)){completed.current.add(update.id);audioEngine.play('download')}}),[desktop,audioEngine]);
-  const command=(item,action)=>desktop?.downloadCommand({id:item.id,action,savePath:item.savePath});
+  useEffect(()=>desktop?.onDownload(update=>{setItems(current=>{const exists=current.some(item=>item.id===update.id);return exists?current.map(item=>item.id===update.id?{...item,...update}:item):[{...update},...current]});if(update.state==='completed'&&!update.historical&&!completed.current.has(update.id)){completed.current.add(update.id);audioEngine.play('download')}}),[desktop,audioEngine]);
+  const command=(item,action)=>desktop?.downloadCommand({id:item.id,action});
   const formatBytes=n=>n?`${(n/1048576).toFixed(n>104857600?0:1)} MB`:'—';
   const activeCount=items.filter(x=>x.state==='progressing').length; const totalSpeed=items.reduce((sum,x)=>sum+(x.speed||0),0);
   return <aside ref={panelRef} className={`drawer download-drawer ${open?'open':''}`}><div className="drawer-head"><div><span className="drawer-kicker">Live transfer</span><h2>Downloads</h2></div><GlassButton icon="close" label="Close downloads" onClick={onClose}/></div>
     <div className="download-summary"><div><strong>{activeCount}</strong><span>active</span></div><i/><p><b>{(totalSpeed/1048576).toFixed(1)}</b> MB/s<br/><span>total speed</span></p></div>
-    <div className="download-list">{items.length===0?<div className="empty-downloads"><Icon name="download" size={28}/><strong>No downloads yet</strong><span>Files you download from webpages will appear here.</span></div>:items.map(x=><article key={x.id} className="download-item"><div className="file-icon"><Icon name="folder"/></div><div className="file-info"><strong>{x.name}</strong><span>{formatBytes(x.total)} · {x.state==='completed'?'Complete':`${(x.speed/1048576).toFixed(1)} MB/s`}</span><div className="progress"><i style={{width:x.progress+'%'}}/></div><small>{x.progress}%</small></div><div className="file-actions">{x.state==='progressing'?<GlassButton icon={x.paused?'play':'pause'} label={x.paused?'Resume':'Pause'} onClick={()=>command(x,x.paused?'resume':'pause')}/>:<GlassButton icon="folder" label="Show in folder" onClick={()=>command(x,'open')}/>}<GlassButton icon="trash" label="Cancel" onClick={()=>command(x,'cancel')}/></div></article>)}</div>
+    <div className="download-list">{items.length===0?<div className="empty-downloads"><Icon name="download" size={28}/><strong>No downloads yet</strong><span>Files you download from webpages will appear here.</span></div>:items.map(x=><article key={x.id} className="download-item"><div className="file-icon"><Icon name="folder"/></div><div className="file-info"><strong>{x.name}</strong><span>{formatBytes(x.total)} · {x.state==='completed'?'Complete':`${(x.speed/1048576).toFixed(1)} MB/s`}</span><div className="progress"><i style={{width:x.progress+'%'}}/></div><small>{x.progress}%</small></div><div className="file-actions">{x.state==='progressing'&&<><GlassButton icon={x.paused?'play':'pause'} label={x.paused?'Resume':'Pause'} onClick={()=>command(x,x.paused?'resume':'pause')}/><GlassButton icon="trash" label="Cancel download" onClick={()=>command(x,'cancel')}/></>}{x.state==='completed'&&<GlassButton icon="folder" label="Show in folder" onClick={()=>command(x,'open')}/>}</div></article>)}</div>
   </aside>;
 }
 
@@ -595,6 +624,63 @@ function BrowserDataDrawer({open,onClose,history,onClearHistory}) {
       <SpringButton className="data-clear-all" onClick={clearAll} disabled={busy}>Clear all browsing data for this profile</SpringButton>
       {message&&<div className="data-message" role="status">{message}</div>}
       <p className="data-privacy-note">Cookie values are never displayed here. Clearing cookies or site storage may sign you out or reset website preferences. Browsery settings and bookmarks are kept.</p>
+    </div>
+  </aside>;
+}
+
+function ProtectionDrawer({open,onClose,tab,onOpenSettings}) {
+  const panelRef=useSpringPresence(open,{preset:'fluid',offset:90});
+  const desktop=window.browseryDesktop;
+  const host=useMemo(()=>{
+    try { const parsed=new URL(tab?.url||''); return /^https?:$/.test(parsed.protocol)?parsed.hostname:''; }
+    catch { return ''; }
+  },[tab?.url]);
+  const [status,setStatus]=useState({loading:true,enabled:false,adblockEnabled:false,trackerMode:'Standard',blockedCount:0,adsBlocked:0,trackersBlocked:0,allowlisted:false,allowlistCount:0});
+  const [sites,setSites]=useState([]),[busy,setBusy]=useState(false),[message,setMessage]=useState('');
+  const refresh=useCallback(async()=>{
+    if(!desktop?.getProtectionStatus){setStatus(current=>({...current,loading:false,unavailable:true}));setSites([]);return}
+    try {
+      const [next,list]=await Promise.all([desktop.getProtectionStatus(host),desktop.listProtectionAllowedSites?.()]);
+      setStatus({loading:false,...next});
+      setSites(Array.isArray(list?.sites)?list.sites:[]);
+    } catch { setStatus(current=>({...current,loading:false,error:true})); }
+  },[desktop,host]);
+  useEffect(()=>{if(!open)return;setMessage('');refresh();const timer=window.setInterval(refresh,2500);return()=>window.clearInterval(timer)},[open,refresh]);
+  const changeSite=async action=>{
+    if(!host||busy)return;
+    const invoke=action==='allow'?desktop?.allowProtectionForSite:desktop?.removeProtectionForSite;
+    if(!invoke)return;
+    setBusy(true);setMessage('');
+    try { const result=await invoke(host);setMessage(result?.ok?(action==='allow'?`Protection paused for ${host}.`:`Protection restored for ${host}.`):(result?.message||'Could not update this site.'));await refresh(); }
+    catch { setMessage('Could not update this site.'); }
+    finally { setBusy(false); }
+  };
+  const removeSite=async site=>{
+    if(busy||!desktop?.removeProtectionForSite)return;
+    setBusy(true);setMessage('');
+    try { const result=await desktop.removeProtectionForSite(site);setMessage(result?.ok?`Protection restored for ${site}.`:(result?.message||'Could not update this site.'));await refresh(); }
+    catch { setMessage('Could not update this site.'); }
+    finally { setBusy(false); }
+  };
+  const reset=async()=>{
+    if(busy||!desktop?.resetProtectionStats)return;
+    setBusy(true);setMessage('');
+    try { const result=await desktop.resetProtectionStats();if(result?.ok){setStatus(current=>({loading:false,...current,...result}));setMessage('Protection counters reset.');}else setMessage('Could not reset counters.'); }
+    catch { setMessage('Could not reset counters.'); }
+    finally { setBusy(false); }
+  };
+  const currentPage=host||'the new-tab page';
+  const protectionSummary=status.loading?'Reading Browsery’s local protection state.':status.allowlisted?`${host} is on your allowlist.`:!status.enabled?'Turn on ad blocking or select Balanced / Strict tracker protection.':status.adblockEnabled?`Blocking ads and ${status.trackerMode.toLowerCase()} tracker traffic.`:`Blocking ${status.trackerMode.toLowerCase()} tracker traffic.`;
+  return <aside ref={panelRef} className={`drawer protection-drawer ${open?'open':''}`} aria-hidden={!open}>
+    <div className="drawer-head"><div><span className="drawer-kicker">Local request protection</span><h2>Privacy shield</h2></div><GlassButton icon="close" label="Close privacy shield" onClick={onClose}/></div>
+    <div className="protection-body" aria-busy={status.loading||busy}>
+      <section className={`protection-hero ${status.enabled?'is-active':'is-paused'}`}><span className="protection-hero-icon"><Icon name="shield" size={25}/></span><div><b>{status.loading?'Checking protection…':status.enabled?'Shield active':'Shield paused'}</b><small>{protectionSummary}</small></div><strong>{status.loading?'—':status.blockedCount}</strong></section>
+      <section className="protection-stats" aria-label="Protection totals"><article><b>{status.loading?'—':status.adsBlocked}</b><span>ads blocked</span></article><article><b>{status.loading?'—':status.trackersBlocked}</b><span>trackers blocked</span></article><article><b>{status.loading?'—':status.allowlistCount}</b><span>allowed sites</span></article></section>
+      <section className="protection-card"><div><b>Current site</b><small>{currentPage}</small></div>{host?<SpringButton className="protection-site-action" disabled={busy||status.loading} onClick={()=>changeSite(status.allowlisted?'remove':'allow')}><span>{status.allowlisted?'Restore protection':'Allow this site'}</span><Icon name={status.allowlisted?'shield':'close'} size={15}/></SpringButton>:<span className="protection-muted">Open a webpage to manage a site.</span>}</section>
+      <section className="protection-card protection-mode"><div><b>Filtering mode</b><small>{status.adblockEnabled?'Ads blocked':'Ad blocking off'} · {status.trackerMode} trackers</small></div><SpringButton className="protection-site-action" onClick={onOpenSettings}><span>Privacy settings</span><Icon name="chevron" size={15}/></SpringButton></section>
+      <section className="protection-allowlist"><div className="protection-section-head"><div><b>Site allowlist</b><small>{sites.length?'Protection is paused only on these sites.':'No sites are allowed through.'}</small></div>{status.blockedCount>0&&<SpringButton className="protection-reset" disabled={busy} onClick={reset}>Reset totals</SpringButton>}</div><div className="protection-site-list">{sites.length?sites.map(site=><article key={site}><span><Icon name="globe" size={15}/></span><b>{site}</b><SpringButton aria-label={`Restore protection for ${site}`} disabled={busy} onClick={()=>removeSite(site)}><Icon name="close" size={14}/></SpringButton></article>):<div className="protection-empty"><Icon name="shield" size={18}/><span>Your protection rules apply everywhere.</span></div>}</div></section>
+      {message&&<p className="protection-message" role="status">{message}</p>}
+      <p className="protection-note">Browsery blocks common advertising and tracking subresources locally. It never blocks a page you type directly into the address bar, and it does not send your browsing activity to a filter-list service.</p>
     </div>
   </aside>;
 }
@@ -888,15 +974,16 @@ function App() {
         <GlassButton icon="history" label="History · Ctrl+H" active={panel==='history'} onClick={()=>togglePanel('history')}/>
         <GlassButton icon="find" label="Find in page · Ctrl+F" active={findOpen} onClick={()=>handleShortcut('find')}/>
         <GlassButton icon="cookie" label="Cookies & site data" active={panel==='data'} onClick={()=>togglePanel('data')}/>
+        <GlassButton icon="shield" label="Privacy shield" active={panel==='protection'} onClick={()=>togglePanel('protection')}/>
         <SpringButton className="analyze-toolbar" aria-label="Analyze with Groq" onClick={openAnalysis}><Icon name="spark" size={17}/><span>Analyze with Groq</span></SpringButton>
         <GlassButton icon="download" label="Downloads · Ctrl+J" active={panel==='downloads'} onClick={()=>togglePanel('downloads')}/>
         <GlassButton icon="settings" label="Settings" active={panel==='settings'} onClick={()=>togglePanel('settings')}/>
-        <GlassButton icon="shield" label="VPN setup" active={panel==='vpn'} onClick={()=>togglePanel('vpn')}/>
+        <GlassButton icon="vpn" label="Proton VPN" active={panel==='vpn'} onClick={()=>togglePanel('vpn')}/>
         <SpringButton className="profile" onClick={()=>{setTheme(current=>current==='dark'?'light':'dark');notify('Theme shifted')}} aria-label="Toggle theme">MK</SpringButton>
       </div>
     </div>
     <div className="loading-line"/><div className="viewport"><FindBar open={findOpen} onClose={()=>setFindOpen(false)} onFind={find} count={findCounts.matches} active={findCounts.active}/><BrowserViewport ref={browserRef} tabs={tabs} active={active} onSearch={go} onPageUpdate={pageUpdate} onFindUpdate={onFindUpdate} settings={settings} pointer={pointer}/></div>
-     <AnalyzeDrawer open={panel==='analyze'} onClose={()=>setPanel(null)} tab={activeTab} result={screenAnalysis} onAnalyze={analyzeVisiblePage}/><SettingsDrawer open={panel==='settings'} onClose={()=>setPanel(null)} onManageData={()=>setPanel('data')} values={settings} setValues={setSettings} audioEngine={audioEngine} audioReady={audioReady}/><BrowserDataDrawer open={panel==='data'} onClose={()=>setPanel(null)} history={settings.private?[]:history} onClearHistory={()=>setHistory([])}/><DownloadDrawer open={panel==='downloads'} onClose={()=>setPanel(null)} audioEngine={audioEngine}/><VpnPanel open={panel==='vpn'} onClose={()=>setPanel(null)} onOpenGuide={()=>go(window.browseryDesktop?.platform==='darwin'?'https://protonvpn.com/download-macos':'https://protonvpn.com/download-windows')}/>
+     <AnalyzeDrawer open={panel==='analyze'} onClose={()=>setPanel(null)} tab={activeTab} result={screenAnalysis} onAnalyze={analyzeVisiblePage}/><SettingsDrawer open={panel==='settings'||panel==='privacy'} initialSection={panel==='privacy'?'privacy':'graphics'} onClose={()=>setPanel(null)} onManageData={()=>setPanel('data')} onManageProtection={()=>setPanel('protection')} values={settings} setValues={setSettings} audioEngine={audioEngine} audioReady={audioReady}/><ProtectionDrawer open={panel==='protection'} onClose={()=>setPanel(null)} tab={activeTab} onOpenSettings={()=>setPanel('privacy')}/><BrowserDataDrawer open={panel==='data'} onClose={()=>setPanel(null)} history={settings.private?[]:history} onClearHistory={()=>setHistory([])}/><DownloadDrawer open={panel==='downloads'} onClose={()=>setPanel(null)} audioEngine={audioEngine}/><VpnPanel open={panel==='vpn'} onClose={()=>setPanel(null)} onOpenGuide={()=>go(window.browseryDesktop?.platform==='darwin'?'https://protonvpn.com/download-macos':'https://protonvpn.com/download-windows')}/>
     <LibraryDrawer open={panel==='history'} onClose={()=>setPanel(null)} title="History" historyMode items={settings.private?[]:history} onSelect={go} onRemove={address=>setHistory(current=>current.filter(item=>item.url!==address))} onClear={()=>setHistory([])}/>
     <LibraryDrawer open={panel==='bookmarks'} onClose={()=>setPanel(null)} title="Bookmarks" items={bookmarks} onSelect={go} onRemove={address=>setBookmarks(current=>current.filter(item=>item.url!==address))}/>
   </div><Toast message={toast}/></div>;

@@ -105,6 +105,47 @@
 .browsery-click-ring { box-shadow: 0 0 15px color-mix(in srgb,var(--cyan),transparent 67%),inset 0 0 9px color-mix(in srgb,var(--cyan),transparent 87%); }
 .browsery-click-ring.ring-2 { color: color-mix(in srgb,var(--cyan),white 40%); }
 
+/* Privacy controls are deliberately opaque: blocker state needs to be readable
+   while a page is moving underneath the browser chrome. */
+.desktop-browser .protection-drawer { right: 0; top: 104px; width: min(510px,calc(100% - 12px)); background: #0d0d0d; border-color: #4a4a4a; }
+.desktop-browser .protection-body { min-height: 0; height: calc(100% - 76px); overflow: auto; padding: 17px; scrollbar-width: thin; scrollbar-color: #555 transparent; }
+.desktop-browser .protection-hero { min-height: 90px; display: flex; align-items: center; gap: 12px; padding: 14px; border: 1px solid #4d4d4d; border-radius: 13px; background: #181818; }
+.desktop-browser .protection-hero-icon { width: 45px; height: 45px; flex: 0 0 45px; display: grid; place-items: center; border: 1px solid #6b6b6b; border-radius: 12px; background: #242424; color: #fff; }
+.desktop-browser .protection-hero.is-paused .protection-hero-icon { color: #b9b9b9; border-color: #555; background: #181818; }
+.desktop-browser .protection-hero>div { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 5px; }
+.desktop-browser .protection-hero b { color: #f5f5f5; font-size: 13px; font-weight: 640; }
+.desktop-browser .protection-hero small { color: #aaa; font-size: 10px; line-height: 1.42; }
+.desktop-browser .protection-hero>strong { min-width: 46px; color: #fff; font-size: 27px; line-height: 1; font-variant-numeric: tabular-nums; text-align: right; }
+.desktop-browser .protection-stats { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 8px; margin: 11px 0; }
+.desktop-browser .protection-stats article { min-height: 67px; display: flex; flex-direction: column; justify-content: center; gap: 5px; padding: 10px; border: 1px solid #393939; border-radius: 10px; background: #151515; }
+.desktop-browser .protection-stats b { color: #eee; font-size: 18px; font-weight: 610; font-variant-numeric: tabular-nums; }
+.desktop-browser .protection-stats span { color: #989898; font-size: 9px; text-transform: uppercase; letter-spacing: .06em; }
+.desktop-browser .protection-card { min-height: 73px; display: flex; align-items: center; gap: 12px; padding: 12px; margin-top: 10px; border: 1px solid #3f3f3f; border-radius: 10px; background: #161616; }
+.desktop-browser .protection-card>div { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 5px; }
+.desktop-browser .protection-card b { color: #dedede; font-size: 11px; font-weight: 610; }
+.desktop-browser .protection-card small { overflow: hidden; color: #999; font-size: 9px; line-height: 1.35; text-overflow: ellipsis; white-space: nowrap; }
+.desktop-browser .protection-site-action { min-height: 31px; flex: 0 0 auto; display: inline-flex; align-items: center; gap: 5px; padding: 0 8px; border: 1px solid #666; border-radius: 7px; background: #282828; color: #f0f0f0; font-size: 9px; cursor: pointer; }
+.desktop-browser .protection-site-action:hover:not(:disabled) { border-color: #aaa; background: #343434; }
+.desktop-browser .protection-muted { color: #848484; font-size: 9px; }
+.desktop-browser .protection-allowlist { margin-top: 11px; padding: 12px; border: 1px solid #3f3f3f; border-radius: 10px; background: #161616; }
+.desktop-browser .protection-section-head { min-height: 37px; display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.desktop-browser .protection-section-head>div { min-width: 0; display: flex; flex-direction: column; gap: 5px; }
+.desktop-browser .protection-section-head b { color: #e4e4e4; font-size: 11px; font-weight: 610; }
+.desktop-browser .protection-section-head small { color: #929292; font-size: 9px; line-height: 1.35; }
+.desktop-browser .protection-reset { height: 28px; flex: 0 0 auto; padding: 0 8px; border: 1px solid #595959; border-radius: 7px; background: #242424; color: #cacaca; font-size: 9px; }
+.desktop-browser .protection-reset:hover:not(:disabled) { border-color: #999; color: #fff; }
+.desktop-browser .protection-site-list { margin-top: 8px; border-top: 1px solid #303030; }
+.desktop-browser .protection-site-list article { min-height: 43px; display: flex; align-items: center; gap: 9px; border-bottom: 1px solid #303030; }
+.desktop-browser .protection-site-list article>span { width: 24px; height: 24px; display: grid; place-items: center; border: 1px solid #4c4c4c; border-radius: 7px; background: #222; color: #ccc; }
+.desktop-browser .protection-site-list article>b { min-width: 0; flex: 1; overflow: hidden; color: #d7d7d7; font-size: 10px; font-weight: 550; text-overflow: ellipsis; white-space: nowrap; }
+.desktop-browser .protection-site-list article button { width: 27px; height: 27px; display: grid; place-items: center; border: 1px solid #555; border-radius: 7px; background: #242424; color: #aaa; }
+.desktop-browser .protection-site-list article button:hover:not(:disabled) { border-color: #a4a4a4; color: #fff; }
+.desktop-browser .protection-empty { min-height: 76px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 7px; color: #8b8b8b; font-size: 9px; text-align: center; }
+.desktop-browser .protection-message { margin: 10px 0 0; padding: 9px 10px; border: 1px solid #5e5e5e; border-radius: 8px; background: #222; color: #dcdcdc; font-size: 9px; line-height: 1.45; }
+.desktop-browser .protection-note { margin: 12px 2px 2px; color: #878787; font-size: 9px; line-height: 1.58; }
+.desktop-browser .protection-settings-link { margin-top: 12px; }
+@media(max-width:620px) { .desktop-browser .protection-drawer { top: 88px; width: 100%; }.desktop-browser .protection-body { height: calc(100% - 65px); padding: 11px; }.desktop-browser .protection-stats { gap: 6px; }.desktop-browser .protection-stats article { padding: 8px; }.desktop-browser .protection-card { align-items: flex-start; flex-direction: column; }.desktop-browser .protection-site-action { align-self: stretch; justify-content: center; } }
+
 /* A genuinely different light chrome, without recoloring Saturn or websites. */
 .desktop-browser.light[data-accent="monochrome"] :is(.tabs-row,.toolbar) { background: #fff; border-color: #ccc; color: #111; }
 .desktop-browser.light[data-accent="monochrome"] .brand { color: #000; }

@@ -5,9 +5,16 @@ contextBridge.exposeInMainWorld('browseryDesktop', {
   platform: process.platform,
   windowAction: action => ipcRenderer.send('window:action', action),
   onDownload: callback => {
+    if (typeof callback !== 'function') return () => {};
+    let disposed = false;
     const listener = (_event, payload) => callback(payload);
     ipcRenderer.on('download:update', listener);
-    return () => ipcRenderer.removeListener('download:update', listener);
+    // Replay completed transfers after each launch so the Downloads drawer is a
+    // real library rather than only a view of this process's active transfers.
+    ipcRenderer.invoke('downloads:list').then(items => {
+      if (!disposed && Array.isArray(items)) items.forEach(item => callback({ ...item, historical: true }));
+    }).catch(() => {});
+    return () => { disposed = true; ipcRenderer.removeListener('download:update', listener); };
   },
   onShortcut: callback => {
     const listener = (_event, shortcut) => callback(shortcut);
@@ -25,6 +32,11 @@ contextBridge.exposeInMainWorld('browseryDesktop', {
   getProtonStatus: () => ipcRenderer.invoke('vpn:proton-status'),
   openProton: () => ipcRenderer.invoke('vpn:proton-open'),
   connectProton: () => ipcRenderer.invoke('vpn:proton-connect'),
+  getProtectionStatus: site => ipcRenderer.invoke('protection:status', site),
+  allowProtectionForSite: site => ipcRenderer.invoke('protection:allow-site', site),
+  removeProtectionForSite: site => ipcRenderer.invoke('protection:remove-site', site),
+  listProtectionAllowedSites: () => ipcRenderer.invoke('protection:list-allowed-sites'),
+  resetProtectionStats: () => ipcRenderer.invoke('protection:reset-stats'),
   aiKeyStatus: () => ipcRenderer.invoke('ai-key:status'),
   saveAiApiKey: key => ipcRenderer.invoke('ai-key:save', key),
   clearAiApiKey: () => ipcRenderer.invoke('ai-key:clear'),
