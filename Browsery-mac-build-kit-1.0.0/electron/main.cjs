@@ -31,7 +31,7 @@ const cookiePurgeIntervals = new Map([
 ]);
 let mainWindow;
 let adblocker;
-let browserPreferences = { adblock: true, trackers: 'Strict', https: true, aiOverview: true, aiModel: 'openai/gpt-oss-120b', downloadPath: 'Downloads', systemContrast: true };
+let browserPreferences = { adblock: true, trackers: 'Strict', https: true, phishing: true, dnt: true, fingerprint: true, webrtc: true, aiOverview: true, aiModel: 'openai/gpt-oss-120b', downloadPath: 'Downloads', systemContrast: true };
 let completedDownloads = [];
 let downloadHistoryWriteTimer = null;
 let cookiePurgePreference = '24 hours';
@@ -742,6 +742,25 @@ function configureBrowserSession(browserSession, options) {
     } catch {}
     callback({});
   });
+  // These headers express the user's privacy preference to pages without
+  // recording destinations or relying on an external tracking service.
+  browserSession.webRequest.onBeforeSendHeaders({ urls: ['http://*/*', 'https://*/*'] }, (details, callback) => {
+    const requestHeaders = { ...details.requestHeaders };
+    if (browserPreferences.dnt !== false) {
+      requestHeaders.DNT = '1';
+      requestHeaders['Sec-GPC'] = '1';
+    } else {
+      delete requestHeaders.DNT;
+      delete requestHeaders['Sec-GPC'];
+    }
+    callback({ requestHeaders });
+  });
+  const applyWebRtcPolicy = () => {
+    if (typeof browserSession.setWebRTCIPHandlingPolicy !== 'function') return;
+    try { browserSession.setWebRTCIPHandlingPolicy(browserPreferences.webrtc === false ? 'default' : 'disable_non_proxied_udp'); } catch {}
+  };
+  applyWebRtcPolicy();
+  browserSession.__browseryApplyWebRtcPolicy = applyWebRtcPolicy;
   browserSession.setPermissionRequestHandler((_contents, _permission, callback) => callback(false));
   attachDownloadManager(browserSession, options);
 }
@@ -1004,11 +1023,18 @@ ipcMain.on('settings:update', (event, settings) => {
     adblock: Boolean(settings?.adblock),
     trackers: settings?.trackers || 'Standard',
     https: Boolean(settings?.https),
+    phishing: settings?.phishing !== false,
+    dnt: settings?.dnt !== false,
+    fingerprint: settings?.fingerprint !== false,
+    webrtc: settings?.webrtc !== false,
     aiOverview: Boolean(settings?.aiOverview),
     aiModel: settings?.aiModel || 'openai/gpt-oss-120b',
     downloadPath: settings?.path || 'Downloads',
     systemContrast: settings?.systemContrast !== false,
   };
+  for (const partition of ['persist:browsery', 'browsery-private']) {
+    try { session.fromPartition(partition).__browseryApplyWebRtcPolicy?.(); } catch {}
+  }
 });
 
 app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); });

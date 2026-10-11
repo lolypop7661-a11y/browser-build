@@ -36,6 +36,22 @@ const AD_NETWORKS = new Set([
   'sharethrough.com', 'smartadserver.com', 'sonarads.com', 'sovrn.com', 'spotxchange.com', 'taboola.com',
   'teads.tv', 'tremorhub.com', 'tradedoubler.com', 'triplelift.com', 'underdogmedia.com', 'unrulymedia.com',
   'vidible.tv', 'xandr.com', 'yieldmo.com', 'zedo.com', 'zemanta.com',
+  // Common regional and mobile exchanges. Keeping these as exact host rules
+  // makes the filter predictable and avoids the false positives of matching
+  // generic words such as "ad" in arbitrary URLs.
+  'adkernel.com', 'adnami.io', 'adnimation.com', 'adnxs.net', 'adskeeper.co.uk',
+  'adsterra.com', 'adthrive.com', 'a-ads.com', 'bannerflow.com', 'betweendigital.com',
+  'bidswitch.net', 'cedato.com', 'chartboost.com', 'clickadu.com',
+  'criteo.net', 'dianomi.com', 'digitalturbine.com', 'dspdigital.com', 'emxdgt.com',
+  'engageya.com', 'epsilon.com', 'fwmrm.net', 'gamoshi.io', 'geniee.jp',
+  'gumgumads.com', 'hyprmx.com', 'impact-ad.jp', 'impactradius.com', 'infolinks.com',
+  'innovid.com', 'justpremium.com', 'loopme.me', 'magnite.com', 'mgid.com', 'mintegral.com',
+  'mobfox.com', 'mytarget.ru', 'nativo.com', 'nend.net', 'nielsen.com', 'ogury.co',
+  'onetrust.com', 'optad360.com', 'optimonk.com', 'playwire.com', 'primis.tech',
+  'proximic.com', 'qortex.ai', 'redintelligence.net', 'richrelevance.com', 'rtbhouse.com',
+  'smaato.net', 'smilewanted.com', 'smrtb.com', 'sonobi.com', 'stickyadstv.com',
+  'tapad.com', 'tappx.com', 'thetradedesk.com', 'trafficjunky.net', 'undertone.com',
+  'verizonmedia.com', 'vidoomy.com', 'vungle.com', 'weborama.com', 'zedo.net',
 ]);
 
 // Balanced blocks well-known analytics/marketing endpoints. Strict adds
@@ -45,17 +61,31 @@ const BALANCED_TRACKERS = new Set([
   'analytics.google.com', 'analytics.tiktok.com', 'api.amplitude.com', 'api.segment.io', 'cdn.amplitude.com',
   'cdn.segment.com', 'connect.facebook.net', 'google-analytics.com', 'googletagmanager.com', 'hotjar.com',
   'kissmetrics.io', 'luckyorange.com', 'mixpanel.com', 'segment.io', 'amplitude.com',
+  'adobe.io', 'analytics.yahoo.com', 'atdmt.com', 'branch.io', 'cdn-analytics.pl',
+  'chartbeat.com', 'dwin1.com', 'evergage.com', 'firebaseinstallations.googleapis.com',
+  'logrocket.com', 'matomo.cloud', 'matomo.org', 'metrics.apple.com', 'monetate.net',
+  'mopub.com', 'parsely.com', 'posthog.com', 'quantserve.com', 'sailthru.com',
+  'scorecardresearch.com', 'shopifycloud.com', 'snap.licdn.com', 't.co', 'tags.tiqcdn.com',
+  'tealium.com', 'w55c.net', 'woopra.com', 'yandex.ru',
 ]);
 const STRICT_TRACKERS = new Set([
   'app-measurement.com', 'bat.bing.com', 'braze.com', 'bugsnag.com', 'clarity.ms', 'contentsquare.net',
   'crazyegg.com', 'fullstory.com', 'heap.io', 'heapanalytics.com', 'intercom.io', 'mouseflow.com',
   'newrelic.com', 'nr-data.net', 'omtrdc.net', 'optimizely.com', 'pendo.io', 'quantcount.com',
   'scorecardresearch.com', 'sentry.io', 'snowplowanalytics.com', 'tealiumiq.com', 'visualwebsiteoptimizer.com',
+  'adobedtm.com', 'appcues.com', 'braintreegateway.com', 'cquotient.com', 'datadoghq.com',
+  'decibelinsight.com', 'dynamicyield.com', 'elastic.co', 'getsentry.com', 'glassboxdigital.io',
+  'launchdarkly.com', 'mparticle.com', 'nr-data.net', 'permutive.com', 'qualtrics.com',
+  'quantummetric.com', 'raygun.com', 'redtrack.io', 'rybbon.net', 'smartlook.com',
+  'splunkcloud.com', 'taplytics.com', 'usercentrics.eu', 'userleap.com', 'userzoom.com',
+  'vitals.io', 'watchmouse.com', 'zendesk.com',
 ]);
 
 const AD_PATH_PATTERNS = [
   /\/(?:pagead|gampad|adserver|adserve|adsbygoogle|prebid|rtb)(?:[/?]|$)/i,
   /[?&](?:adslot|ad_slot|adunit|ad_unit|creative_id|placement_id)=/i,
+  /\/(?:ads?|advert(?:isement|ising)?|banner|sponsor)(?:[._/-]|$)/i,
+  /[?&](?:utm_(?:source|medium|campaign|term|content)|gclid|fbclid|msclkid)=/i,
 ];
 function normalizeHost(input) {
   if (typeof input !== 'string') return '';
