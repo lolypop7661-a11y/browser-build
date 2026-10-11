@@ -753,6 +753,12 @@ function configureBrowserSession(browserSession, options) {
       delete requestHeaders.DNT;
       delete requestHeaders['Sec-GPC'];
     }
+    if (browserPreferences.fingerprint !== false) {
+      // High-entropy client hints make a browser easier to distinguish. This
+      // is intentionally opt-out: some download sites use them to choose an
+      // installer, so the setting remains visible in Browsery Privacy.
+      for (const header of ['Sec-CH-UA-Full-Version-List', 'Sec-CH-UA-Model', 'Sec-CH-UA-Platform-Version', 'Sec-CH-UA-Arch', 'Sec-CH-UA-Bitness', 'Sec-CH-UA-WoW64']) delete requestHeaders[header];
+    }
     callback({ requestHeaders });
   });
   const applyWebRtcPolicy = () => {
