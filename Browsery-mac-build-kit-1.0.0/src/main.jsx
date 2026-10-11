@@ -405,12 +405,28 @@ function MagicCursor({settings}) {
 
 function GlassButton({icon,label,onClick,active,className=''}) { return <SpringButton className={`icon-button magnetic ${active?'active':''} ${className}`} onClick={onClick} aria-label={label} title={label}><Icon name={icon}/></SpringButton> }
 
+function LaunchScreen({onComplete}) {
+  const [phase,setPhase]=useState('orbit');
+  useEffect(()=>{
+    const reduced=window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    if(reduced){const timer=setTimeout(onComplete,30);return()=>clearTimeout(timer)}
+    const timers=[setTimeout(()=>setPhase('resolve'),760),setTimeout(()=>setPhase('reveal'),1120),setTimeout(()=>setPhase('depart'),2450),setTimeout(onComplete,2780)];
+    return()=>timers.forEach(clearTimeout);
+  },[onComplete]);
+  return <div className={`launch-screen launch-${phase}`} role="status" aria-label="Launching Browsery">
+    <div className="launch-haze"/><div className="launch-star launch-star-a"/><div className="launch-star launch-star-b"/>
+    <div className="launch-stage"><div className="launch-orbit"><i/><i/><i/><span className="launch-satellite"/><span className="launch-core"><b/><em/></span></div>
+      <div className="launch-brand-lockup"><span className="launch-mark"><i/><b/><em/></span><span className="launch-word" aria-label="Browsery">{'Browsery'.split('').map((letter,index)=><span key={`${letter}-${index}`} style={{'--letter':index}}>{letter}</span>)}</span></div>
+    </div>
+  </div>;
+}
+
 function TabStrip({tabs,setTabs,active,setActive,onNewTab}) {
   const drag=useRef(null);
   const close=(e,id)=>{e.stopPropagation();if(tabs.length===1){setTabs([{...tabs[0],title:'New Space',url:null,loading:false}]);return}const idx=tabs.findIndex(t=>t.id===id);const next=tabs.filter(t=>t.id!==id);setTabs(next);if(active===id)setActive(next[Math.max(0,idx-1)].id)};
   const drop=id=>{if(drag.current===id||drag.current==null)return;const next=[...tabs],from=next.findIndex(t=>t.id===drag.current),to=next.findIndex(t=>t.id===id);const [m]=next.splice(from,1);next.splice(to,0,m);setTabs(next);drag.current=null};
   return <div className="tabs-row">
-    <div className="brand" data-magnetic><span className="brand-orb"><i/></span><span>Browsery</span></div>
+    <div className="brand" data-magnetic><span className="brand-orb"><i/><b/><em/></span><span className="brand-name">Browsery</span></div>
     <div className="tabs">{tabs.map((t,i)=><SpringButton spring="fluid" hoverScale={1.018} pressScale={.975} draggable onDragStart={()=>drag.current=t.id} onDragOver={e=>e.preventDefault()} onDrop={()=>drop(t.id)} onClick={()=>setActive(t.id)} className={`tab ${active===t.id?'selected':''}`} key={t.id}><span className="tab-favicon">{i===0?'✦':i===1?'◎':'◇'}</span><span className="tab-title">{t.title}</span><span onClick={e=>close(e,t.id)} role="button" aria-label={`Close ${t.title}`} className="tab-close"><Icon name="close" size={13}/></span></SpringButton>)}</div>
     <GlassButton icon="plus" label="New tab" onClick={onNewTab} className="add-tab"/>
     <div className="window-controls"><SpringButton onClick={()=>window.browseryDesktop?.windowAction('minimize')} aria-label="Minimize">—</SpringButton><SpringButton onClick={()=>window.browseryDesktop?.windowAction('maximize')} aria-label="Maximize">□</SpringButton><SpringButton className="window-close" onClick={()=>window.browseryDesktop?.windowAction('close')} aria-label="Close Browsery">×</SpringButton></div>
@@ -841,6 +857,7 @@ const BrowserViewport=React.forwardRef(function BrowserViewport({tabs,active,onS
 function readList(key) { try { const value=JSON.parse(localStorage.getItem(key)||'[]');return Array.isArray(value)?value.filter(item=>item&&typeof item.url==='string'):[] } catch { return [] } }
 function App() {
   const pointer=useRef({x:0,y:0}),browserRef=useRef(null),nextTabId=useRef(2),analysisRun=useRef(0);
+  const [launchComplete,setLaunchComplete]=useState(false);
   const [session]=useState(()=>{try{return JSON.parse(localStorage.getItem('browsery:session')||'{}')}catch{return {}}});
   const [tabs,setTabs]=useState(()=>Array.isArray(session.tabs)&&session.tabs.length?session.tabs:[{id:1,title:'New Space',url:null}]);
   const [active,setActive]=useState(()=>session.active||1);
@@ -963,7 +980,8 @@ function App() {
   useEffect(()=>window.browseryDesktop?.onShortcut?.(handleShortcut),[handleShortcut]);
   useEffect(()=>window.browseryDesktop?.onNewTab?.(target=>openTab(target)),[openTab]);
   const classes=[`density-${String(settings.chromeDensity).toLowerCase()}`,`corners-${String(settings.cornerStyle).toLowerCase()}`,settings.tabs==='Vertical'?'vertical-tabs':'',settings.compact?'compact-tabs':'',settings.refraction?'has-refraction':'flat-panels',settings.parallax?'has-parallax':'',settings.shadows?'':'no-ui-shadows'].filter(Boolean).join(' ');
-  return <div data-palette={settings.systemContrast?'system':'custom'} data-accent={settings.accentPreset==='Monochrome'?'monochrome':'color'} className={`app ${theme} desktop-browser ${classes} ${activeTab?.loading?'is-loading':''}`}><MagicCursor settings={settings}/><div className="browser-shell"><SoundVisualizer audioEngine={audioEngine} enabled={audioReady&&settings.visualizer&&settings.ambience&&settings.ambienceVolume>0&&settings.master>0}/>
+  const finishLaunch=useCallback(()=>setLaunchComplete(true),[]);
+  return <div data-palette={settings.systemContrast?'system':'custom'} data-accent={settings.accentPreset==='Monochrome'?'monochrome':'color'} className={`app ${theme} desktop-browser ${classes} ${activeTab?.loading?'is-loading':''}`}>{!launchComplete&&<LaunchScreen onComplete={finishLaunch}/>}<MagicCursor settings={settings}/><div className="browser-shell"><SoundVisualizer audioEngine={audioEngine} enabled={audioReady&&settings.visualizer&&settings.ambience&&settings.ambienceVolume>0&&settings.master>0}/>
     <TabStrip tabs={tabs} setTabs={setTabs} active={active} setActive={setActive} onNewTab={()=>openTab()}/>
     <div className="toolbar">
       <div className="nav-controls"><GlassButton icon="back" label="Back · Alt+←" onClick={()=>browserRef.current?.back()}/><GlassButton icon="forward" label="Forward · Alt+→" onClick={()=>browserRef.current?.forward()}/><GlassButton icon={activeTab?.loading?'close':'reload'} label={activeTab?.loading?'Stop loading':'Reload · Ctrl+R'} onClick={()=>activeTab?.loading?browserRef.current?.stop():browserRef.current?.reload()}/><GlassButton icon="home" label="Home" onClick={home}/></div>

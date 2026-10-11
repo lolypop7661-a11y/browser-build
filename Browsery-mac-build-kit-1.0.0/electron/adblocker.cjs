@@ -23,26 +23,34 @@ const MULTIPART_PUBLIC_SUFFIXES = new Set([
 // still works normally.
 const AD_NETWORKS = new Set([
   '2mdn.net', 'ad-delivery.net', 'adform.net', 'adition.com', 'adnxs.com', 'adroll.com',
-  'adsafeprotected.com', 'adsrvr.org', 'advertising.com', 'amazon-adsystem.com', 'bidswitch.net',
-  'casalemedia.com', 'contextweb.com', 'criteo.com', 'criteo.net', 'demdex.net', 'doubleclick.net',
-  'doubleverify.com', 'everesttech.net', 'googleadservices.com', 'googlesyndication.com',
-  'googletagservices.com', 'imrworldwide.com', 'lijit.com', 'mathtag.com', 'media.net', 'moatads.com',
-  'openx.net', 'pubmatic.com', 'quantserve.com', 'rfihub.com', 'rubiconproject.com', 'scorecardresearch.com',
-  'serving-sys.com', 'sharethrough.com', 'smartadserver.com', 'taboola.com', 'teads.tv', 'tremorhub.com',
-  'tradedoubler.com', 'yieldmo.com', 'zedo.com', 'zemanta.com',
+  '33across.com', 'adcash.com', 'adcolony.com', 'adinplay.com', 'admantx.com', 'admetricspro.com',
+  'admost.com', 'adrecover.com', 'adsafeprotected.com', 'adsco.re', 'adsrvr.org', 'adtelligent.com',
+  'adup-tech.com', 'adxpansion.com', 'advertising.com', 'amazon-adsystem.com', 'bidr.io', 'bidswitch.net',
+  'bidvertiser.com', 'bluekai.com', 'btrll.com', 'carbonads.com', 'casalemedia.com', 'connatix.com',
+  'contextweb.com', 'conversantmedia.com', 'criteo.com', 'criteo.net', 'demdex.net', 'distriqt.com',
+  'doubleclick.net', 'doubleverify.com', 'everesttech.net', 'ezoic.net', 'exosrv.com', 'getintent.com',
+  'googleadservices.com', 'googlesyndication.com', 'googletagservices.com', 'gumgum.com', 'imrworldwide.com',
+  'indexexchange.com', 'inmobi.com', 'kargo.com', 'lijit.com', 'lkqd.net', 'madsrevenue.com', 'mathtag.com',
+  'media.net', 'moatads.com', 'nativeads.com', 'openx.net', 'outbrain.com', 'popads.net', 'pubmatic.com',
+  'quantserve.com', 'revcontent.com', 'rfihub.com', 'rubiconproject.com', 'scorecardresearch.com', 'serving-sys.com',
+  'sharethrough.com', 'smartadserver.com', 'sonarads.com', 'sovrn.com', 'spotxchange.com', 'taboola.com',
+  'teads.tv', 'tremorhub.com', 'tradedoubler.com', 'triplelift.com', 'underdogmedia.com', 'unrulymedia.com',
+  'vidible.tv', 'xandr.com', 'yieldmo.com', 'zedo.com', 'zemanta.com',
 ]);
 
 // Balanced blocks well-known analytics/marketing endpoints. Strict adds
 // additional named session-replay and telemetry providers. The explicit host
 // lists deliberately avoid generic URL heuristics that can break normal APIs.
 const BALANCED_TRACKERS = new Set([
-  'analytics.google.com', 'api.segment.io', 'connect.facebook.net', 'google-analytics.com',
-  'googletagmanager.com', 'hotjar.com', 'mixpanel.com', 'segment.io', 'amplitude.com',
+  'analytics.google.com', 'analytics.tiktok.com', 'api.amplitude.com', 'api.segment.io', 'cdn.amplitude.com',
+  'cdn.segment.com', 'connect.facebook.net', 'google-analytics.com', 'googletagmanager.com', 'hotjar.com',
+  'kissmetrics.io', 'luckyorange.com', 'mixpanel.com', 'segment.io', 'amplitude.com',
 ]);
 const STRICT_TRACKERS = new Set([
-  'bat.bing.com', 'clarity.ms', 'contentsquare.net', 'crazyegg.com', 'fullstory.com', 'heapanalytics.com',
-  'mouseflow.com', 'newrelic.com', 'nr-data.net', 'omtrdc.net', 'optimizely.com', 'pendo.io',
-  'quantcount.com', 'scorecardresearch.com', 'snowplowanalytics.com', 'tealiumiq.com', 'visualwebsiteoptimizer.com',
+  'app-measurement.com', 'bat.bing.com', 'braze.com', 'bugsnag.com', 'clarity.ms', 'contentsquare.net',
+  'crazyegg.com', 'fullstory.com', 'heap.io', 'heapanalytics.com', 'intercom.io', 'mouseflow.com',
+  'newrelic.com', 'nr-data.net', 'omtrdc.net', 'optimizely.com', 'pendo.io', 'quantcount.com',
+  'scorecardresearch.com', 'sentry.io', 'snowplowanalytics.com', 'tealiumiq.com', 'visualwebsiteoptimizer.com',
 ]);
 
 const AD_PATH_PATTERNS = [
