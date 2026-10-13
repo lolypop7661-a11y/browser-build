@@ -484,6 +484,14 @@
 .desktop-browser .toolbar-cluster .update-toolbar.is-ready { border-color: #f0f4f7; background: #e9edf0; color: #111; box-shadow: 0 0 16px #ffffff33; }
 .desktop-browser .toolbar-cluster .update-toolbar.is-busy { cursor: wait; opacity: .78; }
 .desktop-browser .toolbar-cluster .update-toolbar:disabled { cursor: wait; }
+.mandatory-update { position: fixed; inset: 0; z-index: 1200; display: grid; place-items: center; padding: 24px; background: #020304d9; backdrop-filter: blur(18px); }
+.mandatory-update-card { width: min(440px, 100%); display: grid; justify-items: center; gap: 12px; padding: 34px 30px 28px; border: 1px solid #ffffff2b; border-radius: 24px; background: linear-gradient(145deg,#161d25f2,#080b0ff2); box-shadow: 0 30px 90px #000b, inset 0 1px #ffffff16; color: #f5f7fa; text-align: center; }
+.mandatory-update-icon { display: grid; place-items: center; width: 52px; height: 52px; border-radius: 16px; background: #eef2f5; color: #101317; box-shadow: 0 0 28px #ffffff38; }
+.mandatory-update-card .eyebrow { color: #aab4bf; font-size: 10px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; }
+.mandatory-update-card h2 { margin: 0; font-size: clamp(24px, 4vw, 32px); letter-spacing: -.04em; }
+.mandatory-update-card p { max-width: 34ch; margin: 0; color: #b6c0ca; line-height: 1.55; }
+.mandatory-update-action { min-width: 190px; justify-content: center; padding: 12px 18px; border: 1px solid #f3f5f7; border-radius: 12px; background: #f3f5f7; color: #101317; font-weight: 800; }
+.mandatory-update-card small { color: #7f8b97; font-size: 11px; }
 @media(max-width:1180px) {
   .desktop-browser .toolbar-actions { gap: 3px; }
   .desktop-browser .toolbar-cluster .analyze-toolbar span { display: none; }
