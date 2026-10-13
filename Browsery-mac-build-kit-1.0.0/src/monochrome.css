@@ -195,6 +195,7 @@
 
 /* Browsery launch: a five-second, reference-inspired liquid space resolve. */
 .launch-screen { position: fixed; inset: 0; z-index: 1000; display: grid; place-items: center; overflow: hidden; isolation: isolate; background: #030303; color: #fff; pointer-events: none; }
+.launch-reference-video { position: absolute; z-index: 0; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center; opacity: .56; filter: grayscale(1) contrast(1.12) brightness(.7); transform: scale(1.035); animation: launch-reference-in 5s cubic-bezier(.25,1,.5,1) both; will-change: transform, opacity, filter; }
 .launch-screen::before { content: ""; position: absolute; inset: -24%; background: radial-gradient(circle at 50% 48%, #ffffff16 0 2%, transparent 15%), radial-gradient(ellipse at 50% 110%, #ffffff0b 0 13%, transparent 43%), repeating-radial-gradient(ellipse at 50% 50%, #ffffff08 0 1px, transparent 1px 48px); transform: scale(1.1); animation: launch-space-drift 5s cubic-bezier(.25,1,.5,1) both; will-change: transform, opacity; }
 .launch-haze { position: absolute; width: min(78vw, 900px); aspect-ratio: 1; border-radius: 50%; background: radial-gradient(circle, #fff 0%, #ffffff25 8%, #ffffff0b 23%, transparent 64%); filter: blur(19px); opacity: .72; animation: launch-haze 5s cubic-bezier(.25,1,.5,1) both; will-change: transform, opacity; }
 .launch-star { position: absolute; width: 2px; height: 2px; border-radius: 50%; background: #fff; box-shadow: 0 0 13px 3px #fff; opacity: .7; }
@@ -250,12 +251,13 @@
 @keyframes launch-star-a { 0%,16% { opacity: 0; transform: translate(14px,10px) scale(.2); } 44% { opacity: .9; } 100% { opacity: .08; transform: translate(-12px,-8px) scale(1.4); } }
 @keyframes launch-star-b { 0%,19% { opacity: 0; transform: translate(-12px,-10px) scale(.2); } 50% { opacity: .85; } 100% { opacity: .06; transform: translate(11px,7px) scale(1.5); } }
 @keyframes launch-star-c { 0%,27% { opacity: 0; transform: translate(-9px,8px) scale(.2); } 57% { opacity: .8; } 100% { opacity: .08; transform: translate(14px,-11px) scale(1.6); } }
+@keyframes launch-reference-in { 0% { opacity: 0; transform: scale(1.08); filter: grayscale(1) contrast(1.24) brightness(.36) blur(3px); } 18% { opacity: .52; } 100% { opacity: .56; transform: scale(1.035); filter: grayscale(1) contrast(1.12) brightness(.7); } }
 @keyframes launch-core { 0% { transform: scale(.18); filter: blur(9px); opacity: 0; } 58% { transform: scale(1.14); filter: none; opacity: 1; } 100% { transform: scale(1); opacity: 1; } }
 @keyframes launch-mark { 0% { transform: rotate(-52deg) scale(.35); filter: blur(7px); opacity: 0; } 62% { transform: rotate(8deg) scale(1.1); filter: none; opacity: 1; } 100% { transform: rotate(-24deg) scale(1); opacity: 1; } }
 @keyframes launch-letter { 0% { opacity: 0; filter: blur(11px); transform: translate3d(0,34px,0) rotate(11deg) scale(.68); } 63% { opacity: 1; filter: blur(0); transform: translate3d(0,-4px,0) rotate(-1.5deg) scale(1.045); } 100% { opacity: 1; filter: blur(0); transform: none; } }
 @keyframes launch-depart { to { opacity: 0; transform: scale(1.04); filter: blur(5px); } }
 @media (max-width: 540px) { .launch-orbit { width: 142px; }.launch-brand-lockup { gap: 11px; }.launch-mark { width: 38px; height: 38px; flex-basis: 38px; }.launch-mark > i { inset: 9px; }.launch-mark > b { width: 33px; height: 8px; top: 15px; left: 2px; }.launch-mark > em { right: 5px; top: 5px; }.launch-word { font-size: clamp(40px,14vw,66px); } }
-@media (prefers-reduced-motion: reduce) { .launch-screen { display: none; }.launch-field i, .launch-field b, .launch-orbit > i, .launch-satellite, .launch-core, .launch-core em, .launch-ouroboros, .launch-ouroboros span, .launch-ouroboros em, .launch-mark, .launch-word span { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .launch-screen { display: none; }.launch-reference-video { animation: none; }.launch-field i, .launch-field b, .launch-orbit > i, .launch-satellite, .launch-core, .launch-core em, .launch-ouroboros, .launch-ouroboros span, .launch-ouroboros em, .launch-mark, .launch-word span { animation: none; } }
 
 /* -------------------------------------------------------------------------
    Spatial launch refinement
