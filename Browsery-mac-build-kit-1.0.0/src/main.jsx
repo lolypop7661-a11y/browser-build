@@ -3,11 +3,20 @@ import { createRoot } from 'react-dom/client';
 import { useClickFeedback, useSpringInteraction, useSpringPresence } from './motion.js';
 import { BrowseryAudioEngine } from './audio.js';
 import { migrateAppearance, saturnTiltAngle } from './appearance.js';
+import { ExtensionStore } from './extensions.jsx';
+import { VoiceAssistantDrawer } from './voice-assistant.jsx';
+import { PersonalCenter } from './personal-center.jsx';
 import './styles.css';
 import './motion.css';
 import './sound.css';
 import './cockpit.css';
 import './monochrome.css';
+import './daily-ui.css';
+import './extensions.css';
+import './voice-assistant.css';
+import './personal-center.css';
+import './onboarding.css';
+import './desktop-behavior.css';
 
 const Icon = ({ name, size = 18, stroke = 1.7 }) => {
   const paths = {
@@ -33,14 +42,25 @@ const Icon = ({ name, size = 18, stroke = 1.7 }) => {
     play: <path d="m8 5 11 7-11 7Z"/>,
     trash: <><path d="M4 7h16M9 7V4h6v3M7 7l1 14h8l1-14"/></>,
     folder: <><path d="M3 6h7l2 2h9v11H3Z"/></>,
+    folderPlus: <><path d="M3 6h7l2 2h9v11H3Z"/><path d="M16.5 12v5m-2.5-2.5h5"/></>,
+    pin: <><path d="m8 4 8 0 0 5 2 3H6l2-3Z"/><path d="m12 12 0 8"/></>,
+    reopen: <><path d="M4 12a8 8 0 1 0 2.4-5.7L4 9"/><path d="M4 4v5h5"/><path d="M12 8v4l2.7 1.6"/></>,
+    more: <><circle cx="5" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1" fill="currentColor" stroke="none"/></>,
+    import: <><path d="M12 3v12m-4-4 4 4 4-4"/><path d="M4 18v3h16v-3"/></>,
+    export: <><path d="M12 21V9m-4 4 4-4 4 4"/><path d="M4 6V3h16v3"/></>,
     chevron: <path d="m9 18 6-6-6-6"/>,
     spark: <><path d="m12 3 1.4 5.6L19 10l-5.6 1.4L12 17l-1.4-5.6L5 10l5.6-1.4Z"/><path d="m19 16 .6 2.4L22 19l-2.4.6L19 22l-.6-2.4L16 19l2.4-.6Z"/></>,
     alert: <><path d="M12 3 2.8 20h18.4L12 3Z"/><path d="M12 9v4m0 3h.01"/></>,
+    help: <><circle cx="12" cy="12" r="9"/><path d="M9.6 9a2.5 2.5 0 1 1 4.3 1.8c-.9.8-1.9 1.2-1.9 2.7"/><path d="M12 17h.01"/></>,
     grid: <><rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/></>,
+    extension: <path d="M5 4h5v2a2 2 0 1 0 4 0V4h5v5h-2a2 2 0 1 0 0 4h2v7h-7v-2a2 2 0 1 0-4 0v2H5v-7h2a2 2 0 1 0 0-4H5Z"/>,
     volume: <><path d="M4 10v4h4l5 4V6l-5 4Z"/><path d="M16 9a4 4 0 0 1 0 6M18.5 6.5a8 8 0 0 1 0 11"/></>,
     music: <><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="2.7"/><path d="M6 5.5 7.7 8M18 16l1.7 2.5M18.5 5.5 16.3 8M5.5 18.5 8 16.3"/></>,
     previous: <><path d="m19 6-8 6 8 6V6ZM5 6v12"/></>,
     next: <><path d="m5 6 8 6-8 6V6Zm14 0v12"/></>,
+    windowMin: <path d="M5 12h14"/>,
+    windowMax: <rect x="5" y="5" width="14" height="14" rx="1.5"/>,
+    windowClose: <><path d="m6 6 12 12M18 6 6 18"/></>,
     cookie: <><path d="M20.5 13.2A8.5 8.5 0 1 1 10.8 3.5a3 3 0 0 0 4 4 3 3 0 0 0 2.7 4.3 3 3 0 0 0 3 1.4Z"/><circle cx="8" cy="9" r=".8"/><circle cx="7.5" cy="14" r=".8"/><circle cx="12" cy="17" r=".8"/></>,
     database: <><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/><path d="M4 8c0 1.7 3.6 3 8 3s8-1.3 8-3"/></>,
   };
@@ -56,6 +76,30 @@ function FavoriteIcon({name}) {
     Music:<><path d="M12 22V7l14-3v15M12 11l14-3" strokeWidth="3.2"/><ellipse cx="8" cy="23" rx="4.6" ry="3.4" fill="currentColor" stroke="none"/><ellipse cx="22" cy="20" rx="4.6" ry="3.4" fill="currentColor" stroke="none"/></>,
   };
   return <svg viewBox="0 0 32 32" width="30" height="30" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">{content[name]}</svg>;
+}
+
+function faviconSource(url, supplied='') {
+  const candidate=supplied||url;
+  try {
+    const parsed=new URL(candidate);
+    if(!/^https?:$/.test(parsed.protocol)) return '';
+    // First-party favicon URLs keep Browsery independent from a third-party
+    // favicon service and work for the overwhelming majority of websites.
+    return supplied||new URL('/favicon.ico',parsed.origin).href;
+  } catch { return ''; }
+}
+
+function faviconFallback(title,url) {
+  if(!url) return '✦';
+  try { return new URL(url).hostname.replace(/^www\./,'').slice(0,1).toUpperCase()||'•'; }
+  catch { return String(title||url).trim().slice(0,1).toUpperCase()||'•'; }
+}
+
+function Favicon({url,title,favicon,className=''}) {
+  const source=useMemo(()=>faviconSource(url,favicon),[url,favicon]);
+  const [failed,setFailed]=useState(false);
+  useEffect(()=>setFailed(false),[source]);
+  return <span className={`favicon ${className}`}>{source&&!failed?<img src={source} alt="" draggable="false" referrerPolicy="no-referrer" onError={()=>setFailed(true)}/>:<b aria-hidden="true">{faviconFallback(title,url)}</b>}</span>;
 }
 
 function SpringButton({spring='snappy',hoverScale=1.045,pressScale=.94,className='',style,children,...props}) {
@@ -202,6 +246,13 @@ const favorites = [
   {label:'GitHub', glyph:'◉', color:'#e4e9ff'},
   {label:'Music', glyph:'♫', color:'#ff79dc'},
 ];
+
+const defaultShortcuts=favorites.map((item,index)=>({
+  id:`built-in-${index}`,
+  label:item.label,
+  url:favoriteUrls[item.label],
+  color:item.color,
+}));
 
 function WebGLScene({ pointer, settings }) {
   const mount = useRef(null);
@@ -387,25 +438,57 @@ function WebGLScene({ pointer, settings }) {
 
 function MagicCursor({settings}) {
   const canvas=useRef(null);
+  const dot=useRef(null);
+  const ring=useRef(null);
   const liveSettings=useRef(settings);
   liveSettings.current=settings;
   useEffect(()=>{
-    if(!settings.cursorEnabled||settings.power)return undefined;
+    if(!settings.cursorEnabled||settings.power||window.matchMedia?.('(prefers-reduced-motion: reduce)').matches)return undefined;
     const surface=canvas.current,ctx=surface?.getContext('2d',{alpha:true,desynchronized:true});
     if(!ctx)return undefined;
     let particles=[],frame=0,lastFrame=0,lastSpawn=0,dirty=null,activeHue=0,lastX=Number.NaN,lastY=Number.NaN,width=0,height=0;
+    let pointerFrame=0,pointerX=-80,pointerY=-80,ringX=-80,ringY=-80,hasPointer=false;
     const pixelRatio=1;
     const trailHue=trail=>trail==='Comet'?38:trail==='Dust'?205:285;
-    const capFor=live=>Math.min(20,Math.max(6,Math.round(6+Math.max(0,Number(live.particles)||0)/100*12)));
+    // The visible cursor is an immediate compositor-only DOM layer. The
+    // canvas is only the optional, deliberately sparse after-trail.
+    const capFor=live=>Math.min(12,Math.max(4,Math.round(4+Math.max(0,Number(live.particles)||0)/100*8)));
     const resize=()=>{width=innerWidth;height=innerHeight;surface.width=Math.round(width*pixelRatio);surface.height=Math.round(height*pixelRatio);surface.style.width=`${width}px`;surface.style.height=`${height}px`;ctx.setTransform(pixelRatio,0,0,pixelRatio,0,0);ctx.clearRect(0,0,width,height);dirty=null};
     const schedule=()=>{if(!frame&&!document.hidden)frame=requestAnimationFrame(draw)};
+    const paintPointer=()=>{
+      pointerFrame=0;
+      if(!hasPointer||document.hidden)return;
+      // A small follow value gives the ring physical continuity without ever
+      // making the real pointer wait for a simulation frame.
+      ringX+=(pointerX-ringX)*.42;
+      ringY+=(pointerY-ringY)*.42;
+      dot.current?.style.setProperty('transform',`translate3d(${pointerX}px,${pointerY}px,0)`);
+      ring.current?.style.setProperty('transform',`translate3d(${ringX}px,${ringY}px,0)`);
+      if(Math.abs(pointerX-ringX)>.15||Math.abs(pointerY-ringY)>.15)pointerFrame=requestAnimationFrame(paintPointer);
+    };
+    const schedulePointer=()=>{if(!pointerFrame)pointerFrame=requestAnimationFrame(paintPointer)};
     const spawn=(x,y,count=1)=>{const live=liveSettings.current,trail=live.trail||'Ribbon',particleScale=.75+(Number(live.cursorSize)||46)*.006;for(let i=0;i<count;i++){const angle=Math.random()*Math.PI*2,speed=.35+Math.random()*(trail==='Dust'?1.2:.72);particles.push({x,y,vx:Math.cos(angle)*speed,vy:Math.sin(angle)*speed,life:1,size:(Math.random()*1.6+.8)*particleScale,hue:activeHue+Math.random()*24})}const cap=capFor(live);if(particles.length>cap)particles.splice(0,particles.length-cap);schedule()};
-    const move=e=>{if(document.hidden)return;const now=performance.now(),x=e.clientX,y=e.clientY,dx=x-lastX,dy=y-lastY;if(now-lastSpawn<34||(Number.isFinite(dx)&&dx*dx+dy*dy<9))return;lastSpawn=now;lastX=x;lastY=y;const target=e.target;const overControl=target instanceof Element&&target.closest('button,a,[role="button"],input,select');activeHue=overControl?190:trailHue(liveSettings.current.trail);spawn(x,y)};
+    const move=e=>{
+      if(document.hidden||e.pointerType==='touch')return;
+      const now=performance.now(),x=e.clientX,y=e.clientY,dx=x-lastX,dy=y-lastY;
+      pointerX=x;pointerY=y;
+      if(!hasPointer){hasPointer=true;ringX=x;ringY=y;dot.current?.classList.add('is-visible');ring.current?.classList.add('is-visible')}
+      schedulePointer();
+      // A trail is sampled sparsely; it is visual detail, never a cursor
+      // replacement. This caps CPU/GPU work during fast page scrolling.
+      if(now-lastSpawn<72||(Number.isFinite(dx)&&dx*dx+dy*dy<81))return;
+      lastSpawn=now;lastX=x;lastY=y;
+      const target=e.target;
+      const overControl=target instanceof Element&&target.closest('button,a,[role="button"],input,select');
+      activeHue=overControl?190:trailHue(liveSettings.current.trail);
+      ring.current?.classList.toggle('is-interactive',Boolean(overControl));
+      spawn(x,y);
+    };
     const down=e=>spawn(e.clientX,e.clientY,4);
     const draw=now=>{
       frame=0;
       if(document.hidden)return;
-      if(now-lastFrame<32){schedule();return}
+      if(now-lastFrame<42){schedule();return}
       lastFrame=now;
       if(dirty)ctx.clearRect(dirty.left,dirty.top,dirty.right-dirty.left,dirty.bottom-dirty.top);
       const live=liveSettings.current,trail=live.trail||'Ribbon',saturation=live.accentPreset==='Monochrome'?0:100;
@@ -414,41 +497,86 @@ function MagicCursor({settings}) {
       dirty=Number.isFinite(left)?{left:Math.max(0,left),top:Math.max(0,top),right:Math.min(width,right),bottom:Math.min(height,bottom)}:null;
       if(particles.length)schedule();
     };
-    const visibility=()=>{if(document.hidden){if(frame)cancelAnimationFrame(frame);frame=0;particles=[];dirty=null;ctx.clearRect(0,0,width,height)}else if(particles.length)schedule()};
+    const leave=()=>{hasPointer=false;dot.current?.classList.remove('is-visible');ring.current?.classList.remove('is-visible','is-interactive')};
+    const visibility=()=>{if(document.hidden){if(frame)cancelAnimationFrame(frame);if(pointerFrame)cancelAnimationFrame(pointerFrame);frame=0;pointerFrame=0;particles=[];dirty=null;ctx.clearRect(0,0,width,height)}else if(particles.length)schedule()};
     resize();activeHue=trailHue(liveSettings.current.trail);addEventListener('pointermove',move,{passive:true});addEventListener('pointerdown',down,{passive:true});addEventListener('resize',resize,{passive:true});document.addEventListener('visibilitychange',visibility);
-    return()=>{if(frame)cancelAnimationFrame(frame);removeEventListener('pointermove',move);removeEventListener('pointerdown',down);removeEventListener('resize',resize);document.removeEventListener('visibilitychange',visibility)};
+    addEventListener('blur',leave);document.addEventListener('mouseleave',leave);
+    return()=>{if(frame)cancelAnimationFrame(frame);if(pointerFrame)cancelAnimationFrame(pointerFrame);removeEventListener('pointermove',move);removeEventListener('pointerdown',down);removeEventListener('resize',resize);document.removeEventListener('visibilitychange',visibility);removeEventListener('blur',leave);document.removeEventListener('mouseleave',leave)};
   },[settings.cursorEnabled,settings.power]);
   if(!settings.cursorEnabled||settings.power)return null;
-  return <canvas className="cursor-canvas" ref={canvas} aria-hidden="true"/>;
+  return <><canvas className="cursor-canvas" ref={canvas} aria-hidden="true"/><span className="cursor-dot browsery-pointer-dot" ref={dot} aria-hidden="true"/><span className="cursor-ring browsery-pointer-ring" ref={ring} aria-hidden="true"/></>;
 }
 
-function GlassButton({icon,label,onClick,active,className=''}) { return <SpringButton className={`icon-button magnetic ${active?'active':''} ${className}`} onClick={onClick} aria-label={label} title={label}><Icon name={icon}/></SpringButton> }
+function GlassButton({icon,label,onClick,active,className='',tour,...props}) { return <SpringButton {...props} data-tour={tour} className={`icon-button magnetic ${active?'active':''} ${className}`} onClick={onClick} aria-label={label} title={label}><Icon name={icon}/></SpringButton> }
 
 function LaunchScreen({onComplete}) {
-  const [phase,setPhase]=useState('orbit');
+  const [phase,setPhase]=useState('ignite');
   useEffect(()=>{
     const reduced=window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
     if(reduced){const timer=setTimeout(onComplete,30);return()=>clearTimeout(timer)}
-    const timers=[setTimeout(()=>setPhase('resolve'),760),setTimeout(()=>setPhase('reveal'),1120),setTimeout(()=>setPhase('depart'),2450),setTimeout(onComplete,2780)];
+    // Five seconds mirrors the deliberate pacing of the reference clip without
+    // shipping a video file into the desktop app. Each phase is CSS/GPU driven.
+    const timers=[setTimeout(()=>setPhase('resolve'),1080),setTimeout(()=>setPhase('reveal'),2920),setTimeout(()=>setPhase('depart'),4560),setTimeout(onComplete,5000)];
     return()=>timers.forEach(clearTimeout);
   },[onComplete]);
   return <div className={`launch-screen launch-${phase}`} role="status" aria-label="Launching Browsery">
-    <div className="launch-haze"/><div className="launch-star launch-star-a"/><div className="launch-star launch-star-b"/>
-    <div className="launch-stage"><div className="launch-orbit"><i/><i/><i/><span className="launch-satellite"/><span className="launch-core"><b/><em/></span></div>
+    <div className="launch-haze"/><div className="launch-star launch-star-a"/><div className="launch-star launch-star-b"/><div className="launch-star launch-star-c"/>
+    <div className="launch-field" aria-hidden="true">{Array.from({length:12},(_,index)=><i key={index} style={{'--particle':index}}/>)}<b/><b/><b/></div>
+    <div className="launch-stage"><div className="launch-orbit"><i/><i/><i/><span className="launch-satellite"/><span className="launch-core"><b/><em/></span></div><div className="launch-ouroboros" aria-hidden="true"><span/><i/><b/><em/></div>
       <div className="launch-brand-lockup"><span className="launch-mark"><i/><b/><em/></span><span className="launch-word" aria-label="Browsery">{'Browsery'.split('').map((letter,index)=><span key={`${letter}-${index}`} style={{'--letter':index}}>{letter}</span>)}</span></div>
     </div>
   </div>;
 }
 
-function TabStrip({tabs,setTabs,active,setActive,onNewTab}) {
-  const drag=useRef(null);
-  const close=(e,id)=>{e.stopPropagation();if(tabs.length===1){setTabs([{...tabs[0],title:'New Space',url:null,loading:false}]);return}const idx=tabs.findIndex(t=>t.id===id);const next=tabs.filter(t=>t.id!==id);setTabs(next);if(active===id)setActive(next[Math.max(0,idx-1)].id)};
-  const drop=id=>{if(drag.current===id||drag.current==null)return;const next=[...tabs],from=next.findIndex(t=>t.id===drag.current),to=next.findIndex(t=>t.id===id);const [m]=next.splice(from,1);next.splice(to,0,m);setTabs(next);drag.current=null};
-  return <div className="tabs-row">
+function TabContextMenu({menu,groups,onClose,onPin,onCloseTab,onCloseOthers,onCloseRight,onSetGroup,onCreateGroup}) {
+  useEffect(()=>{
+    if(!menu)return undefined;
+    const keydown=event=>{if(event.key==='Escape')onClose()};
+    addEventListener('keydown',keydown);
+    return()=>removeEventListener('keydown',keydown);
+  },[menu,onClose]);
+  if(!menu)return null;
+  const select=action=>{action();onClose()};
+  return <div className="tab-context-menu" role="menu" aria-label={`Actions for ${menu.tab.title}`} style={{left:menu.x,top:menu.y}} onPointerDown={event=>event.stopPropagation()}>
+    <div className="tab-menu-heading"><Favicon url={menu.tab.url} title={menu.tab.title} favicon={menu.tab.favicon}/><span>{menu.tab.title||'New tab'}</span></div>
+    <button type="button" role="menuitem" onClick={()=>select(()=>onPin(menu.tab.id))}><Icon name="pin" size={15}/>{menu.tab.pinned?'Unpin tab':'Pin tab'}</button>
+    <button type="button" role="menuitem" onClick={()=>select(()=>onCloseTab(menu.tab.id))}><Icon name="close" size={15}/>Close tab</button>
+    <button type="button" role="menuitem" onClick={()=>select(()=>onCloseOthers(menu.tab.id))}><Icon name="close" size={15}/>Close other tabs</button>
+    <button type="button" role="menuitem" onClick={()=>select(()=>onCloseRight(menu.tab.id))}><Icon name="close" size={15}/>Close tabs to the right</button>
+    <div className="tab-menu-separator"/>
+    <span className="tab-menu-label">Move to group</span>
+    <button type="button" role="menuitem" className={!menu.tab.groupId?'selected':''} onClick={()=>select(()=>onSetGroup(menu.tab.id,null))}><span className="group-dot neutral"/>No group</button>
+    {groups.map(group=><button type="button" role="menuitem" className={menu.tab.groupId===group.id?'selected':''} key={group.id} onClick={()=>select(()=>onSetGroup(menu.tab.id,group.id))}><span className="group-dot" style={{'--group-color':group.color}}/>{group.name}</button>)}
+    <button type="button" role="menuitem" className="tab-menu-new-group" onClick={()=>select(()=>onCreateGroup(menu.tab.id))}><Icon name="folderPlus" size={15}/>New group…</button>
+  </div>;
+}
+
+function TabStrip({tabs,setTabs,active,setActive,onNewTab,onCloseTab,onReopenClosed,closedCount=0,groups=[],onCloseOthers,onCloseRight,onSetGroup,onCreateGroup}) {
+  const drag=useRef(null),rowRef=useRef(null);
+  const [menu,setMenu]=useState(null);
+  const orderedTabs=useMemo(()=>[...tabs].sort((a,b)=>Number(Boolean(b.pinned))-Number(Boolean(a.pinned))),[tabs]);
+  const groupById=useMemo(()=>new Map(groups.map(group=>[group.id,group])),[groups]);
+  const pinTab=useCallback(id=>setTabs(current=>current.map(tab=>tab.id===id?{...tab,pinned:!tab.pinned}:tab)),[setTabs]);
+  const drop=id=>{if(drag.current===id||drag.current==null)return;const next=[...tabs],from=next.findIndex(t=>t.id===drag.current),to=next.findIndex(t=>t.id===id);if(from<0||to<0)return;const [m]=next.splice(from,1);next.splice(to,0,m);setTabs(next);drag.current=null};
+  const openMenu=(event,tab)=>{
+    event.preventDefault();
+    const bounds=rowRef.current?.getBoundingClientRect();
+    const x=Math.max(8,Math.min((event.clientX-(bounds?.left||0)),(bounds?.width||420)-238));
+    setMenu({tab,x,y:(bounds?.height||58)-2});
+  };
+  return <div ref={rowRef} className={`tabs-row ${menu?'tab-menu-open':''}`} data-tour="tabs">
     <div className="brand" data-magnetic><span className="brand-orb"><i/><b/><em/></span><span className="brand-name">Browsery</span></div>
-    <div className="tabs">{tabs.map((t,i)=><SpringButton spring="fluid" hoverScale={1.018} pressScale={.975} draggable onDragStart={()=>drag.current=t.id} onDragOver={e=>e.preventDefault()} onDrop={()=>drop(t.id)} onClick={()=>setActive(t.id)} className={`tab ${active===t.id?'selected':''}`} key={t.id}><span className="tab-favicon">{i===0?'✦':i===1?'◎':'◇'}</span><span className="tab-title">{t.title}</span><span onClick={e=>close(e,t.id)} role="button" aria-label={`Close ${t.title}`} className="tab-close"><Icon name="close" size={13}/></span></SpringButton>)}</div>
+    <div className="tabs">{orderedTabs.map(t=>{
+      const group=t.groupId?groupById.get(t.groupId):null;
+      return <SpringButton spring="fluid" hoverScale={1.012} pressScale={.975} draggable onDragStart={()=>drag.current=t.id} onDragEnd={()=>{drag.current=null}} onDragOver={event=>event.preventDefault()} onDrop={()=>drop(t.id)} onClick={()=>setActive(t.id)} onAuxClick={event=>{if(event.button===1){event.preventDefault();onCloseTab(t.id)}}} onContextMenu={event=>openMenu(event,t)} className={`tab ${active===t.id?'selected':''} ${t.pinned?'pinned':''} ${group?'has-group':''}`} style={group?{'--group-color':group.color}:undefined} key={t.id} title={t.title}>
+        <Favicon className="tab-favicon" url={t.url} title={t.title} favicon={t.favicon}/>{group&&<span className="tab-group-dot" title={group.name}/>}<span className="tab-title">{t.title}</span>{t.pinned&&<span className="tab-pin" title="Pinned"><Icon name="pin" size={11}/></span>}<span onClick={event=>{event.stopPropagation();onCloseTab(t.id)}} role="button" aria-label={`Close ${t.title}`} className="tab-close"><Icon name="close" size={13}/></span>
+      </SpringButton>;
+    })}</div>
+    <GlassButton icon="reopen" label={closedCount?'Reopen closed tab · Ctrl+Shift+T':'No closed tabs'} onClick={onReopenClosed} disabled={!closedCount} className="reopen-tab"/>
     <GlassButton icon="plus" label="New tab" onClick={onNewTab} className="add-tab"/>
-    <div className="window-controls"><SpringButton onClick={()=>window.browseryDesktop?.windowAction('minimize')} aria-label="Minimize">—</SpringButton><SpringButton onClick={()=>window.browseryDesktop?.windowAction('maximize')} aria-label="Maximize">□</SpringButton><SpringButton className="window-close" onClick={()=>window.browseryDesktop?.windowAction('close')} aria-label="Close Browsery">×</SpringButton></div>
+    <div className="window-controls"><SpringButton onClick={()=>window.browseryDesktop?.windowAction('minimize')} aria-label="Minimize"><Icon name="windowMin" size={14}/></SpringButton><SpringButton onClick={()=>window.browseryDesktop?.windowAction('maximize')} aria-label="Maximize"><Icon name="windowMax" size={13}/></SpringButton><SpringButton className="window-close" onClick={()=>window.browseryDesktop?.windowAction('close')} aria-label="Close Browsery"><Icon name="windowClose" size={14}/></SpringButton></div>
+    {menu&&<div className="tab-menu-backdrop" aria-hidden="true" onPointerDown={()=>setMenu(null)}/>}
+    <TabContextMenu menu={menu} groups={groups} onClose={()=>setMenu(null)} onPin={pinTab} onCloseTab={onCloseTab} onCloseOthers={onCloseOthers} onCloseRight={onCloseRight} onSetGroup={onSetGroup} onCreateGroup={onCreateGroup}/>
   </div>
 }
 
@@ -470,7 +598,7 @@ function Omnibox({value,setValue,onGo,onAnalyze,suggestionsEnabled=true,engine,h
     if(event.key==='Escape'){setFocused(false);return}
     if(event.key==='Enter'){event.preventDefault();suggestionsEnabled&&selected>=0?commit(suggestions[selected]):onGo()}
   };
-  return <div className="omnibox-wrap">
+  return <div className="omnibox-wrap" data-tour="omnibox">
     <div className={`omnibox ${focused?'focused':''}`}><Icon name="search" size={17}/><input role="combobox" aria-autocomplete="list" aria-expanded={focused&&suggestionsEnabled&&suggestions.length>0} aria-controls="omnibox-suggestions" aria-activedescendant={selected>=0?`omnibox-option-${selected}`:undefined} value={value} onChange={e=>{setValue(e.target.value);setSelected(-1)}} onFocus={()=>setFocused(true)} onBlur={()=>setTimeout(()=>setFocused(false),140)} onKeyDown={onKeyDown} placeholder={`Search ${engine==='Browsery'?'Browsery':engine} or enter a URL`} autoComplete="off"/><SpringButton type="button" className="omnibox-spark analyze-trigger" aria-label="Analyze with Groq" title="Analyze this page with Groq" onClick={onAnalyze}><Icon name="spark" size={17}/></SpringButton></div>
     {focused&&suggestionsEnabled&&suggestions.length>0&&<div className="suggestions" id="omnibox-suggestions" role="listbox">{suggestions.map((suggestion,index)=><SpringButton id={`omnibox-option-${index}`} role="option" aria-selected={selected===index} className={selected===index?'suggestion-selected':''} key={`${suggestion.icon}-${suggestion.value}`} onMouseDown={event=>event.preventDefault()} onClick={()=>commit(suggestion)}><Icon name={suggestion.icon} size={15}/><span><b>{suggestion.label}</b><small>{suggestion.detail}</small></span><kbd>↵</kbd></SpringButton>)}</div>}
   </div>
@@ -478,13 +606,14 @@ function Omnibox({value,setValue,onGo,onAnalyze,suggestionsEnabled=true,engine,h
 
 function Control({item,value,onChange}) {
   const [id,label,type,initial]=item; const v=value??initial;
-  if(type==='toggle')return <label className="setting-row"><span>{label}</span><SpringButton className={`switch ${v?'on':''}`} onClick={()=>onChange(id,!v)} aria-label={label} aria-pressed={v}><i/></SpringButton></label>;
-  if(type==='range')return <label className="setting-range"><span><b>{label}</b><em>{v}%</em></span><input type="range" min="0" max="100" value={v} onChange={e=>onChange(id,+e.target.value)}/></label>;
-  if(type==='angle')return <label className="setting-range"><span><b>{label}</b><em>{v}°</em></span><input aria-label={label} type="range" min="-45" max="45" step="1" value={v} onChange={e=>onChange(id,+e.target.value)}/></label>;
-  if(type==='color')return <label className="setting-row"><span>{label}</span><span className="color-input"><input type="color" value={v} onChange={e=>onChange(id,e.target.value)}/>{v}</span></label>;
-  if(type==='text')return <label className="setting-row"><span>{label}</span><input className="setting-text" type="url" value={v} onChange={e=>onChange(id,e.target.value)} placeholder="https://example.com"/></label>;
+  const tourTarget={ 'data-tour':`setting-${id}` };
+  if(type==='toggle')return <label {...tourTarget} className="setting-row"><span>{label}</span><SpringButton className={`switch ${v?'on':''}`} onClick={()=>onChange(id,!v)} aria-label={label} aria-pressed={v}><i/></SpringButton></label>;
+  if(type==='range')return <label {...tourTarget} className="setting-range"><span><b>{label}</b><em>{v}%</em></span><input type="range" min="0" max="100" value={v} onChange={e=>onChange(id,+e.target.value)}/></label>;
+  if(type==='angle')return <label {...tourTarget} className="setting-range"><span><b>{label}</b><em>{v}°</em></span><input aria-label={label} type="range" min="-45" max="45" step="1" value={v} onChange={e=>onChange(id,+e.target.value)}/></label>;
+  if(type==='color')return <label {...tourTarget} className="setting-row"><span>{label}</span><span className="color-input"><input type="color" value={v} onChange={e=>onChange(id,e.target.value)}/>{v}</span></label>;
+  if(type==='text')return <label {...tourTarget} className="setting-row"><span>{label}</span><input className="setting-text" type="url" value={v} onChange={e=>onChange(id,e.target.value)} placeholder="https://example.com"/></label>;
   const opts={aa:['Off','FXAA','TAA'],fps:['30 FPS','60 FPS','120 FPS','144 FPS'],texture:['Low','Medium','High','Ultra'],dpr:['1×','1.5×','2×','Auto'],trail:['Dust','Ribbon','Comet'],corners:['Soft','Compact','Sharp'],trackers:['Standard','Balanced','Strict'],cookies:['On close','1 hour','24 hours','7 days'],tabs:['Horizontal','Vertical'],engine:[['Mojeek · Independent','Mojeek'],['Browsery · Custom','Browsery'],['DuckDuckGo','DuckDuckGo'],['Bing','Bing']],aiModel:[['GPT-OSS 120B · Groq','openai/gpt-oss-120b'],['GPT-OSS 20B · Groq','openai/gpt-oss-20b']],homepage:['New Space','Blank','Custom'],path:['Downloads','Desktop','Ask every time'],theme:['Soft','Crystalline','Analog','Solar Wind'],accentPreset:['Monochrome','Browsery Cyan','Ultraviolet','Solar Amber','Signal Green','Rose Quartz'],backgroundScene:['Original Saturn','Spatial overlay'],clockStyle:['24-hour','12-hour','Hidden'],chromeDensity:['Compact','Comfortable','Spacious'],cornerStyle:['Square','Rounded','Soft'],...{}};
-  return <label className="setting-row"><span>{label}</span><select value={v} onChange={e=>onChange(id,e.target.value)}>{(opts[id]||[v,'Default']).map(option=>Array.isArray(option)?<option key={option[1]} value={option[1]}>{option[0]}</option>:<option key={option}>{option}</option>)}</select></label>;
+  return <label {...tourTarget} className="setting-row"><span>{label}</span><select value={v} onChange={e=>onChange(id,e.target.value)}>{(opts[id]||[v,'Default']).map(option=>Array.isArray(option)?<option key={option[1]} value={option[1]}>{option[0]}</option>:<option key={option}>{option}</option>)}</select></label>;
 }
 
 function AiOverviewCredentials({open}) {
@@ -515,7 +644,7 @@ function AiOverviewCredentials({open}) {
     try{const result=await desktop?.clearAiApiKey?.();if(result?.ok){setStatus({loading:false,...await desktop.aiKeyStatus()});setDraft('');setEditing(false);setMessage('Saved key removed.')}else setMessage(result?.message||'Could not remove the saved key.')}catch{setMessage('Could not remove the saved key.')}finally{setBusy(false)}
   };
   const saved=status.configured&&!editing;
-  return <section className="ai-key-card" aria-busy={busy||status.loading}>
+  return <section data-tour="groq-credentials" className="ai-key-card" aria-busy={busy||status.loading}>
     <div className="ai-key-heading"><span className="ai-provider-mark">G</span><div><b>Groq API</b><small>{status.loading?'Checking secure key storage…':status.configured?'One saved key for all Browsery AI features.':status.storageStatus==='unreadable'?'The saved key cannot be read. Replace it below.':'Save your key once on this device.'}</small></div></div>
     {saved?<div className="ai-saved-key" role="status"><span className="ai-saved-check">✓</span><div><b>Saved on this device</b><small>Encrypted · Restored automatically after restart</small><span>AI Overview + Analyze with Groq</span></div></div>:<><label className="ai-key-label" htmlFor="groq-api-key">{editing?'Replacement Groq API key':'Groq API key'}</label><input id="groq-api-key" className="ai-key-input" type="password" autoComplete="off" spellCheck="false" value={draft} onChange={event=>setDraft(event.target.value)} placeholder="gsk_…" disabled={busy||status.loading||!status.encryptionAvailable}/></>}
     <div className="ai-key-actions">{saved?<SpringButton disabled={busy} onClick={()=>{setEditing(true);setMessage('')}}>Change key</SpringButton>:<SpringButton disabled={busy||!draft.trim()||!status.encryptionAvailable} onClick={save}>{busy?'Saving…':'Save key'}</SpringButton>}{editing&&status.configured&&<SpringButton disabled={busy} onClick={()=>{setDraft('');setEditing(false);setMessage('')}}>Cancel</SpringButton>}{status.stored&&<SpringButton disabled={busy} onClick={clear}>Remove key</SpringButton>}</div>
@@ -526,18 +655,18 @@ function AiOverviewCredentials({open}) {
   </section>;
 }
 
-function SettingsDrawer({open,onClose,values,setValues,onManageData,onManageProtection,initialSection='graphics',audioEngine,audioReady}) {
+function SettingsDrawer({open,onClose,values,setValues,onManageData,onManageProtection,onManagePersonal,initialSection='graphics',focusSection,audioEngine,audioReady}) {
   const panelRef=useSpringPresence(open,{preset:'fluid',offset:90});
   const [section,setSection]=useState(initialSection);
-  useEffect(()=>{if(open)setSection(initialSection)},[open,initialSection]);
+  useEffect(()=>{if(open)setSection(focusSection||initialSection)},[open,initialSection,focusSection]);
   const category=settingsSchema.find(s=>s.id===section); const change=(id,v)=>setValues(x=>({...x,[id]:v}));
   const resetSection=()=>setValues(current=>({...current,...Object.fromEntries(category.items.map(([id,,,value])=>[id,value]))}));
   const resetAll=()=>setValues(initialSettings);
   const total=settingsSchema.reduce((sum,item)=>sum+item.items.length,0);
-  return <aside ref={panelRef} className={`drawer settings-drawer ${open?'open':''}`} aria-hidden={!open}>
-    <nav className="settings-nav" aria-label="Settings categories">{settingsSchema.map(s=><SpringButton spring="fluid" hoverScale={1.025} pressScale={.98} className={section===s.id?'active':''} onClick={()=>setSection(s.id)} key={s.id}><Icon name={s.icon}/><span>{s.label}</span><em>{s.items.length}</em></SpringButton>)}</nav>
+  return <aside ref={panelRef} data-tour="settings-drawer" className={`drawer settings-drawer ${open?'open':''}`} aria-hidden={!open}>
+    <nav className="settings-nav" aria-label="Settings categories">{settingsSchema.map(s=><SpringButton data-tour={`settings-${s.id}`} spring="fluid" hoverScale={1.025} pressScale={.98} className={section===s.id?'active':''} onClick={()=>setSection(s.id)} key={s.id}><Icon name={s.icon}/><span>{s.label}</span><em>{s.items.length}</em></SpringButton>)}</nav>
     <div className="drawer-head"><div><span className="drawer-kicker">Live spatial control surface</span><h2>Settings</h2></div><GlassButton icon="close" label="Close settings" onClick={onClose}/></div>
-    <div className="settings-body"><div className="settings-content" key={section}><div className="settings-section-head"><h3>{category.label}</h3><span>{category.items.length} controls</span></div><div className="controls">{category.items.map(item=><Control key={item[0]} item={item} value={values[item[0]]} onChange={change}/>)}</div>{section==='sound'&&<div className="sound-preview-card"><span className={`sound-preview-indicator ${audioReady&&values.ambience&&values.ambienceVolume>0&&values.master>0&&values.ambience?'ready':''}`}><Icon name="volume" size={17}/></span><div><b>{values.ambience&&values.ambienceVolume>0&&values.master>0?'Space ambience enabled':'Space ambience paused'}</b><small>{audioReady?'Live, procedural audio · no download required':'Audio wakes on your first click or Preview'}</small></div><SpringButton disabled={values.master===0} onClick={()=>audioEngine.preview()}>Preview</SpringButton></div>}{section==='privacy'&&<><div className="privacy-data-link protection-settings-link"><span className="privacy-data-icon"><Icon name="shield" size={17}/></span><div><b>Protection dashboard</b><small>See blocked ads, tracker rules, and your site allowlist</small></div><SpringButton onClick={onManageProtection}><Icon name="chevron" size={16}/><span>Open</span></SpringButton></div><div className="privacy-data-link"><span className="privacy-data-icon"><Icon name="cookie" size={17}/></span><div><b>Cookies &amp; site data</b><small>Review cookies, storage, cache and history</small></div><SpringButton onClick={onManageData}><Icon name="chevron" size={16}/><span>Manage</span></SpringButton></div></>}{section==='ai'&&<AiOverviewCredentials open={open}/>}</div></div>
+    <div className="settings-body"><div className="settings-content" key={section}><div className="settings-section-head"><h3>{category.label}</h3><span>{category.items.length} controls</span></div><div className="controls">{category.items.map(item=><Control key={item[0]} item={item} value={values[item[0]]} onChange={change}/>)}</div>{section==='sound'&&<div className="sound-preview-card"><span className={`sound-preview-indicator ${audioReady&&values.ambience&&values.ambienceVolume>0&&values.master>0&&values.ambience?'ready':''}`}><Icon name="volume" size={17}/></span><div><b>{values.ambience&&values.ambienceVolume>0&&values.master>0?'Space ambience enabled':'Space ambience paused'}</b><small>{audioReady?'Live, procedural audio · no download required':'Audio wakes on your first click or Preview'}</small></div><SpringButton disabled={values.master===0} onClick={()=>audioEngine.preview()}>Preview</SpringButton></div>}{section==='privacy'&&<><div className="privacy-data-link protection-settings-link"><span className="privacy-data-icon"><Icon name="shield" size={17}/></span><div><b>Protection dashboard</b><small>See blocked ads, tracker rules, and your site allowlist</small></div><SpringButton onClick={onManageProtection}><Icon name="chevron" size={16}/><span>Open</span></SpringButton></div><div className="privacy-data-link"><span className="privacy-data-icon"><Icon name="cookie" size={17}/></span><div><b>Cookies &amp; site data</b><small>Review cookies, storage, cache and history</small></div><SpringButton onClick={onManageData}><Icon name="chevron" size={16}/><span>Manage</span></SpringButton></div></>}{section==='browser'&&<div className="privacy-data-link personal-settings-link"><span className="privacy-data-icon"><Icon name="shield" size={17}/></span><div><b>Personal browser</b><small>Manage encrypted saved logins, default-browser guidance, and safe update checks</small></div><SpringButton onClick={onManagePersonal}><Icon name="chevron" size={16}/><span>Manage</span></SpringButton></div>}{section==='ai'&&<AiOverviewCredentials open={open}/>}</div></div>
     {section==='spatial'&&<div className="motion-preview"><div><b>Click energy · {values.motionStrength}%</b><small>{values.power?'Low-power mode is on':'Press. Pulse. Spring back.'}</small></div><SpringButton className="motion-preview-button" aria-label="Try click animation"><Icon name="spark" size={17}/> Try a click</SpringButton></div>}
     <div className="settings-dock" aria-label="Quick spatial settings"><SpringButton className={values.power?'active':''} onClick={()=>change('power',!values.power)} aria-pressed={values.power}><Icon name="spark"/><span>{values.power?'Low power':'Full motion'}</span></SpringButton><SpringButton className={values.refraction?'active':''} onClick={()=>change('refraction',!values.refraction)}><Icon name="grid"/><span>Depth</span></SpringButton><SpringButton className={values.cursorEnabled?'active':''} onClick={()=>change('cursorEnabled',!values.cursorEnabled)}><Icon name="sliders"/><span>Cursor</span></SpringButton><SpringButton onClick={resetAll}><Icon name="reload"/><span>Reset all</span></SpringButton></div>
     <div className="drawer-footer"><span>{total} settings · Changes save instantly</span><SpringButton onClick={resetSection}>Reset {category.label}</SpringButton></div>
@@ -599,6 +728,53 @@ function LibraryDrawer({open,onClose,title,items,onSelect,onRemove,onClear,histo
     <div className="drawer-head"><div><span className="drawer-kicker">Your Browsery library</span><h2>{title}</h2></div><div className="library-head-actions">{historyMode&&items.length>0&&<SpringButton onClick={onClear}>Clear history</SpringButton>}<GlassButton icon="close" label={`Close ${title.toLowerCase()}`} onClick={onClose}/></div></div>
     <label className="library-filter"><Icon name="search" size={16}/><input value={filter} onChange={event=>setFilter(event.target.value)} placeholder={`Search ${title.toLowerCase()}`} aria-label={`Search ${title.toLowerCase()}`}/></label>
     <div className="library-list">{visible.length===0?<div className="empty-downloads"><Icon name={historyMode?'history':'bookmark'} size={27}/><strong>{items.length?'No matches':'Nothing saved yet'}</strong><span>{items.length?'Try a different title or address.':historyMode?'Pages you visit will appear here.':'Save a page with the bookmark button or Ctrl+D.'}</span></div>:visible.map((item,index)=><article className="library-item" key={`${item.url}-${index}`}><button className="library-item-main" onClick={()=>onSelect(item.url)}><span className="library-favicon">{(item.title||item.url||'B').slice(0,1).toUpperCase()}</span><span className="library-item-copy"><b>{item.title||item.url}</b><small>{item.url}</small>{historyMode&&<em>{Number.isFinite(item.visitedAt)?new Date(item.visitedAt).toLocaleString([], {dateStyle:'medium',timeStyle:'short'}):'Recently visited'}</em>}</span></button><GlassButton icon="trash" label={historyMode?'Remove from history':'Remove bookmark'} onClick={()=>onRemove(item.url)}/></article>)}</div>
+  </aside>;
+}
+
+function BookmarkDrawer({open,onClose,items,folders,onOpen,onRemove,onMove,onCreateFolder,onImport}) {
+  const panelRef=useSpringPresence(open,{preset:'fluid',offset:90});
+  const importRef=useRef(null);
+  const [filter,setFilter]=useState(''),[folder,setFolder]=useState('All');
+  const availableFolders=useMemo(()=>Array.from(new Set(['All',...folders,...items.map(item=>item.folder||'Favorites')])).filter(Boolean),[folders,items]);
+  useEffect(()=>{if(open){setFilter('');setFolder(current=>availableFolders.includes(current)?current:'All')}},[open,availableFolders]);
+  const visible=items.filter(item=>{
+    const itemFolder=item.folder||'Favorites';
+    const matchesFolder=folder==='All'||itemFolder===folder;
+    return matchesFolder&&`${item.title||''} ${item.url||''}`.toLowerCase().includes(filter.trim().toLowerCase());
+  });
+  const createFolder=()=>{
+    const requested=window.prompt('Name this bookmark folder');
+    const name=String(requested||'').trim().slice(0,42);
+    if(!name)return;
+    onCreateFolder(name);setFolder(name);
+  };
+  const exportBookmarks=()=>{
+    const data=JSON.stringify({browsery:'bookmarks',version:1,exportedAt:new Date().toISOString(),folders,bookmarks:items},null,2);
+    const blob=new Blob([data],{type:'application/json'}),href=URL.createObjectURL(blob),link=document.createElement('a');
+    link.href=href;link.download=`browsery-bookmarks-${new Date().toISOString().slice(0,10)}.json`;link.click();setTimeout(()=>URL.revokeObjectURL(href),1000);
+  };
+  const importFile=async event=>{
+    const file=event.target.files?.[0];event.target.value='';if(!file)return;
+    let text='';try{text=await file.text()}catch{return}
+    let imported=[];
+    try {
+      const parsed=JSON.parse(text),source=Array.isArray(parsed)?parsed:(Array.isArray(parsed.bookmarks)?parsed.bookmarks:[]);
+      imported=source.map(item=>({url:normalizeShortcut(item?.url),title:String(item?.title||'').trim().slice(0,140),folder:String(item?.folder||'Imported').trim().slice(0,42)||'Imported'})).filter(item=>item.url);
+    } catch {
+      const parser=new DOMParser();
+      for(const match of text.matchAll(/<a\b[^>]*\bhref\s*=\s*["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi)){
+        const url=normalizeShortcut(match[1]);
+        if(url)imported.push({url,title:parser.parseFromString(match[2],'text/html').body.textContent?.trim().slice(0,140)||addressHost(url),folder:'Imported'});
+      }
+    }
+    if(imported.length)onImport(imported);
+    else window.alert('No usable bookmarks were found in that file. Choose a Browsery JSON backup or a standard HTML bookmarks export.');
+  };
+  return <aside ref={panelRef} className={`drawer library-drawer bookmark-drawer ${open?'open':''}`} aria-hidden={!open}>
+    <div className="drawer-head"><div><span className="drawer-kicker">Your Browsery library</span><h2>Bookmarks</h2></div><div className="library-head-actions"><SpringButton onClick={createFolder}><Icon name="folderPlus" size={14}/>New folder</SpringButton><GlassButton icon="close" label="Close bookmarks" onClick={onClose}/></div></div>
+    <div className="bookmark-toolbar"><label className="library-filter"><Icon name="search" size={16}/><input value={filter} onChange={event=>setFilter(event.target.value)} placeholder="Search bookmarks" aria-label="Search bookmarks"/></label><div className="bookmark-transfer"><SpringButton onClick={()=>importRef.current?.click()}><Icon name="import" size={14}/>Import</SpringButton><SpringButton onClick={exportBookmarks} disabled={!items.length}><Icon name="export" size={14}/>Export</SpringButton><input ref={importRef} className="bookmark-import-input" type="file" accept="application/json,text/html,.json,.html,.htm" onChange={importFile}/></div></div>
+    <div className="bookmark-folders" role="tablist" aria-label="Bookmark folders">{availableFolders.map(name=><SpringButton key={name} role="tab" aria-selected={folder===name} className={folder===name?'active':''} onClick={()=>setFolder(name)}><Icon name={name==='All'?'grid':'folder'} size={14}/><span>{name}</span><em>{name==='All'?items.length:items.filter(item=>(item.folder||'Favorites')===name).length}</em></SpringButton>)}</div>
+    <div className="library-list bookmark-list">{visible.length===0?<div className="empty-downloads"><Icon name="bookmark" size={27}/><strong>{items.length?'No matching bookmarks':'No bookmarks in this folder'}</strong><span>{items.length?'Try another folder or phrase.':'Save a page with Ctrl+D, then keep it organized here.'}</span></div>:visible.map((item,index)=><article className="library-item bookmark-item" key={`${item.url}-${index}`}><button className="library-item-main" onClick={()=>onOpen(item.url)}><Favicon className="library-favicon" url={item.url} title={item.title} favicon={item.favicon}/><span className="library-item-copy"><b>{item.title||item.url}</b><small>{item.url}</small></span></button><select value={item.folder||'Favorites'} aria-label={`Folder for ${item.title||item.url}`} onChange={event=>onMove(item.url,event.target.value)}>{availableFolders.filter(name=>name!=='All').map(name=><option key={name}>{name}</option>)}</select><GlassButton icon="trash" label="Remove bookmark" onClick={()=>onRemove(item.url)}/></article>)}</div>
   </aside>;
 }
 
@@ -704,6 +880,17 @@ function ProtectionDrawer({open,onClose,tab,onOpenSettings}) {
     catch { setMessage('Could not reset counters.'); }
     finally { setBusy(false); }
   };
+  const refreshRules=async()=>{
+    if(busy||!desktop?.refreshProtectionRules)return;
+    setBusy(true);setMessage('Checking Browsery protection definitions…');
+    try {
+      const result=await desktop.refreshProtectionRules();
+      if(result?.rules)setStatus({loading:false,...result});
+      const detail=result?.rules?.version?`Definitions ${result.rules.version} are ready.`:result?.message||'Browsery kept its current local definitions.';
+      setMessage(result?.ok?detail:result?.message||'Browsery could not fetch an update, so current local definitions stay active.');
+    } catch { setMessage('Browsery could not fetch an update, so current local definitions stay active.'); }
+    finally { setBusy(false); }
+  };
   const currentPage=host||'the new-tab page';
   const protectionSummary=status.loading?'Reading Browsery’s local protection state.':status.allowlisted?`${host} is on your allowlist.`:!status.enabled?'Turn on ad blocking or select Balanced / Strict tracker protection.':status.adblockEnabled?`Blocking ads and ${status.trackerMode.toLowerCase()} tracker traffic.`:`Blocking ${status.trackerMode.toLowerCase()} tracker traffic.`;
   return <aside ref={panelRef} className={`drawer protection-drawer ${open?'open':''}`} aria-hidden={!open}>
@@ -713,11 +900,28 @@ function ProtectionDrawer({open,onClose,tab,onOpenSettings}) {
       <section className="protection-stats" aria-label="Protection totals"><article><b>{status.loading?'—':status.adsBlocked}</b><span>ads blocked</span></article><article><b>{status.loading?'—':status.trackersBlocked}</b><span>trackers blocked</span></article><article><b>{status.loading?'—':status.allowlistCount}</b><span>allowed sites</span></article></section>
       <section className="protection-card"><div><b>Current site</b><small>{currentPage}</small></div>{host?<SpringButton className="protection-site-action" disabled={busy||status.loading} onClick={()=>changeSite(status.allowlisted?'remove':'allow')}><span>{status.allowlisted?'Restore protection':'Allow this site'}</span><Icon name={status.allowlisted?'shield':'close'} size={15}/></SpringButton>:<span className="protection-muted">Open a webpage to manage a site.</span>}</section>
       <section className="protection-card protection-mode"><div><b>Filtering mode</b><small>{status.adblockEnabled?'Ads blocked':'Ad blocking off'} · {status.trackerMode} trackers</small></div><SpringButton className="protection-site-action" onClick={onOpenSettings}><span>Privacy settings</span><Icon name="chevron" size={15}/></SpringButton></section>
+      <section className="protection-card protection-rules"><div><b>Rule definitions</b><small>{status.rules?.source||'Local Browsery definitions'}{status.rules?.version?` · ${status.rules.version}`:''}</small></div><SpringButton className="protection-site-action" disabled={busy||status.loading} onClick={refreshRules}><span>{busy?'Checking…':'Refresh rules'}</span><Icon name="reload" size={15}/></SpringButton></section>
       <section className="protection-allowlist"><div className="protection-section-head"><div><b>Site allowlist</b><small>{sites.length?'Protection is paused only on these sites.':'No sites are allowed through.'}</small></div>{status.blockedCount>0&&<SpringButton className="protection-reset" disabled={busy} onClick={reset}>Reset totals</SpringButton>}</div><div className="protection-site-list">{sites.length?sites.map(site=><article key={site}><span><Icon name="globe" size={15}/></span><b>{site}</b><SpringButton aria-label={`Restore protection for ${site}`} disabled={busy} onClick={()=>removeSite(site)}><Icon name="close" size={14}/></SpringButton></article>):<div className="protection-empty"><Icon name="shield" size={18}/><span>Your protection rules apply everywhere.</span></div>}</div></section>
       {message&&<p className="protection-message" role="status">{message}</p>}
-      <p className="protection-note">Browsery blocks common advertising and tracking subresources locally. It never blocks a page you type directly into the address bar, and it does not send your browsing activity to a filter-list service.</p>
+      <p className="protection-note">Browsery blocks common advertising and tracking subresources locally. It checks the official Browsery release channel for updated rule definitions, but never runs downloaded extension code or sends your browsing history to that channel.</p>
     </div>
   </aside>;
+}
+
+function PermissionPrompt({request,onDecision}) {
+  const [remember,setRemember]=useState(false);
+  useEffect(()=>setRemember(false),[request?.id]);
+  if(!request)return null;
+  const label=request.label||request.permission||'this feature';
+  return <div className="permission-layer" role="presentation">
+    <section className="permission-card" role="alertdialog" aria-modal="true" aria-labelledby="browsery-permission-title" aria-describedby="browsery-permission-copy">
+      <span className="permission-mark"><Icon name="shield" size={20}/></span>
+      <div className="permission-copy"><span>Website permission</span><h2 id="browsery-permission-title">Allow {label}?</h2><p id="browsery-permission-copy"><b>{request.origin}</b> wants to use {label}. Only allow this when you trust the site.</p></div>
+      {!request.private&&<label className="permission-remember"><input type="checkbox" checked={remember} onChange={event=>setRemember(event.target.checked)}/><span>Remember for this site</span></label>}
+      {request.private&&<p className="permission-private">Private sessions do not save permission decisions.</p>}
+      <div className="permission-actions"><button type="button" className="permission-block" onClick={()=>onDecision('block',false)}>Block</button><button type="button" className="permission-allow" onClick={()=>onDecision('allow',remember)}>Allow</button></div>
+    </section>
+  </div>;
 }
 
 function FindBar({open,onClose,onFind,count=0,active=0}) {
@@ -806,7 +1010,38 @@ function LocalMusicPlayer({compact=false}) {
 
 function MusicDrawer({open,onClose}) { return <aside className={`drawer music-drawer ${open?'open':''}`}><div className="drawer-head"><div><span className="drawer-kicker">LOCAL, AD-FREE</span><h2>Music</h2></div><GlassButton icon="close" label="Close music" onClick={onClose}/></div><div className="music-drawer-body"><LocalMusicPlayer/><p>Your files stay on this device. Browsery does not use a streaming service, ads, or an account for this player.</p></div></aside> }
 
-function NewTab({onSearch, onOpenMusic, settings, pointer}) {
+function normalizeShortcut(raw) {
+  const candidate=String(raw||'').trim();
+  if(!candidate)return '';
+  const withProtocol=/^[a-z][a-z\d+.-]*:\/\//i.test(candidate)?candidate:`https://${candidate}`;
+  try { const parsed=new URL(withProtocol);return /^https?:$/.test(parsed.protocol)?parsed.href:''; } catch { return ''; }
+}
+
+function ShortcutDock({shortcuts,onOpen,onUpdate}) {
+  const addShortcut=()=>{
+    const raw=window.prompt('Website address for this shortcut');
+    if(raw===null)return;
+    const url=normalizeShortcut(raw);
+    if(!url){window.alert('Enter a valid http or https website address.');return}
+    const suggested=addressHost(url).replace(/^www\./,'');
+    const label=window.prompt('Shortcut name',suggested);
+    if(label===null)return;
+    onUpdate([...shortcuts,{id:`shortcut-${Date.now()}-${Math.random().toString(36).slice(2,7)}`,url,label:label.trim()||suggested,color:'#c8d8e7'}]);
+  };
+  const editShortcut=shortcut=>{
+    const label=window.prompt('Shortcut name',shortcut.label||addressHost(shortcut.url));
+    if(label===null)return;
+    const raw=window.prompt('Website address — leave blank to remove this shortcut',shortcut.url);
+    if(raw===null)return;
+    if(!raw.trim()){onUpdate(shortcuts.filter(item=>item.id!==shortcut.id));return}
+    const url=normalizeShortcut(raw);
+    if(!url){window.alert('Enter a valid http or https website address.');return}
+    onUpdate(shortcuts.map(item=>item.id===shortcut.id?{...item,url,label:label.trim()||addressHost(url)}:item));
+  };
+  return <div className="favorites spatial-shortcut-dock" aria-label="Homepage shortcuts">{shortcuts.map((shortcut,index)=><div className="favorite-entry" key={shortcut.id}><SpringButton onClick={()=>onOpen(shortcut.url)} onContextMenu={event=>{event.preventDefault();editShortcut(shortcut)}} className="favorite" style={{'--accent':shortcut.color||'#c8d8e7','--dock-index':index}} hoverScale={1.06} pressScale={.94} title={shortcut.url}><span><Favicon url={shortcut.url} title={shortcut.label}/></span><b>{shortcut.label||addressHost(shortcut.url)}</b></SpringButton><button type="button" className="shortcut-edit" onClick={()=>editShortcut(shortcut)} aria-label={`Edit ${shortcut.label||'shortcut'}`}><Icon name="more" size={14}/></button></div>)}<SpringButton onClick={addShortcut} className="favorite shortcut-add" hoverScale={1.05} pressScale={.94} title="Add homepage shortcut"><span><Icon name="plus" size={22}/></span><b>Add</b></SpringButton></div>;
+}
+
+function NewTab({onSearch, onOpenMusic, settings, pointer, shortcuts=defaultShortcuts, onUpdateShortcuts}) {
   const [query,setQuery]=useState(''); const [time,setTime]=useState('10:09');
   const videoRef=useRef(null),tiltState=useRef({frame:0,rect:null,x:0,y:0});
   useEffect(()=>{const f=()=>setTime(new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',hour12:settings.clockStyle==='12-hour'}));f();const i=setInterval(f,1000);return()=>clearInterval(i)},[settings.clockStyle]);
@@ -820,6 +1055,7 @@ function NewTab({onSearch, onOpenMusic, settings, pointer}) {
   },[settings.tilt,settings.power]);
   return <main className="new-tab">
     <video ref={videoRef} className="saturn-video" style={{'--saturn-tilt':`${saturnTiltAngle(settings.saturnTilt)}deg`}} src="./assets/saturn-loop.mp4" poster="./assets/saturn-poster.jpg" autoPlay muted loop playsInline preload="metadata"/>
+    <div className="saturn-ouroboros" style={{'--saturn-tilt':`${saturnTiltAngle(settings.saturnTilt)}deg`}} aria-hidden="true"><span/><i/><b/><em/></div>
     {settings.backgroundScene==='Spatial overlay'?<><WebGLScene pointer={pointer} settings={settings}/><div className="spatial-grid"/></>:null}
     <div className="ambient-title">Browsery <span>/ spatial new tab</span></div>
     <section className="new-tab-center spatial-rig" onPointerEnter={e=>{tiltState.current.rect=e.currentTarget.getBoundingClientRect()}} onPointerMove={tilt} onPointerLeave={e=>{const s=tiltState.current;if(s.frame)cancelAnimationFrame(s.frame);s.frame=0;s.rect=null;e.currentTarget.style.setProperty('--rx','3deg');e.currentTarget.style.setProperty('--ry','-10deg')}}>
@@ -828,14 +1064,16 @@ function NewTab({onSearch, onOpenMusic, settings, pointer}) {
         {settings.clockStyle!=='Hidden'&&<div className="time-block"><time>{time}</time><p>Where do you want to go?</p></div>}
         <form className="home-search" onSubmit={e=>{e.preventDefault();onSearch(query)}}><Icon name="search"/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder={`Search ${settings.engine==='Browsery'?'Browsery':settings.engine} or enter an address`}/><SpringButton aria-label="Search"><Icon name="forward"/></SpringButton></form>
       </div>
-      {settings.showFavorites&&<div className="favorites spatial-shortcut-dock">{favorites.map((f,i)=><SpringButton onClick={()=>f.label==='Music'?onOpenMusic?.():onSearch(favoriteUrls[f.label])} className="favorite" key={f.label} style={{'--accent':f.color,'--dock-index':i}} hoverScale={1.09} pressScale={.91}><span><FavoriteIcon name={f.label}/></span><b>{f.label}</b></SpringButton>)}</div>}
+      {settings.showFavorites && (
+        <ShortcutDock shortcuts={shortcuts} onOpen={onSearch} onUpdate={onUpdateShortcuts}/>
+      )}
     </section>
     <div className="new-tab-music"><LocalMusicPlayer compact/></div>
     {settings.showStatus&&<div className="bottom-status"><span><i/> Desktop browser ready</span><span>{settings.engine} · Saturn {(.5+(settings.videoSpeed??50)/100).toFixed(1)}×</span></div>}
   </main>;
 }
 
-function BrowserTabContents({tab,active,onSearch,onOpenMusic,onPageUpdate,onFindUpdate,settings,pointer,register}) {
+function BrowserTabContents({tab,active,onSearch,onOpenMusic,onPageUpdate,onFindUpdate,settings,pointer,register,shortcuts,onUpdateShortcuts}) {
   const webviewRef=useRef(null),source=useRef(tab.url),mountAddress=useRef(tab.url),isDesktop=Boolean(window.browseryDesktop?.isDesktop);
   const [loadError,setLoadError]=useState(false);
   const [safetyAlert,setSafetyAlert]=useState(null);
@@ -862,26 +1100,35 @@ function BrowserTabContents({tab,active,onSearch,onOpenMusic,onPageUpdate,onFind
     const ready=()=>{
       controller.ready=true;
       try{view.setAudioMuted(!visibility.current.active&&Boolean(visibility.current.muted))}catch{}
+      // Tell Electron which guest is foregrounded. The native layer uses this
+      // to enable/disable Chromium background throttling for sleeping tabs.
+      try{const webContentsId=view.getWebContentsId?.();if(Number.isSafeInteger(webContentsId))window.browseryDesktop?.updateTabActivity?.({webContentsId,active:Boolean(visibility.current.active)}).catch(()=>{})}catch{}
       if(controller.pendingUrl){const target=controller.pendingUrl;controller.pendingUrl=null;view.loadURL(target).catch(()=>{});return}
       setPageReady(true);
     };
-    const nav=event=>{const nextUrl=event.url||currentUrl();if(nextUrl)source.current=nextUrl;setSafetyAlert(null);setLoadError(false);onPageUpdate(tab.id,{url:nextUrl})};
+    const nav=event=>{const nextUrl=event.url||currentUrl();if(nextUrl)source.current=nextUrl;try{const webContentsId=view.getWebContentsId?.();if(nextUrl&&Number.isSafeInteger(webContentsId))window.browseryDesktop?.predictivePreload?.({webContentsId,url:nextUrl}).catch(()=>{})}catch{}setSafetyAlert(null);setLoadError(false);onPageUpdate(tab.id,{url:nextUrl})};
     const guard=event=>{const nextUrl=event.url;if(bypassSafety.current===nextUrl){bypassSafety.current='';return}const reason=settings.phishing?suspiciousUrl(nextUrl):null;if(reason){event.preventDefault();setSafetyAlert({url:nextUrl,reason});onPageUpdate(tab.id,{loading:false});}};
     const title=event=>onPageUpdate(tab.id,{title:event.title,currentUrl:currentUrl()});
+    const favicon=event=>{const icon=Array.isArray(event.favicons)?event.favicons.find(value=>/^https?:/i.test(value)):'';if(icon)onPageUpdate(tab.id,{favicon:icon,currentUrl:currentUrl()});};
     const start=()=>{setLoadError(false);setPageReady(false);onPageUpdate(tab.id,{loading:true})};
     const stop=()=>{const address=currentUrl();if(address)source.current=address;if(controller.ready)setPageReady(true);onPageUpdate(tab.id,{loading:false,...(address?{url:address}:{})})};
     const fail=event=>{if(event.isMainFrame&&event.errorCode!==-3){setLoadError(true);setPageReady(true)}};
     const found=event=>{if(visibility.current.active)onFindUpdate?.({matches:event.matches||0,active:event.activeMatchOrdinal||0})};
-    view.addEventListener('dom-ready',ready);view.addEventListener('will-navigate',guard);view.addEventListener('did-navigate',nav);view.addEventListener('did-navigate-in-page',nav);view.addEventListener('page-title-updated',title);view.addEventListener('did-start-loading',start);view.addEventListener('did-stop-loading',stop);view.addEventListener('did-fail-load',fail);view.addEventListener('found-in-page',found);
-    return()=>{controller.ready=false;guest.current=null;register(tab.id,null);view.removeEventListener('dom-ready',ready);view.removeEventListener('will-navigate',guard);view.removeEventListener('did-navigate',nav);view.removeEventListener('did-navigate-in-page',nav);view.removeEventListener('page-title-updated',title);view.removeEventListener('did-start-loading',start);view.removeEventListener('did-stop-loading',stop);view.removeEventListener('did-fail-load',fail);view.removeEventListener('found-in-page',found)};
+    view.addEventListener('dom-ready',ready);view.addEventListener('will-navigate',guard);view.addEventListener('did-navigate',nav);view.addEventListener('did-navigate-in-page',nav);view.addEventListener('page-title-updated',title);view.addEventListener('page-favicon-updated',favicon);view.addEventListener('did-start-loading',start);view.addEventListener('did-stop-loading',stop);view.addEventListener('did-fail-load',fail);view.addEventListener('found-in-page',found);
+    return()=>{controller.ready=false;guest.current=null;register(tab.id,null);view.removeEventListener('dom-ready',ready);view.removeEventListener('will-navigate',guard);view.removeEventListener('did-navigate',nav);view.removeEventListener('did-navigate-in-page',nav);view.removeEventListener('page-title-updated',title);view.removeEventListener('page-favicon-updated',favicon);view.removeEventListener('did-start-loading',start);view.removeEventListener('did-stop-loading',stop);view.removeEventListener('did-fail-load',fail);view.removeEventListener('found-in-page',found)};
   },[tab.id,shouldLoad,settings.private,settings.phishing,isDesktop,onPageUpdate,onFindUpdate,register]);
-  if(!tab.url)return <div className={`browser-tab-surface ${active?'is-active':''}`} style={{display:active?'flex':'none'}}>{active?<NewTab onSearch={onSearch} onOpenMusic={onOpenMusic} settings={settings} pointer={pointer}/>:null}</div>;
+  useEffect(()=>{
+    if(!isDesktop||!shouldLoad)return;
+    const view=guest.current?.view;
+    try{const webContentsId=view?.getWebContentsId?.();if(Number.isSafeInteger(webContentsId))window.browseryDesktop?.updateTabActivity?.({webContentsId,active:Boolean(active)}).catch(()=>{})}catch{}
+  },[active,isDesktop,shouldLoad]);
+  if(!tab.url)return <div className={`browser-tab-surface ${active?'is-active':''}`} style={{display:active?'flex':'none'}}>{active?<NewTab onSearch={onSearch} onOpenMusic={onOpenMusic} settings={settings} pointer={pointer} shortcuts={shortcuts} onUpdateShortcuts={onUpdateShortcuts}/>:null}</div>;
   if(!shouldLoad)return <div className="browser-tab-surface" style={{display:'none'}} aria-hidden="true"/>;
   let failedQuery='';try{failedQuery=new URL(tab.url).searchParams.get('q')||''}catch{}
   return <div className={`browser-tab-surface ${active?'is-active':''}`} style={{display:active?'flex':'none'}} aria-hidden={!active}>{isDesktop?<webview ref={webviewRef} key={`${tab.id}-${settings.private?'private':'normal'}`} src={mountAddress.current} partition={settings.private?'browsery-private':'persist:browsery'} webpreferences="contextIsolation=yes,sandbox=yes"/>:<iframe title={tab.title} src={tab.url} />}{isDesktop&&!pageReady&&!loadError&&!safetyAlert&&<div className="browser-load-state" role="status"><span className="browser-load-orbit"/><h2>{tab.url?.startsWith('browsery:')?'Opening Browsery Search…':'Opening page…'}</h2><p>{failedQuery||addressHost(tab.url)}</p></div>}{safetyAlert&&<div className="browser-safety-alert" role="alert"><span><Icon name="shield" size={25}/></span><h2>Browsery paused this link</h2><p>{safetyAlert.reason} Browsery has not loaded the page.</p><small>Local phishing checks are not antivirus protection. Groq can explain a page after it is opened, but does not decide this warning.</small><div><SpringButton onClick={()=>{bypassSafety.current=safetyAlert.url;setSafetyAlert(null);webviewRef.current?.loadURL?.(safetyAlert.url).catch(()=>{})}}>Open anyway</SpringButton><SpringButton onClick={()=>onSearch('')}>Return to search</SpringButton></div></div>}{loadError&&<div className="browser-load-error" role="alert"><span className="browser-load-error-icon"><Icon name="alert" size={19}/></span><h2>{tab.url?.startsWith('browsery:')?'Browsery Search did not load':'This page did not load'}</h2><p>The page request failed before Browsery received any content. Your tabs and saved browser data are unchanged.</p><div><SpringButton onClick={()=>onSearch(tab.url)}>Retry</SpringButton>{failedQuery&&<SpringButton onClick={()=>onSearch(`https://www.bing.com/search?q=${encodeURIComponent(failedQuery)}`)}>Try another search source</SpringButton>}</div></div>}</div>;
 }
 
-const BrowserViewport=React.forwardRef(function BrowserViewport({tabs,active,onSearch,onOpenMusic,onPageUpdate,onFindUpdate,settings,pointer},ref){
+const BrowserViewport=React.forwardRef(function BrowserViewport({tabs,active,onSearch,onOpenMusic,onPageUpdate,onFindUpdate,settings,pointer,shortcuts,onUpdateShortcuts},ref){
   const views=useRef(new Map());
   const register=useCallback((id,view)=>{if(view)views.current.set(id,view);else views.current.delete(id)},[]);
   React.useImperativeHandle(ref,()=>{
@@ -895,20 +1142,138 @@ const BrowserViewport=React.forwardRef(function BrowserViewport({tabs,active,onS
       zoom:step=>{if(!current()?.ready)return null;const factor=invoke('getZoomFactor')||1;if(step==='read')return Math.round(factor*100);const next=step===0?1:Math.max(.5,Math.min(2,factor+step));invoke('setZoomFactor',next);return Math.round(next*100)},
     };
   },[active]);
-  return <div className="browser-page browser-viewport-stack">{tabs.map(tab=><BrowserTabContents key={tab.id} tab={tab} active={tab.id===active} onSearch={onSearch} onOpenMusic={onOpenMusic} onPageUpdate={onPageUpdate} onFindUpdate={onFindUpdate} settings={settings} pointer={pointer} register={register}/>)}</div>;
+  return <div className="browser-page browser-viewport-stack">{tabs.map(tab=><BrowserTabContents key={tab.id} tab={tab} active={tab.id===active} onSearch={onSearch} onOpenMusic={onOpenMusic} onPageUpdate={onPageUpdate} onFindUpdate={onFindUpdate} settings={settings} pointer={pointer} register={register} shortcuts={shortcuts} onUpdateShortcuts={onUpdateShortcuts}/>)}</div>;
 });
 
+const settingTourDetails = Object.freeze({
+  gpu:'Uses the graphics pipeline for Browsery’s spatial shell.', particles:'Sets the amount of visual cursor and scene detail.', aa:'Chooses the smoothing mode for the spatial scene.', fps:'Sets the target refresh cap for Browsery’s animated scene.', depth:'Changes how far panels lift in the spatial stage.', power:'Reduces nonessential visual motion to conserve resources.', texture:'Sets the quality level for Browsery-owned scene textures.', shadows:'Shows or hides dynamic depth shadows in the shell.', bloom:'Sets the strength of bright-edge glow.', dpr:'Sets the pixel-density ceiling for Browsery-owned visuals.',
+  blur:'Adjusts blur behind Browsery panels.', glow:'Sets the shell highlight color.', opacity:'Sets panel transparency.', tilt:'Sets pointer-based panel tilt.', speed:'Scales nonessential Browsery motion.', motionStrength:'Sets the press and release motion response.', trail:'Chooses the cursor-trail style.', refraction:'Enables or removes glass refraction effects.', parallax:'Enables or removes the spatial background offset.', shards:'Shows or hides the decorative floating shards.', corners:'Chooses the compactness of spatial panel corners.',
+  adblock:'Enables Browsery’s built-in network blocking rules.', trackers:'Sets the tracker-blocking level.', https:'Upgrades eligible pages to HTTPS before loading.', phishing:'Checks destinations against Browsery’s local suspicious-link guard.', dnt:'Sends a Global Privacy Control preference where supported.', cookies:'Sets when Browsery purges cookie data.', private:'Opens browsing in Browsery’s private session partition.', doh:'Uses encrypted DNS resolution for Browsery requests.', fingerprint:'Applies Browsery’s fingerprint-reduction preferences.', webrtc:'Limits WebRTC address exposure.', telemetry:'Controls Browsery’s optional anonymous telemetry setting.',
+  tabs:'Switches between horizontal and vertical tab layouts.', engine:'Chooses the default source for omnibox searches.', homepage:'Chooses what the Home button opens.', homepageUrl:'Sets the address used when Custom homepage is selected.', path:'Chooses where Browsery places downloads.', suggestions:'Shows or hides local history and bookmark suggestions.', sleep:'Allows inactive tabs to be suspended when Browsery decides they are idle.', restore:'Restores the last Browsery session after restart.', preload:'Allows Browsery to warm up likely navigation targets.', compact:'Tightens tab spacing.', closewarn:'Shows a confirmation before Browsery closes when needed.',
+  aiOverview:'Enables the opt-in Groq overview on Browsery search pages.', aiModel:'Chooses the Groq model used for Browsery AI features.',
+  ambience:'Turns the optional procedural space ambience on or off.', ambienceVolume:'Sets the ambience volume.', clicks:'Turns Browsery click sounds on or off.', hover:'Turns hover feedback on or off.', master:'Sets Browsery audio volume.', visualizer:'Shows or hides the audio visualizer.', mutetabs:'Mutes background-tab audio when enabled.', startup:'Turns the Browsery startup sound on or off.', downloadtone:'Turns download-complete sound on or off.', haptic:'Sets Browsery’s visual/haptic response strength.', theme:'Chooses the Browsery sound character.', spatialaudio:'Turns the spatial audio field on or off.',
+  accentPreset:'Applies a Browsery color preset.', systemContrast:'Allows Browsery to respect the Windows contrast preference.', backgroundScene:'Chooses the new-tab background treatment.', saturnTilt:'Rotates the Saturn composition.', backgroundBrightness:'Sets the Saturn video brightness.', backgroundContrast:'Sets the Saturn video contrast.', videoSpeed:'Sets the Saturn video playback speed.', clockStyle:'Chooses the new-tab clock format.', showFavorites:'Shows or hides the shortcut dock.', showStatus:'Shows or hides the new-tab status line.', chromeDensity:'Changes toolbar and tab spacing.', cornerStyle:'Chooses Browsery panel corner styling.', fontScale:'Scales Browsery interface text and shell controls.', cursorEnabled:'Shows or hides Browsery’s optional cursor trail.', cursorSize:'Sets the cursor-trail size.',
+});
+
+const settingTourAction = Object.freeze({
+  toggle:'Use the switch to choose its state.', range:'Drag the slider to choose a value.', angle:'Drag the slider to set the angle.', color:'Choose a color with the color picker.', text:'Enter the destination address here.', select:'Choose an option from the menu.',
+});
+
+const settingsWalkthroughSteps = settingsSchema.flatMap(category => [
+  {id:`settings-${category.id}`,title:`${category.label} settings`,body:`Browsery has ${category.items.length} ${category.label.toLowerCase()} controls. The next steps spotlight each one; the tour never changes a setting for you.`,target:`[data-tour="settings-${category.id}"]`,panel:'settings',section:category.id,kind:'category'},
+  ...category.items.map(([id,label,type])=>({
+    id:`setting-${id}`,
+    title:label,
+    body:`${settingTourDetails[id]||`Controls ${label.toLowerCase()} in Browsery.`} ${settingTourAction[type]||'Choose the value you prefer.'} Your choice is not changed by this tour.`,
+    target:`[data-tour="setting-${id}"]`,
+    panel:'settings',
+    section:category.id,
+    kind:'setting',
+  })),
+]);
+
+const ownerGuideRoutes = Object.freeze([
+  { id:'search', label:'Search & tabs' },
+  { id:'extensions', label:'Extensions' },
+  { id:'settings', label:'Settings' },
+  { id:'privacy', label:'Protection' },
+  { id:'groq-setup', label:'Groq setup' },
+  { id:'vpn', label:'Proton VPN' },
+]);
+
+const ownerSettingsRoutes = Object.freeze(settingsSchema.map(({id,label,items})=>({id,label,count:items.length})));
+
+const presentationSteps = [
+  {id:'welcome',title:'Your Browsery owner guide',body:'No hunting through icons. This short guide opens the real feature panels, then lets you stay there and use them. Pick an area below or go step by step.',target:null,routes:ownerGuideRoutes},
+  {id:'tabs',title:'Tabs and workspaces',body:'The top strip is where you create, close, switch, pin, group, and reorder tabs. Right-click a tab for its workspace actions.',target:'[data-tour="tabs"]'},
+  {id:'search',title:'Search, URLs and navigation',body:'Type a website address or a question here. Back, forward, reload, and Home sit immediately to its left.',target:'[data-tour="omnibox"]'},
+  {id:'library',title:'Bookmarks, history and closed tabs',body:'This grid button opens Bookmarks. The clock button is History and includes recently closed tabs; the magnifier finds text on the page.',target:'.bookmark-drawer',panel:'bookmarks',actionLabel:'Use Bookmarks'},
+  {id:'extensions',title:'Extensions are here',body:'Extensions are the third icon in the first tools group. Browsery’s store has 20 bundled, local preference packs—nothing is downloaded or run from random websites.',target:'.extensions-drawer',panel:'extensions',actionLabel:'Use Extensions'},
+  {id:'downloads',title:'Downloads, in one place',body:'The download arrow opens live transfers. Pause, cancel, open, and reveal files from this panel. You can also press Ctrl+J.',target:'.download-drawer',panel:'downloads',actionLabel:'Use Downloads'},
+  {id:'privacy',title:'Protection and site data',body:'The shield opens Browsery’s protection dashboard. Cookies and site data are in the button directly beside it, so you can review or clear them without searching.',target:'.protection-drawer',panel:'protection',actionLabel:'Open Protection'},
+  {id:'vpn',title:'Proton VPN',body:'The VPN button opens Browsery’s Proton connection panel. It can launch the Proton app or send you to the official setup when Proton needs attention.',target:'.vpn-drawer',panel:'vpn',actionLabel:'Open Proton VPN'},
+  {id:'groq-setup',title:'Set up Groq once',body:'Your Groq key belongs in Settings → AI Overview. It is stored securely on this device and powers both short search overviews and the two Groq tools.',target:'[data-tour="groq-credentials"]',panel:'settings',section:'ai',actionLabel:'Set up Groq'},
+  {id:'voice',title:'Hey Groq voice assistant',body:'Start a voice session only when you want it, then say “Hey Groq” and a question. Browsery can show the answer and read it aloud; it never starts listening by itself.',target:'.voice-assistant-drawer',panel:'voice',actionLabel:'Use Hey Groq'},
+  {id:'analyze',title:'Analyze a page with Groq',body:'Analyze with Groq checks the currently visible page for layout issues and gives a short written result. It is a visual helper, not antivirus protection.',target:'.analyze-drawer',panel:'analyze',actionLabel:'Open Analyze'},
+  {id:'music',title:'Your ad-free music player',body:'Music plays files you choose from your computer. There is no account, streaming service, or advertising in this player.',target:'.music-drawer',panel:'music',actionLabel:'Open Music'},
+  {id:'settings',title:'Every setting has a home',body:'The gear opens the control room. Choose any category below to jump directly to its real controls—there is no 89-screen setting slideshow anymore.',target:'.settings-drawer',panel:'settings',section:'graphics',actionLabel:'Open Settings',settingsRoutes:ownerSettingsRoutes},
+  {id:'space',title:'Your personal start space',body:'The Saturn new tab is where your shortcuts, clock, local music player, and visual controls come together. It stays visual here and out of the way on normal websites.',target:'.new-tab-center'},
+  {id:'finish',title:'You know where everything is',body:'Use the ? at the far right any time to replay this owner guide. It never changes a setting by itself; “Use it” always leaves the real panel open for you.',target:null},
+];
+
+function TutorialOverlay({open,stepIndex,onClose,onNext,onBack,onJump,onOpenFeature}) {
+  const [rect,setRect]=useState(null);
+  const cardRef=useRef(null);
+  const restoreFocusRef=useRef(null);
+  const step=presentationSteps[stepIndex]||presentationSteps[0];
+  useEffect(()=>{
+    if(!open)return undefined;
+    restoreFocusRef.current=document.activeElement instanceof HTMLElement?document.activeElement:null;
+    const timer=requestAnimationFrame(()=>cardRef.current?.querySelector('[data-tour-primary]')?.focus());
+    const onKeyDown=event=>{
+      if(event.key==='Escape'){event.preventDefault();onClose();return}
+      if(event.key!=='Tab')return;
+      const focusable=[...cardRef.current?.querySelectorAll('button:not([disabled]),[href],input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])')||[]].filter(element=>!element.hasAttribute('hidden'));
+      if(!focusable.length)return;
+      const first=focusable[0],last=focusable[focusable.length-1];
+      if(!cardRef.current?.contains(document.activeElement)){event.preventDefault();(event.shiftKey?last:first).focus()}else if(event.shiftKey&&document.activeElement===first){event.preventDefault();last.focus()}else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first.focus()}
+    };
+    document.addEventListener('keydown',onKeyDown,true);
+    return()=>{cancelAnimationFrame(timer);document.removeEventListener('keydown',onKeyDown,true);const previous=restoreFocusRef.current;if(previous?.isConnected)previous.focus()};
+  },[open,onClose,stepIndex]);
+  useEffect(()=>{
+    if(!open){setRect(null);return undefined}
+    let settleTimer=0;
+    const update=()=>{
+      const element=step.target?document.querySelector(step.target):null;
+      if(step.kind==='setting'&&element)element.scrollIntoView({block:'nearest',behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});
+      const bounds=element?.getBoundingClientRect?.();
+      if(!bounds){setRect(null);return}
+      setRect({left:bounds.left,top:bounds.top,width:bounds.width,height:bounds.height});
+    };
+    const frame=requestAnimationFrame(()=>requestAnimationFrame(update));
+    settleTimer=setTimeout(update,250);
+    addEventListener('resize',update);addEventListener('scroll',update,true);
+    return()=>{cancelAnimationFrame(frame);clearTimeout(settleTimer);removeEventListener('resize',update);removeEventListener('scroll',update,true)};
+  },[open,step.target,stepIndex,step.kind]);
+  if(!open)return null;
+  const isLast=stepIndex===presentationSteps.length-1;
+  return <div className="tour-layer" role="dialog" aria-modal="true" aria-labelledby="browsery-tour-title" aria-describedby="browsery-tour-description">
+    <div className={`tour-dim ${rect?'':'tour-dim-full'}`}/>
+    {rect&&<div className="tour-spotlight" style={{left:rect.left-10,top:rect.top-10,width:rect.width+20,height:rect.height+20}}/>}
+    <section ref={cardRef} tabIndex="-1" className={`tour-card ${rect?'has-target':'is-intro'} ${step.panel?'tour-feature-step':''}`}>
+      <div className="tour-progress"><span>OWNER GUIDE · {stepIndex+1} OF {presentationSteps.length}</span><button type="button" onClick={onClose}>Close guide</button></div>
+      <span className="tour-kicker">BROWSERY OWNER GUIDE</span>
+      <h2 id="browsery-tour-title" aria-live="polite">{step.title}</h2>
+      <p id="browsery-tour-description">{step.body}</p>
+      {step.routes&&<div className="tour-route-grid" aria-label="Jump to a Browsery area">{step.routes.map(route=><button type="button" className="tour-route" onClick={()=>onJump(route.id)} key={route.id}><span>{route.label}</span><Icon name="forward" size={14}/></button>)}</div>}
+      {step.settingsRoutes&&<div className="tour-settings-grid" aria-label="Open a settings category">{step.settingsRoutes.map(route=><button type="button" className="tour-settings-link" onClick={()=>onOpenFeature('settings',route.id)} key={route.id}><span>{route.label}</span><small>{route.count} controls</small></button>)}</div>}
+      <div className="tour-actions"><button type="button" className="tour-back" onClick={onBack} disabled={stepIndex===0}>Back</button>{step.panel&&<button type="button" className="tour-open" onClick={()=>onOpenFeature(step.panel,step.section)}>{step.actionLabel||'Use it now'}</button>}<button data-tour-primary type="button" className="tour-next" onClick={onNext}>{isLast?'Finish':'Next'} <Icon name="forward" size={15}/></button></div>
+    </section>
+  </div>;
+}
+
 function readList(key) { try { const value=JSON.parse(localStorage.getItem(key)||'[]');return Array.isArray(value)?value.filter(item=>item&&typeof item.url==='string'):[] } catch { return [] } }
+function readNamedList(key,fallback=[]) { try { const value=JSON.parse(localStorage.getItem(key)||'[]');return Array.isArray(value)?value.filter(item=>typeof item==='string'&&item.trim()).map(item=>item.trim()):fallback } catch { return fallback } }
+function readTabGroups() { try { const value=JSON.parse(localStorage.getItem('browsery:tab-groups')||'[]');return Array.isArray(value)?value.filter(group=>group&&typeof group.id==='string'&&typeof group.name==='string').map(group=>({id:group.id,name:group.name.slice(0,42),color:/^#[0-9a-f]{6}$/i.test(group.color||'')?group.color:'#7fd7ef'})):[] } catch { return [] } }
+function readShortcuts() { try { const raw=localStorage.getItem('browsery:shortcuts');if(raw===null)return defaultShortcuts;const value=JSON.parse(raw);return Array.isArray(value)?value.map(item=>({id:String(item?.id||''),label:String(item?.label||'').slice(0,32),url:normalizeShortcut(item?.url),color:/^#[0-9a-f]{6}$/i.test(item?.color||'')?item.color:'#c8d8e7'})).filter(item=>item.id&&item.url):defaultShortcuts; } catch { return defaultShortcuts; } }
+function normalizeTab(tab) { return {id:tab?.id,title:String(tab?.title||'New Space').slice(0,180),url:typeof tab?.url==='string'?tab.url:null,loading:Boolean(tab?.loading),favicon:typeof tab?.favicon==='string'?tab.favicon:'',pinned:Boolean(tab?.pinned),groupId:typeof tab?.groupId==='string'?tab.groupId:null}; }
 function App() {
   const pointer=useRef({x:0,y:0}),browserRef=useRef(null),nextTabId=useRef(2),analysisRun=useRef(0);
   const [launchComplete,setLaunchComplete]=useState(false);
   const [session]=useState(()=>{try{return JSON.parse(localStorage.getItem('browsery:session')||'{}')}catch{return {}}});
-  const [tabs,setTabs]=useState(()=>Array.isArray(session.tabs)&&session.tabs.length?session.tabs:[{id:1,title:'New Space',url:null}]);
+  const [tabs,setTabs]=useState(()=>Array.isArray(session.tabs)&&session.tabs.length?session.tabs.map(normalizeTab):[normalizeTab({id:1,title:'New Space',url:null})]);
   const [active,setActive]=useState(()=>session.active||1);
   const [url,setUrl]=useState(''),[panel,setPanel]=useState(null),[toast,setToast]=useState(''),[theme,setTheme]=useState('dark');
+  const [appUpdate,setAppUpdate]=useState({status:'idle',available:false,downloaded:false,progress:0,message:''});
   const [history,setHistory]=useState(()=>readList('browsery:history')),[bookmarks,setBookmarks]=useState(()=>readList('browsery:bookmarks'));
+  const [closedTabs,setClosedTabs]=useState(()=>readList('browsery:closed-tabs').map(normalizeTab).slice(0,24));
+  const [tabGroups,setTabGroups]=useState(readTabGroups);
+  const [bookmarkFolders,setBookmarkFolders]=useState(()=>Array.from(new Set(['Favorites',...readNamedList('browsery:bookmark-folders')])));
+  const [shortcuts,setShortcuts]=useState(readShortcuts);
   const [findOpen,setFindOpen]=useState(false),[findCounts,setFindCounts]=useState({matches:0,active:0}),[zoomPercent,setZoomPercent]=useState(100);
   const [screenAnalysis,setScreenAnalysis]=useState({status:'idle'});
+  const [permissionRequest,setPermissionRequest]=useState(null);
   const [settings,setSettings]=useState(()=>{
     try {
       const saved=JSON.parse(localStorage.getItem('browsery:settings')||'{}');
@@ -920,6 +1285,9 @@ function App() {
       return {...initialSettings,...migrateAppearance(tunedSearch),tabs:['Horizontal','Vertical'].includes(saved.tabs)?saved.tabs:'Horizontal',aiModel:oldModel?'openai/gpt-oss-120b':(saved.aiModel||initialSettings.aiModel),engine:allowedEngines.includes(tunedSearch.engine)?tunedSearch.engine:'Browsery'};
     } catch { return {...initialSettings,appearanceProfileVersion:1}; }
   });
+  const [tourOpen,setTourOpen]=useState(()=>localStorage.getItem('browsery:tutorial-complete-v3')!=='1');
+  const [tourStep,setTourStep]=useState(0);
+  const [tourSection,setTourSection]=useState(null);
   const {audioEngine,audioReady}=useBrowseryAudio(settings);
   useClickFeedback(settings);
   const activeTab=tabs.find(t=>t.id===active)||tabs[0];
@@ -950,10 +1318,116 @@ function App() {
   },[settings]);
   useEffect(()=>{if(!settings.private)localStorage.setItem('browsery:history',JSON.stringify(history))},[history,settings.private]);
   useEffect(()=>{localStorage.setItem('browsery:bookmarks',JSON.stringify(bookmarks))},[bookmarks]);
+  useEffect(()=>{localStorage.setItem('browsery:bookmark-folders',JSON.stringify(bookmarkFolders))},[bookmarkFolders]);
+  useEffect(()=>{localStorage.setItem('browsery:shortcuts',JSON.stringify(shortcuts))},[shortcuts]);
+  useEffect(()=>{localStorage.setItem('browsery:tab-groups',JSON.stringify(tabGroups))},[tabGroups]);
+  useEffect(()=>{if(!settings.private)localStorage.setItem('browsery:closed-tabs',JSON.stringify(closedTabs.slice(0,24)))},[closedTabs,settings.private]);
   useEffect(()=>{if(settings.private)return;if(settings.restore)localStorage.setItem('browsery:session',JSON.stringify({tabs,active}));else localStorage.removeItem('browsery:session')},[tabs,active,settings.restore,settings.private]);
   const notify=useCallback(msg=>{setToast(msg);clearTimeout(notify.t);notify.t=setTimeout(()=>setToast(''),1800)},[]);
-  const openTab=useCallback(target=>{const id=nextTabId.current++;let title='New Space';if(target){try{title=new URL(target).hostname||'New page'}catch{title='New page'}}setTabs(current=>[...current,{id,title,url:target||null}]);setActive(id);setUrl(target||'');setPanel(null);return id},[]);
-  const closeTab=useCallback(id=>{if(tabs.length<=1){setTabs([{...tabs[0],title:'New Space',url:null,loading:false}]);setUrl('');return}const index=tabs.findIndex(tab=>tab.id===id),next=tabs.filter(tab=>tab.id!==id);if(active===id)setActive(next[Math.max(0,index-1)].id);setTabs(next)},[tabs,active]);
+  const answerPermission=useCallback(async(decision,remember)=>{
+    const request=permissionRequest;
+    if(!request?.id)return;
+    setPermissionRequest(null);
+    try{
+      const result=await window.browseryDesktop?.respondToPermission?.({id:request.id,decision,remember:Boolean(remember)});
+      if(result?.ok)notify(decision==='allow'?`${request.label||'Permission'} allowed${remember?' for this site':''}`:`${request.label||'Permission'} blocked`);
+    }catch{notify('Browsery could not update that permission');}
+  },[permissionRequest,notify]);
+  useEffect(()=>window.browseryDesktop?.onPermissionRequest?.(request=>{
+    if(request?.id&&request?.origin)setPermissionRequest(request);
+  }),[]);
+  useEffect(()=>window.browseryDesktop?.onPermissionResolved?.(result=>{
+    setPermissionRequest(current=>current?.id===result?.id?null:current);
+  }),[]);
+  useEffect(()=>window.browseryDesktop?.onBrowserSettingsApplied?.(payload=>{
+    if(payload?.message)notify(payload.message);
+  }),[notify]);
+  useEffect(()=>{
+    const desktop=window.browseryDesktop;
+    let active=true;
+    desktop?.appUpdateStatus?.().then(next=>{if(active&&next&&typeof next==='object')setAppUpdate(next)}).catch(()=>{});
+    const unsubscribe=desktop?.onAppUpdate?.(next=>{if(active&&next&&typeof next==='object')setAppUpdate(next)});
+    return()=>{active=false;unsubscribe?.()};
+  },[]);
+  const closeTour=useCallback(()=>{setTourOpen(false);setTourSection(null);setPanel(null);localStorage.setItem('browsery:tutorial-complete-v3','1')},[]);
+  const startTour=useCallback(()=>{setTourStep(0);setTourSection(null);setPanel(null);setTourOpen(true)},[]);
+  const moveTour=useCallback((nextIndex)=>{
+    const next=presentationSteps[nextIndex];
+    setTourStep(nextIndex);
+    setTourSection(next?.panel==='settings'?next.section||null:null);
+    setPanel(next?.panel||null);
+  },[]);
+  const nextTour=useCallback(()=>{if(tourStep>=presentationSteps.length-1){closeTour();return}moveTour(tourStep+1)},[tourStep,closeTour,moveTour]);
+  const previousTour=useCallback(()=>{if(tourStep>0)moveTour(tourStep-1)},[tourStep,moveTour]);
+  const jumpTour=useCallback(id=>{const nextIndex=presentationSteps.findIndex(step=>step.id===id);if(nextIndex>=0)moveTour(nextIndex)},[moveTour]);
+  const openTourFeature=useCallback((nextPanel,section=null)=>{setTourOpen(false);setTourSection(nextPanel==='settings'?section:null);setPanel(nextPanel);localStorage.setItem('browsery:tutorial-complete-v3','1')},[]);
+  const rememberClosed=useCallback(entries=>{
+    // A closed blank tab is still a tab the user may want back. Keep it in
+    // the same local undo stack as normal pages instead of silently dropping it.
+    const saved=entries.filter(Boolean).map(tab=>normalizeTab({...tab,loading:false}));
+    if(!saved.length)return;
+    setClosedTabs(current=>[...saved,...current.filter(existing=>!saved.some(item=>item.url===existing.url&&item.title===existing.title))].slice(0,24));
+    // Keep Electron's smaller native restore stack in sync for Ctrl+Shift+T
+    // pressed while focus is inside a website. Blank tabs stay local because
+    // they have no navigable URL for the native layer to restore.
+    saved.filter(tab=>tab.url).forEach(tab=>window.browseryDesktop?.rememberClosedTab?.({...tab,group:tab.groupId||''}).catch(()=>{}));
+  },[]);
+  const openTab=useCallback((target,restored={})=>{
+    const id=nextTabId.current++;
+    const destination=target??restored.url??null;
+    let title=restored.title||'New Space';
+    if(destination&&!restored.title){try{title=new URL(destination).hostname||'New page'}catch{title='New page'}}
+    setTabs(current=>[...current,normalizeTab({...restored,id,title,url:destination,loading:Boolean(destination)})]);
+    setActive(id);setUrl(destination||'');setPanel(null);return id;
+  },[]);
+  const closeTabs=useCallback(ids=>{
+    const requested=new Set(ids),closing=tabs.filter(tab=>requested.has(tab.id));
+    if(!closing.length)return;
+    const remaining=tabs.filter(tab=>!requested.has(tab.id));
+    rememberClosed(closing);
+    if(!remaining.length){const id=nextTabId.current++;setTabs([normalizeTab({id,title:'New Space',url:null})]);setActive(id);setUrl('');return}
+    if(requested.has(active)){
+      const originalIndex=tabs.findIndex(tab=>tab.id===active);
+      const nextActive=remaining.find(tab=>tabs.findIndex(item=>item.id===tab.id)>originalIndex)||[...remaining].reverse().find(tab=>tabs.findIndex(item=>item.id===tab.id)<originalIndex)||remaining[0];
+      setActive(nextActive.id);
+    }
+    setTabs(remaining);
+  },[tabs,active,rememberClosed]);
+  const closeTab=useCallback(id=>closeTabs([id]),[closeTabs]);
+  const reopenClosedTab=useCallback(async()=>{
+    const localTab=closedTabs[0];
+    if(localTab){
+      // Native history mirrors URL tabs for keyboard use inside webviews, but
+      // the renderer is the source of truth because it also retains blank tabs.
+      if(localTab.url)window.browseryDesktop?.reopenClosedTab?.().catch(()=>{});
+      setClosedTabs(current=>current.slice(1));openTab(localTab.url,localTab);notify(`Reopened ${localTab.title||addressHost(localTab.url)||'New tab'}`);return;
+    }
+    let nativeTab=null;
+    try{nativeTab=(await window.browseryDesktop?.reopenClosedTab?.())?.tab||null}catch{}
+    if(!nativeTab){notify('No closed tabs to reopen');return}
+    const tab=normalizeTab({...nativeTab,groupId:nativeTab.group||nativeTab.groupId||null});
+    openTab(tab.url,tab);notify(`Reopened ${tab.title||addressHost(tab.url)}`);
+  },[closedTabs,openTab,notify]);
+  const restoreNativeClosedTab=useCallback(rawTab=>{
+    if(!rawTab?.url)return;
+    const tab=normalizeTab({...rawTab,groupId:rawTab.group||rawTab.groupId||null});
+    setClosedTabs(current=>current.filter(item=>item.url!==tab.url));
+    openTab(tab.url,tab);
+    notify(`Reopened ${tab.title||addressHost(tab.url)}`);
+  },[openTab,notify]);
+  useEffect(()=>window.browseryDesktop?.onReopenClosedTab?.(restoreNativeClosedTab),[restoreNativeClosedTab]);
+  const setTabGroup=useCallback((id,groupId)=>setTabs(current=>current.map(tab=>tab.id===id?{...tab,groupId}:tab)),[]);
+  const createTabGroup=useCallback(tabId=>{
+    const requested=window.prompt('Name this tab group');
+    const name=String(requested||'').trim().slice(0,42);
+    if(!name)return;
+    const colors=['#7bdff2','#c8a6ff','#8ce5b2','#ffbe73','#ff92b3','#8fa9ff'];
+    const id=`group-${Date.now()}-${Math.random().toString(36).slice(2,6)}`;
+    setTabGroups(current=>[...current,{id,name,color:colors[current.length%colors.length]}]);
+    setTabGroup(tabId,id);
+  },[setTabGroup]);
+  const closeOtherTabs=useCallback(id=>closeTabs(tabs.filter(tab=>tab.id!==id&&!tab.pinned).map(tab=>tab.id)),[tabs,closeTabs]);
+  const closeTabsToRight=useCallback(id=>{const index=tabs.findIndex(tab=>tab.id===id);if(index<0)return;closeTabs(tabs.slice(index+1).filter(tab=>!tab.pinned).map(tab=>tab.id))},[tabs,closeTabs]);
   const go=useCallback(q=>{const entry=q||url;const address=resolveAddress(entry,settings.engine);if(!address)return;if(activeTab?.url)browserRef.current?.navigate(address);setTabs(current=>current.map(tab=>tab.id===active?{...tab,title:entry.slice(0,48),url:address,loading:true}:tab));setUrl(address);setPanel(null);setFindOpen(false)},[url,active,activeTab?.url,settings.engine]);
   const pageUpdate=useCallback((tabId,update)=>{
     const {currentUrl,...tabUpdate}=update;
@@ -963,14 +1437,43 @@ function App() {
       if(update.url)setHistory(current=>{if(current[0]?.url===visitedUrl)return current;return [{url:visitedUrl,title:update.title||visitedUrl,visitedAt:Date.now()},...current.filter(item=>item.url!==visitedUrl)].slice(0,240)});
       if(update.title)setHistory(current=>current.map(item=>item.url===visitedUrl?{...item,title:update.title}:item));
     }
+    if(visitedUrl&&(update.title||update.favicon))setBookmarks(current=>current.map(item=>item.url===visitedUrl?{...item,...(update.title?{title:update.title}:{}),...(update.favicon?{favicon:update.favicon}:{})}:item));
   },[settings.private]);
   const onFindUpdate=useCallback(next=>setFindCounts(next),[]);
   const find=useCallback((query,next)=>browserRef.current?.find(query,next),[]);
   const home=useCallback(()=>{const blank=settings.homepage==='Blank',custom=settings.homepage==='Custom',destination=blank?'about:blank':custom?resolveAddress(settings.homepageUrl,settings.engine):null;if(custom&&!destination){notify('Set a valid custom homepage in Settings → Browser');return}if(destination&&activeTab?.url)browserRef.current?.navigate(destination);let title=blank?'Blank Page':'New Space';if(custom){try{title=new URL(destination).hostname}catch{title=destination}}setTabs(current=>current.map(tab=>tab.id===active?{...tab,title,url:destination,loading:false}:tab));setUrl(destination||'');setFindOpen(false)},[active,activeTab?.url,settings.homepage,settings.homepageUrl,settings.engine,notify]);
   const togglePanel=useCallback(p=>setPanel(current=>current===p?null:p),[]);
-  const toggleBookmark=useCallback(()=>{if(!activeTab?.url){notify('Open a page before saving a bookmark');return}const exists=bookmarks.some(item=>item.url===activeTab.url);if(exists){setBookmarks(current=>current.filter(item=>item.url!==activeTab.url));notify('Bookmark removed')}else{setBookmarks(current=>[{url:activeTab.url,title:activeTab.title||activeTab.url,savedAt:Date.now()},...current]);notify('Bookmark saved') }},[activeTab,bookmarks,notify]);
+  const toggleBookmark=useCallback(()=>{if(!activeTab?.url){notify('Open a page before saving a bookmark');return}const exists=bookmarks.some(item=>item.url===activeTab.url);if(exists){setBookmarks(current=>current.filter(item=>item.url!==activeTab.url));notify('Bookmark removed')}else{setBookmarks(current=>[{url:activeTab.url,title:activeTab.title||activeTab.url,favicon:activeTab.favicon||'',folder:'Favorites',savedAt:Date.now()},...current]);setBookmarkFolders(current=>current.includes('Favorites')?current:['Favorites',...current]);notify('Bookmark saved to Favorites')}},[activeTab,bookmarks,notify]);
+  const createBookmarkFolder=useCallback(name=>{
+    const folder=String(name||'').trim().slice(0,42);if(!folder)return;
+    setBookmarkFolders(current=>current.some(item=>item.toLowerCase()===folder.toLowerCase())?current:[...current,folder]);
+  },[]);
+  const moveBookmark=useCallback((address,folder)=>{
+    createBookmarkFolder(folder);
+    setBookmarks(current=>current.map(item=>item.url===address?{...item,folder}:item));
+  },[createBookmarkFolder]);
+  const importBookmarks=useCallback(items=>{
+    const prepared=items.map(item=>({url:normalizeShortcut(item.url),title:String(item.title||'').trim().slice(0,140),folder:String(item.folder||'Imported').trim().slice(0,42)||'Imported'})).filter(item=>item.url);
+    const known=new Set(bookmarks.map(item=>item.url));const additions=prepared.filter(item=>!known.has(item.url));
+    if(!additions.length){notify('Those bookmarks are already in your library');return}
+    const now=Date.now();setBookmarks(current=>[...additions.map(item=>({...item,savedAt:now})),...current]);setBookmarkFolders(current=>Array.from(new Set([...current,...additions.map(item=>item.folder)])));notify(`${additions.length} bookmark${additions.length===1?'':'s'} imported`);
+  },[bookmarks,notify]);
   const zoom=useCallback(step=>{const next=browserRef.current?.zoom(step);if(next){setZoomPercent(next);notify(`Zoom ${next}%`)}},[notify]);
   const openAnalysis=useCallback(()=>setPanel('analyze'),[]);
+  const updateBrowsery=useCallback(async()=>{
+    const desktop=window.browseryDesktop;
+    if(!desktop?.isDesktop){notify('Updates are available in the Browsery desktop app');return}
+    if(['checking','downloading','installing'].includes(appUpdate.status))return;
+    try{
+      const result=appUpdate.status==='downloaded'
+        ? await desktop.installAppUpdate?.()
+        : appUpdate.status==='available'
+          ? await desktop.downloadAppUpdate?.()
+          : await desktop.checkForAppUpdate?.();
+      if(result&&typeof result==='object')setAppUpdate(result);
+      if(result?.message&&!['available','downloaded','downloading','installing'].includes(result.status))notify(result.message);
+    }catch{notify('Browsery could not update right now')}
+  },[appUpdate.status,notify]);
   const analyzeVisiblePage=useCallback(async()=>{
     setPanel('analyze');
     if(!activeTab?.url){setScreenAnalysis({status:'no-page'});return}
@@ -987,6 +1490,7 @@ function App() {
     if(shortcut==='focus'){const input=document.querySelector('.omnibox input');input?.focus();input?.select();setPanel(null);return}
     if(shortcut==='new-tab'){openTab();return}
     if(shortcut==='close-tab'){closeTab(active);return}
+    if(shortcut==='reopen-tab'){reopenClosedTab();return}
     if(shortcut==='reload'){browserRef.current?.reload();return}
     if(shortcut==='back'){browserRef.current?.back();return}
     if(shortcut==='forward'){browserRef.current?.forward();return}
@@ -999,11 +1503,12 @@ function App() {
     if(shortcut==='zoom-out'){zoom(-.1);return}
     if(shortcut==='zoom-reset'){zoom(0);return}
     if(shortcut==='escape'){if(findOpen)setFindOpen(false);else setPanel(null)}
-  },[openTab,closeTab,active,toggleBookmark,zoom,findOpen]);
+  },[openTab,closeTab,reopenClosedTab,active,toggleBookmark,zoom,findOpen]);
   useEffect(()=>{
     const onKeyDown=event=>{
       const key=event.key.toLowerCase(),mod=event.ctrlKey||event.metaKey;
       if(mod&&key==='l'){event.preventDefault();handleShortcut('focus')}
+      else if(mod&&event.shiftKey&&key==='t'){event.preventDefault();handleShortcut('reopen-tab')}
       else if(mod&&key==='t'){event.preventDefault();handleShortcut('new-tab')}
       else if(mod&&key==='w'){event.preventDefault();handleShortcut('close-tab')}
       else if(mod&&key==='r'){event.preventDefault();handleShortcut('reload')}
@@ -1025,31 +1530,26 @@ function App() {
   useEffect(()=>window.browseryDesktop?.onNewTab?.(target=>openTab(target)),[openTab]);
   const classes=[`density-${String(settings.chromeDensity).toLowerCase()}`,`corners-${String(settings.cornerStyle).toLowerCase()}`,settings.tabs==='Vertical'?'vertical-tabs':'',settings.compact?'compact-tabs':'',settings.refraction?'has-refraction':'flat-panels',settings.parallax?'has-parallax':'',settings.shadows?'':'no-ui-shadows'].filter(Boolean).join(' ');
   const finishLaunch=useCallback(()=>setLaunchComplete(true),[]);
-  return <div data-palette={settings.systemContrast?'system':'custom'} data-accent={settings.accentPreset==='Monochrome'?'monochrome':'color'} className={`app ${theme} desktop-browser ${classes} ${activeTab?.loading?'is-loading':''}`}>{!launchComplete&&<LaunchScreen onComplete={finishLaunch}/>}<MagicCursor settings={settings}/><div className="browser-shell"><SoundVisualizer audioEngine={audioEngine} enabled={audioReady&&settings.visualizer&&settings.ambience&&settings.ambienceVolume>0&&settings.master>0}/>
-    <TabStrip tabs={tabs} setTabs={setTabs} active={active} setActive={setActive} onNewTab={()=>openTab()}/>
+  const updateToolbarLabel=appUpdate.status==='installing'?'Restarting…':appUpdate.status==='downloaded'?'Restart':appUpdate.status==='downloading'?`${Math.round(Number(appUpdate.progress)||0)}%`:appUpdate.status==='available'?'Update':appUpdate.status==='checking'?'Checking…':'Update';
+  const updateToolbarIcon=appUpdate.status==='downloaded'?'reload':'download';
+  const updateToolbarBusy=['checking','downloading','installing'].includes(appUpdate.status);
+  return <div data-palette={settings.systemContrast?'system':'custom'} data-accent={settings.accentPreset==='Monochrome'?'monochrome':'color'} className={`app ${theme} desktop-browser ${classes} ${activeTab?.loading?'is-loading':''} ${launchComplete?'':'is-launching'}`}>{!launchComplete&&<LaunchScreen onComplete={finishLaunch}/>}<MagicCursor settings={settings}/>{launchComplete&&<div className="browser-shell"><SoundVisualizer audioEngine={audioEngine} enabled={audioReady&&settings.visualizer&&settings.ambience&&settings.ambienceVolume>0&&settings.master>0}/>
+    <TabStrip tabs={tabs} setTabs={setTabs} active={active} setActive={setActive} onNewTab={()=>openTab()} onCloseTab={closeTab} onReopenClosed={reopenClosedTab} closedCount={closedTabs.length} groups={tabGroups} onCloseOthers={closeOtherTabs} onCloseRight={closeTabsToRight} onSetGroup={setTabGroup} onCreateGroup={createTabGroup}/>
     <div className="toolbar">
-      <div className="nav-controls"><GlassButton icon="back" label="Back · Alt+←" onClick={()=>browserRef.current?.back()}/><GlassButton icon="forward" label="Forward · Alt+→" onClick={()=>browserRef.current?.forward()}/><GlassButton icon={activeTab?.loading?'close':'reload'} label={activeTab?.loading?'Stop loading':'Reload · Ctrl+R'} onClick={()=>activeTab?.loading?browserRef.current?.stop():browserRef.current?.reload()}/><GlassButton icon="home" label="Home" onClick={home}/></div>
+      <div className="nav-controls" data-tour="navigation"><GlassButton tour="back" icon="back" label="Back · Alt+←" onClick={()=>browserRef.current?.back()}/><GlassButton tour="forward" icon="forward" label="Forward · Alt+→" onClick={()=>browserRef.current?.forward()}/><GlassButton tour="reload" icon={activeTab?.loading?'close':'reload'} label={activeTab?.loading?'Stop loading':'Reload · Ctrl+R'} onClick={()=>activeTab?.loading?browserRef.current?.stop():browserRef.current?.reload()}/><GlassButton tour="home" icon="home" label="Home" onClick={home}/></div>
       <Omnibox value={url} setValue={setUrl} onGo={go} onAnalyze={openAnalysis} suggestionsEnabled={settings.suggestions} engine={settings.engine} history={settings.private?[]:history} bookmarks={bookmarks}/>
       <div className="toolbar-actions">
-        <GlassButton icon="bookmark" label={bookmarks.some(item=>item.url===activeTab?.url)?'Remove bookmark · Ctrl+D':'Save bookmark · Ctrl+D'} active={bookmarks.some(item=>item.url===activeTab?.url)} onClick={toggleBookmark}/>
-        <GlassButton icon="grid" label="Bookmarks" active={panel==='bookmarks'} onClick={()=>togglePanel('bookmarks')}/>
-        <GlassButton icon="history" label="History · Ctrl+H" active={panel==='history'} onClick={()=>togglePanel('history')}/>
-        <GlassButton icon="find" label="Find in page · Ctrl+F" active={findOpen} onClick={()=>handleShortcut('find')}/>
-        <GlassButton icon="cookie" label="Cookies & site data" active={panel==='data'} onClick={()=>togglePanel('data')}/>
-        <GlassButton icon="shield" label="Privacy shield" active={panel==='protection'} onClick={()=>togglePanel('protection')}/>
-        <GlassButton icon="music" label="Ad-free local music" active={panel==='music'} onClick={()=>togglePanel('music')}/>
-        <SpringButton className="analyze-toolbar" aria-label="Analyze with Groq" onClick={openAnalysis}><Icon name="spark" size={17}/><span>Analyze with Groq</span></SpringButton>
-        <GlassButton icon="download" label="Downloads · Ctrl+J" active={panel==='downloads'} onClick={()=>togglePanel('downloads')}/>
-        <GlassButton icon="settings" label="Settings" active={panel==='settings'} onClick={()=>togglePanel('settings')}/>
-        <GlassButton icon="vpn" label="Proton VPN" active={panel==='vpn'} onClick={()=>togglePanel('vpn')}/>
-        <SpringButton className="profile" onClick={()=>{setTheme(current=>current==='dark'?'light':'dark');notify('Theme shifted')}} aria-label="Toggle theme">MK</SpringButton>
+        <div className="toolbar-cluster" data-tour="workspace-tools"><GlassButton tour="bookmark" icon="bookmark" label={bookmarks.some(item=>item.url===activeTab?.url)?'Remove bookmark · Ctrl+D':'Save bookmark · Ctrl+D'} active={bookmarks.some(item=>item.url===activeTab?.url)} onClick={toggleBookmark}/><GlassButton tour="bookmarks" icon="grid" label="Bookmarks" active={panel==='bookmarks'} onClick={()=>togglePanel('bookmarks')}/><GlassButton tour="extensions" icon="extension" label="Extensions" active={panel==='extensions'} onClick={()=>togglePanel('extensions')}/><GlassButton tour="history" icon="history" label="History · Ctrl+H" active={panel==='history'} onClick={()=>togglePanel('history')}/><GlassButton tour="find" icon="find" label="Find in page · Ctrl+F" active={findOpen} onClick={()=>handleShortcut('find')}/></div>
+        <div className="toolbar-cluster" data-tour="privacy-tools"><GlassButton tour="cookies" icon="cookie" label="Cookies & site data" active={panel==='data'} onClick={()=>togglePanel('data')}/><GlassButton tour="protection" icon="shield" label="Privacy shield" active={panel==='protection'} onClick={()=>togglePanel('protection')}/></div>
+        <div className="toolbar-cluster" data-tour="media-tools"><GlassButton tour="music" icon="music" label="Ad-free local music" active={panel==='music'} onClick={()=>togglePanel('music')}/><SpringButton data-tour="voice" className="analyze-toolbar voice-toolbar" aria-label="Hey Groq voice assistant" onClick={()=>togglePanel('voice')}><Icon name="spark" size={17}/><span>Hey Groq</span></SpringButton><SpringButton data-tour="analyze" className="analyze-toolbar" aria-label="Analyze with Groq" onClick={openAnalysis}><Icon name="spark" size={17}/><span>Analyze with Groq</span></SpringButton></div>
+        <div className="toolbar-cluster" data-tour="system-tools"><GlassButton tour="downloads" icon="download" label="Downloads · Ctrl+J" active={panel==='downloads'} onClick={()=>togglePanel('downloads')}/><GlassButton tour="settings" icon="settings" label="Settings" active={panel==='settings'} onClick={()=>togglePanel('settings')}/><GlassButton tour="vpn" icon="vpn" label="Proton VPN" active={panel==='vpn'} onClick={()=>togglePanel('vpn')}/><SpringButton className={`update-toolbar ${appUpdate.available?'is-ready':''} ${updateToolbarBusy?'is-busy':''}`} onClick={updateBrowsery} disabled={updateToolbarBusy} aria-label={appUpdate.status==='downloaded'?'Restart Browsery to install update':appUpdate.status==='available'?'Download Browsery update':appUpdate.status==='downloading'?`Downloading Browsery update ${Math.round(Number(appUpdate.progress)||0)} percent`:'Check Browsery updates'}><Icon name={updateToolbarIcon} size={15}/><span>{updateToolbarLabel}</span></SpringButton><SpringButton data-tour="theme" className="profile" onClick={()=>{setTheme(current=>current==='dark'?'light':'dark');notify('Theme shifted')}} aria-label="Toggle theme">MK</SpringButton><SpringButton data-tour="tour" className={`owner-guide-button ${tourOpen?'active':''}`} onClick={startTour} aria-label="Open owner guide"><Icon name="help" size={16}/><span>Guide</span></SpringButton></div>
       </div>
     </div>
-    <div className="loading-line"/><div className="viewport"><FindBar open={findOpen} onClose={()=>setFindOpen(false)} onFind={find} count={findCounts.matches} active={findCounts.active}/><BrowserViewport ref={browserRef} tabs={tabs} active={active} onSearch={go} onOpenMusic={()=>togglePanel('music')} onPageUpdate={pageUpdate} onFindUpdate={onFindUpdate} settings={settings} pointer={pointer}/></div>
-     <AnalyzeDrawer open={panel==='analyze'} onClose={()=>setPanel(null)} tab={activeTab} result={screenAnalysis} onAnalyze={analyzeVisiblePage}/><SettingsDrawer open={panel==='settings'||panel==='privacy'} initialSection={panel==='privacy'?'privacy':'graphics'} onClose={()=>setPanel(null)} onManageData={()=>setPanel('data')} onManageProtection={()=>setPanel('protection')} values={settings} setValues={setSettings} audioEngine={audioEngine} audioReady={audioReady}/><ProtectionDrawer open={panel==='protection'} onClose={()=>setPanel(null)} tab={activeTab} onOpenSettings={()=>setPanel('privacy')}/><MusicDrawer open={panel==='music'} onClose={()=>setPanel(null)}/><BrowserDataDrawer open={panel==='data'} onClose={()=>setPanel(null)} history={settings.private?[]:history} onClearHistory={()=>setHistory([])}/><DownloadDrawer open={panel==='downloads'} onClose={()=>setPanel(null)} audioEngine={audioEngine}/><VpnPanel open={panel==='vpn'} onClose={()=>setPanel(null)} onOpenGuide={()=>go(window.browseryDesktop?.platform==='darwin'?'https://protonvpn.com/download-macos':'https://protonvpn.com/download-windows')}/>
+    <div className="loading-line"/><div className="viewport"><FindBar open={findOpen} onClose={()=>setFindOpen(false)} onFind={find} count={findCounts.matches} active={findCounts.active}/><BrowserViewport ref={browserRef} tabs={tabs} active={active} onSearch={go} onOpenMusic={()=>togglePanel('music')} onPageUpdate={pageUpdate} onFindUpdate={onFindUpdate} settings={settings} pointer={pointer} shortcuts={shortcuts} onUpdateShortcuts={setShortcuts}/></div>
+     <AnalyzeDrawer open={panel==='analyze'} onClose={()=>setPanel(null)} tab={activeTab} result={screenAnalysis} onAnalyze={analyzeVisiblePage}/><VoiceAssistantDrawer open={panel==='voice'} onClose={()=>setPanel(null)} model={settings.aiModel} Icon={Icon} Button={SpringButton} CloseButton={GlassButton}/><ExtensionStore open={panel==='extensions'} onClose={()=>setPanel(null)} setSettings={setSettings} onNotice={notify} Icon={Icon} Button={SpringButton} CloseButton={GlassButton}/><SettingsDrawer open={panel==='settings'||panel==='privacy'} initialSection={panel==='privacy'?'privacy':'graphics'} focusSection={tourSection} onClose={()=>setPanel(null)} onManageData={()=>setPanel('data')} onManageProtection={()=>setPanel('protection')} onManagePersonal={()=>setPanel('personal')} values={settings} setValues={setSettings} audioEngine={audioEngine} audioReady={audioReady}/><PersonalCenter open={panel==='personal'} onClose={()=>setPanel(null)} activeUrl={activeTab?.url} webContentsId={browserRef.current?.getWebContentsId?.()} Icon={Icon} Button={SpringButton} CloseButton={GlassButton}/><ProtectionDrawer open={panel==='protection'} onClose={()=>setPanel(null)} tab={activeTab} onOpenSettings={()=>setPanel('privacy')}/><MusicDrawer open={panel==='music'} onClose={()=>setPanel(null)}/><BrowserDataDrawer open={panel==='data'} onClose={()=>setPanel(null)} history={settings.private?[]:history} onClearHistory={()=>setHistory([])}/><DownloadDrawer open={panel==='downloads'} onClose={()=>setPanel(null)} audioEngine={audioEngine}/><VpnPanel open={panel==='vpn'} onClose={()=>setPanel(null)} onOpenGuide={()=>go(window.browseryDesktop?.platform==='darwin'?'https://protonvpn.com/download-macos':'https://protonvpn.com/download-windows')}/>
     <LibraryDrawer open={panel==='history'} onClose={()=>setPanel(null)} title="History" historyMode items={settings.private?[]:history} onSelect={go} onRemove={address=>setHistory(current=>current.filter(item=>item.url!==address))} onClear={()=>setHistory([])}/>
-    <LibraryDrawer open={panel==='bookmarks'} onClose={()=>setPanel(null)} title="Bookmarks" items={bookmarks} onSelect={go} onRemove={address=>setBookmarks(current=>current.filter(item=>item.url!==address))}/>
-  </div><Toast message={toast}/></div>;
+    <BookmarkDrawer open={panel==='bookmarks'} onClose={()=>setPanel(null)} items={bookmarks} folders={bookmarkFolders} onOpen={go} onRemove={address=>setBookmarks(current=>current.filter(item=>item.url!==address))} onMove={moveBookmark} onCreateFolder={createBookmarkFolder} onImport={importBookmarks}/>
+  </div>}<PermissionPrompt request={permissionRequest} onDecision={answerPermission}/><TutorialOverlay open={tourOpen&&launchComplete} stepIndex={tourStep} onClose={closeTour} onNext={nextTour} onBack={previousTour} onJump={jumpTour} onOpenFeature={openTourFeature}/><Toast message={toast}/></div>;
 }
 
 createRoot(document.getElementById('root')).render(<React.StrictMode><App/></React.StrictMode>);

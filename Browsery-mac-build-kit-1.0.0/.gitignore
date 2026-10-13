@@ -1,0 +1,16 @@
+node_modules/
+dist/
+outputs/
+work/
+.env
+.env.*
+*.log
+.DS_Store
+electron/native/*.exe
+groq-api-key.bin
+*.p12
+*.pfx
+*.p8
+*.pem
+*.key
+*.mobileprovision

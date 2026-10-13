@@ -9,8 +9,16 @@ const path = require('node:path');
 const { domainToASCII } = require('node:url');
 
 const MAX_ALLOWLIST_ENTRIES = 500;
+const MAX_REMOTE_RULES_PER_CATEGORY = 30_000;
+const RULE_REFRESH_INTERVAL = 24 * 60 * 60 * 1000;
+const MAX_RULE_DEFINITION_BYTES = 3 * 1024 * 1024;
+// This URL is only a data document published with Browsery releases. It is
+// deliberately not a generic subscription URL: Browsery never executes remote
+// rules or JavaScript, and malformed data is ignored atomically.
+const RULE_UPDATE_URL = 'https://github.com/lolypop7661-a11y/browser-build/releases/latest/download/browsery-adblock-rules.json';
 const TRACKER_MODES = new Set(['Standard', 'Balanced', 'Strict']);
 const SUBRESOURCE_TYPES = new Set(['script', 'image', 'media', 'font', 'stylesheet', 'xhr', 'fetch', 'websocket', 'subframe', 'other']);
+const EMPTY_RULES = new Set();
 const MULTIPART_PUBLIC_SUFFIXES = new Set([
   'ac.uk', 'co.uk', 'gov.uk', 'ltd.uk', 'me.uk', 'net.uk', 'nhs.uk', 'org.uk', 'plc.uk', 'sch.uk',
   'com.au', 'edu.au', 'gov.au', 'id.au', 'net.au', 'org.au',
@@ -173,10 +181,135 @@ function safeWriteAllowlist(statePath, allowlist) {
   }
 }
 
+function sanitizeRuleHosts(values) {
+  if (!Array.isArray(values)) return new Set();
+  const hosts = new Set();
+  for (const value of values) {
+    const host = normalizeHost(value);
+    if (!host) continue;
+    hosts.add(host);
+    if (hosts.size >= MAX_REMOTE_RULES_PER_CATEGORY) break;
+  }
+  return hosts;
+}
+
+function normalizeRuleDocument(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const adHosts = sanitizeRuleHosts(value.adHosts);
+  const balancedTrackers = sanitizeRuleHosts(value.balancedTrackers);
+  const strictTrackers = sanitizeRuleHosts(value.strictTrackers);
+  // A remote update must contain useful, typed data. A transient error page or
+  // an empty response can never erase the last known-good definitions.
+  if (!adHosts.size && !balancedTrackers.size && !strictTrackers.size) return null;
+  const updatedAt = Number.isFinite(value.updatedAt) && value.updatedAt > 0 ? value.updatedAt : Date.now();
+  return {
+    version: typeof value.version === 'string' ? value.version.slice(0, 80) : 'unversioned',
+    updatedAt,
+    adHosts,
+    balancedTrackers,
+    strictTrackers,
+  };
+}
+
+function ruleCachePath(statePath) {
+  return path.join(path.dirname(statePath), 'adblock-rules-cache.json');
+}
+
+function loadRuleCache(cachePath) {
+  try { return normalizeRuleDocument(JSON.parse(fs.readFileSync(cachePath, 'utf8'))); }
+  catch { return null; }
+}
+
+function loadBundledRuleDocument() {
+  try { return normalizeRuleDocument(JSON.parse(fs.readFileSync(path.join(__dirname, 'adblock-rules.json'), 'utf8'))); }
+  catch { return null; }
+}
+
+function serializeRuleDocument(document) {
+  return JSON.stringify({
+    version: document.version,
+    updatedAt: document.updatedAt,
+    adHosts: [...document.adHosts].sort(),
+    balancedTrackers: [...document.balancedTrackers].sort(),
+    strictTrackers: [...document.strictTrackers].sort(),
+  });
+}
+
+function safeWriteRuleCache(cachePath, document) {
+  const temporaryPath = `${cachePath}.${process.pid}.${Date.now()}.tmp`;
+  try {
+    fs.mkdirSync(path.dirname(cachePath), { recursive: true });
+    fs.writeFileSync(temporaryPath, serializeRuleDocument(document), { encoding: 'utf8', mode: 0o600 });
+    fs.renameSync(temporaryPath, cachePath);
+    return true;
+  } catch {
+    try { fs.unlinkSync(temporaryPath); } catch {}
+    return false;
+  }
+}
+
+async function fetchRuleDocument() {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 7500);
+  try {
+    const response = await fetch(RULE_UPDATE_URL, {
+      headers: { Accept: 'application/json', 'User-Agent': 'Browsery rule updater/1.0' },
+      redirect: 'follow',
+      signal: controller.signal,
+    });
+    if (!response.ok) throw new Error(`Rule update returned ${response.status}`);
+    // GitHub Releases redirects downloads to its own short-lived asset host.
+    // Reject every other final origin so this cannot become a general-purpose
+    // remote configuration channel.
+    const finalHost = new URL(response.url).hostname.toLowerCase();
+    if (!['github.com', 'release-assets.githubusercontent.com'].includes(finalHost)) {
+      throw new Error('Rule update used an unexpected host');
+    }
+    const contentLength = Number(response.headers.get('content-length') || 0);
+    if (contentLength > MAX_RULE_DEFINITION_BYTES) throw new Error('Rule update is too large');
+    const text = await response.text();
+    if (Buffer.byteLength(text, 'utf8') > MAX_RULE_DEFINITION_BYTES) throw new Error('Rule update is too large');
+    return normalizeRuleDocument(JSON.parse(text));
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 function createAdblocker({ statePath }) {
   if (typeof statePath !== 'string' || !statePath) throw new Error('An ad-blocker state path is required.');
   const allowlist = readAllowlist(statePath);
+  const cachePath = ruleCachePath(statePath);
+  const bundledRules = loadBundledRuleDocument();
+  const cachedRules = loadRuleCache(cachePath);
+  let remoteRules = cachedRules || bundledRules;
+  let rulesFromCache = Boolean(cachedRules);
+  let refreshPromise = null;
+  let lastRefreshAttempt = 0;
+  let updateStatus = cachedRules ? 'ready' : bundledRules ? 'bundled-definitions' : 'bundled';
   const stats = { blockedCount: 0, adsBlocked: 0, trackersBlocked: 0, lastBlockedAt: null };
+
+  const refreshRules = async ({ force = false } = {}) => {
+    if (refreshPromise) return refreshPromise;
+    if (!force && Date.now() - lastRefreshAttempt < RULE_REFRESH_INTERVAL) {
+      return { ok: Boolean(remoteRules), status: updateStatus, skipped: true };
+    }
+    lastRefreshAttempt = Date.now();
+    updateStatus = 'updating';
+    refreshPromise = fetchRuleDocument().then(document => {
+      if (!document) throw new Error('Rule update was not valid');
+      remoteRules = document;
+      safeWriteRuleCache(cachePath, document);
+      rulesFromCache = true;
+      updateStatus = 'ready';
+      return { ok: true, status: updateStatus, version: document.version, updatedAt: document.updatedAt };
+    }).catch(error => {
+      // Keep the bundled/cache rules active on every network error. This is a
+      // background refresh, not a reason to slow browsing or change a setting.
+      updateStatus = remoteRules ? 'stale-cache' : 'bundled';
+      return { ok: false, status: updateStatus, message: error?.message || 'Rule update unavailable' };
+    }).finally(() => { refreshPromise = null; });
+    return refreshPromise;
+  };
 
   const isAllowed = (requestHost, sourceHost) => Boolean(
     matchingHostRule(requestHost, allowlist) || matchingHostRule(sourceHost, allowlist)
@@ -195,6 +328,14 @@ function createAdblocker({ statePath }) {
       allowlisted: Boolean(host && matchingHostRule(host, allowlist)),
       allowlistCount: allowlist.size,
       lastBlockedAt: stats.lastBlockedAt,
+      rules: {
+        source: rulesFromCache ? 'Browsery definitions cache' : remoteRules ? 'Bundled Browsery definitions' : 'Core Browsery definitions',
+        status: updateStatus,
+        version: remoteRules?.version || 'bundled',
+        updatedAt: remoteRules?.updatedAt || null,
+        adHosts: AD_NETWORKS.size + (remoteRules?.adHosts.size || 0),
+        trackerHosts: BALANCED_TRACKERS.size + STRICT_TRACKERS.size + (remoteRules?.balancedTrackers.size || 0) + (remoteRules?.strictTrackers.size || 0),
+      },
     };
   };
 
@@ -224,7 +365,9 @@ function createAdblocker({ statePath }) {
       const thirdParty = isThirdParty(requestHost, sourceHost);
 
       if (adblockEnabled) {
-        const hostRule = matchingHostRule(requestHost, AD_NETWORKS);
+        // Cached updates extend the built-in list; a failed/partial update can
+        // never make protection weaker than the shipped definitions.
+        const hostRule = matchingHostRule(requestHost, AD_NETWORKS) || matchingHostRule(requestHost, remoteRules?.adHosts || EMPTY_RULES);
         if (hostRule) {
           record('ad');
           return { category: 'ad', rule: hostRule };
@@ -236,8 +379,10 @@ function createAdblocker({ statePath }) {
       }
 
       if (trackerMode !== 'Standard') {
-        const balancedRule = matchingHostRule(requestHost, BALANCED_TRACKERS);
-        const strictRule = trackerMode === 'Strict' ? matchingHostRule(requestHost, STRICT_TRACKERS) : '';
+        const balancedRule = matchingHostRule(requestHost, BALANCED_TRACKERS) || matchingHostRule(requestHost, remoteRules?.balancedTrackers || EMPTY_RULES);
+        const strictRule = trackerMode === 'Strict'
+          ? matchingHostRule(requestHost, STRICT_TRACKERS) || matchingHostRule(requestHost, remoteRules?.strictTrackers || EMPTY_RULES)
+          : '';
         if (balancedRule || strictRule) {
           record('tracker');
           return { category: 'tracker', rule: balancedRule || strictRule };
@@ -278,6 +423,8 @@ function createAdblocker({ statePath }) {
       stats.lastBlockedAt = null;
       return status(preferences);
     },
+
+    refreshRules,
   };
 }
 

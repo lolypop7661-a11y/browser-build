@@ -272,6 +272,51 @@ async function createOverview(query, { enabled, model, onUpdate, signal } = {}) 
   }
 }
 
+// Voice requests deliberately use a compact, direct completion rather than the
+// web-search overview path. The renderer only ever sends a transcript and the
+// Groq credential stays in Electron's OS-backed secure storage.
+async function createVoiceAssistantReply(prompt, { model } = {}) {
+  const question = typeof prompt === 'string' ? prompt.replace(/\s+/g, ' ').trim().slice(0, 600) : '';
+  if (!question) return { status: 'invalid-prompt' };
+  const apiKey = readApiKey();
+  if (!apiKey) return { status: missingKeyStatus() };
+  const allowedModels = new Set(['openai/gpt-oss-120b', 'openai/gpt-oss-20b']);
+  const selectedModel = allowedModels.has(model) ? model : 'openai/gpt-oss-120b';
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 30000);
+  try {
+    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+      signal: controller.signal,
+      body: JSON.stringify({
+        model: selectedModel,
+        messages: [
+          { role: 'system', content: 'You are Hey Groq inside Browsery. Answer directly and helpfully in plain text. Be concise enough to read aloud: usually one short paragraph, no headings, bullets, citations, URLs, or filler. If you are uncertain or the user needs professional help, say so plainly.' },
+          { role: 'user', content: question },
+        ],
+        temperature: 0.55,
+        max_completion_tokens: 360,
+        stream: false,
+        reasoning_effort: 'low',
+      }),
+    });
+    const payload = await readOverviewJson(response);
+    if (!response.ok) {
+      console.warn('Groq voice assistant request returned status:', response.status);
+      return { status: [401, 403].includes(response.status) ? 'invalid-key' : response.status === 429 ? 'usage-limit' : 'request-failed' };
+    }
+    const text = cleanOverviewText(assistantContent(payload.choices?.[0]?.message?.content)).slice(0, 1200);
+    return text ? { status: 'ready', text } : { status: 'empty' };
+  } catch (error) {
+    const status = controller.signal.aborted || error.name === 'AbortError' ? 'timeout' : 'request-failed';
+    console.warn('Groq voice assistant request failed:', status);
+    return { status };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 function cleanAnalysisText(value, limit = 280) {
   return cleanOverviewText(value).slice(0, limit);
 }
@@ -355,4 +400,4 @@ function renderFirefoxHandoff(query, firefoxOpened, aiEnabled) {
   </script></body></html>`;
 }
 
-module.exports = { getApiKeyStatus, saveApiKey, clearApiKey, createOverview, cleanOverviewText, analyzePageScreenshot, parseScreenAnalysis, renderFirefoxHandoff };
+module.exports = { getApiKeyStatus, saveApiKey, clearApiKey, createOverview, createVoiceAssistantReply, cleanOverviewText, analyzePageScreenshot, parseScreenAnalysis, renderFirefoxHandoff };

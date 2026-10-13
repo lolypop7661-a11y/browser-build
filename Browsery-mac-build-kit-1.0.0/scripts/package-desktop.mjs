@@ -1,10 +1,13 @@
-import { cp, mkdir, rm, stat, writeFile } from 'node:fs/promises';
+import { cp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { packager } from '@electron/packager';
+import { verifyWindowsPackage } from './verify-windows-package.mjs';
 import './build-proton-helper.mjs';
+import './create-browsery-icon.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const metadata = JSON.parse(await readFile(path.join(root, 'package.json'), 'utf8'));
 const stage = path.join(root, 'work', 'desktop-package-stage');
 const outputsRoot = path.join(root, 'outputs');
 const output = path.resolve(outputsRoot, process.env.BROWSERY_PACKAGE_OUTPUT || '.');
@@ -20,33 +23,25 @@ await cp(path.join(root, 'electron'), path.join(stage, 'electron'), { recursive:
 await writeFile(path.join(stage, 'package.json'), JSON.stringify({
   name: 'browsery',
   productName: 'Browsery',
-  version: '1.0.0',
-  description: 'A desktop browser with a Saturn new-tab experience.',
+  version: metadata.version,
+  description: metadata.description,
   main: 'electron/main.cjs',
 }, null, 2));
 
 const [appDirectory] = await packager({
   dir: stage,
   name: 'Browsery',
+  appVersion: metadata.version,
+  buildVersion: metadata.version,
   platform: 'win32',
   arch: 'x64',
   out: output,
   overwrite: true,
+  icon: path.join(stage, 'dist', 'assets', 'browsery-icon.ico'),
   asar: { unpack: '**/native/*.exe' },
 });
 
-// Electron needs its runtime files beside the executable to start on double-click.
-const requiredRuntimeFiles = [
-  'Browsery.exe', 'icudtl.dat', 'resources.pak',
-  'chrome_100_percent.pak', 'chrome_200_percent.pak',
-  'snapshot_blob.bin', 'v8_context_snapshot.bin',
-  'locales/en-US.pak', 'resources/app.asar',
-  'resources/app.asar.unpacked/electron/native/Browsery.ProtonConnect.exe',
-];
-await Promise.all(requiredRuntimeFiles.map(async file => {
-  const info = await stat(path.join(appDirectory, file));
-  if (!info.isFile() || info.size === 0) throw new Error(`Desktop package is incomplete: ${file}`);
-}));
+await verifyWindowsPackage(appDirectory, metadata.version);
 
 console.log(`Browsery desktop app: ${path.join(appDirectory, 'Browsery.exe')}`);
 console.log('Verified the complete Electron runtime is included.');
