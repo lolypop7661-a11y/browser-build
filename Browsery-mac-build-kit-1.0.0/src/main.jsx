@@ -520,7 +520,7 @@ function LaunchScreen({onComplete}) {
     return()=>timers.forEach(clearTimeout);
   },[onComplete]);
   return <div className={`launch-screen launch-${phase}`} role="status" aria-label="Launching Browsery">
-    <video className="launch-reference-video" src="/assets/terminal-loading.mp4" autoPlay muted playsInline preload="auto" aria-label="Browsery loading animation" />
+    <video className="launch-reference-video" src="./assets/terminal-loading.mp4" autoPlay muted playsInline preload="auto" aria-label="Browsery loading animation" />
     <div className="launch-haze"/><div className="launch-star launch-star-a"/><div className="launch-star launch-star-b"/><div className="launch-star launch-star-c"/>
     <div className="launch-field" aria-hidden="true">{Array.from({length:12},(_,index)=><i key={index} style={{'--particle':index}}/>)}<b/><b/><b/></div>
     <div className="launch-stage"><div className="launch-orbit"><i/><i/><i/><span className="launch-satellite"/><span className="launch-core"><b/><em/></span></div><div className="launch-ouroboros" aria-hidden="true"><span/><i/><b/><em/></div>
