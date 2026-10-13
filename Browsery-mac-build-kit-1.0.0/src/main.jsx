@@ -514,9 +514,9 @@ function LaunchScreen({onComplete}) {
   useEffect(()=>{
     const reduced=window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
     if(reduced){const timer=setTimeout(onComplete,30);return()=>clearTimeout(timer)}
-    // Five seconds mirrors the deliberate pacing of the reference clip without
-    // shipping a video file into the desktop app. Each phase is CSS/GPU driven.
-    const timers=[setTimeout(()=>setPhase('resolve'),1080),setTimeout(()=>setPhase('reveal'),2920),setTimeout(()=>setPhase('depart'),4560),setTimeout(onComplete,5000)];
+    // Keep the launch scene open for the full ten-second reference playback.
+    // The Browsery reveal still lands early, then holds while the video finishes.
+    const timers=[setTimeout(()=>setPhase('resolve'),1080),setTimeout(()=>setPhase('reveal'),2920),setTimeout(()=>setPhase('depart'),9560),setTimeout(onComplete,10000)];
     return()=>timers.forEach(clearTimeout);
   },[onComplete]);
   return <div className={`launch-screen launch-${phase}`} role="status" aria-label="Launching Browsery">
