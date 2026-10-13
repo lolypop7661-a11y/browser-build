@@ -52,7 +52,11 @@ async function request(endpoint, options = {}, accepted = [200, 201]) {
   return { status: response.status, data };
 }
 const { data: repository } = await request(`/repos/${owner}/${repo}`);
-if (!repository.permissions?.push) throw new Error('The signed-in GitHub account cannot upload releases to this repository.');
+// GitHub's workflow token can publish because this workflow explicitly grants
+// contents: write, but the REST response omits `repository.permissions` for
+// that short-lived token. A personal credential still has to prove push access.
+const usesWorkflowToken = Boolean(process.env.GH_TOKEN || process.env.GITHUB_TOKEN);
+if (!usesWorkflowToken && !repository.permissions?.push) throw new Error('The signed-in GitHub account cannot upload releases to this repository.');
 if (!process.argv.includes('--publish')) {
   console.log(JSON.stringify({ connected: true, repository: repository.full_name, canPublish: true }));
 } else {
