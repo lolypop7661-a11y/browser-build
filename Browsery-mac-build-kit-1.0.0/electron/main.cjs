@@ -1274,17 +1274,32 @@ async function runQa(win, qaDir) {
     // QA must wait for the real New Tab surface instead of sampling a hidden
     // shell at an arbitrary timeout.
     const launchVisible = await waitForRendererValue(win, `Boolean(document.querySelector('.launch-screen'))`, { timeout: 3_000, interval: 50 });
-    if (launchVisible) {
-      await saveCapture(win, path.join(qaDir, 'browsery-launch.png'));
-      // The wordmark arrives during the reveal phase. Capture it separately so
-      // QA catches clipped lettering rather than only the initial orbit frame.
-      await sleep(4_100);
-      if (await win.webContents.executeJavaScript(`Boolean(document.querySelector('.launch-screen'))`)) await saveCapture(win, path.join(qaDir, 'browsery-launch-reveal.png'));
+    if (!launchVisible) throw new Error('The Browsery launch video did not appear.');
+    const launchPlaying = await waitForRendererValue(win, `(() => {
+      const video = document.querySelector('.launch-reference-video');
+      return Boolean(video && !video.error && video.readyState >= 2 && video.currentTime > 0.6 && video.videoWidth === 1920);
+    })()`, { timeout: 5_000, interval: 100 });
+    if (!launchPlaying) throw new Error('The packaged terminal-loading MP4 did not decode and play.');
+    const launchVideo = await win.webContents.executeJavaScript(`(() => {
+      const video = document.querySelector('.launch-reference-video');
+      return { currentSrc: video.currentSrc, duration: video.duration, currentTime: video.currentTime, width: video.videoWidth, height: video.videoHeight, readyState: video.readyState, error: video.error?.code || null };
+    })()`);
+    await sleep(1_600);
+    await saveCapture(win, path.join(qaDir, 'browsery-launch.png'));
+    const brandVisible = await waitForRendererValue(win, `Boolean(document.querySelector('.launch-final-brand'))`, { timeout: 15_000 });
+    if (!brandVisible) {
+      const videoState = await win.webContents.executeJavaScript(`(() => {
+        const video = document.querySelector('.launch-reference-video');
+        return { phase: document.querySelector('.launch-screen')?.className, time: video?.currentTime, duration: video?.duration, paused: video?.paused, ended: video?.ended, readyState: video?.readyState, error: video?.error?.code || null };
+      })()`);
+      throw new Error(`The Browsery logo did not appear after the full loading video: ${JSON.stringify(videoState)}`);
     }
+    await sleep(650);
+    await saveCapture(win, path.join(qaDir, 'browsery-launch-reveal.png'));
     const launchReady = await waitForRendererValue(win, `(() => {
       const video = document.querySelector('.saturn-video');
       return Boolean(video && video.readyState >= 2 && !document.querySelector('.launch-screen'));
-    })()`);
+    })()`, { timeout: 5_000 });
     if (!launchReady) throw new Error('Timed out waiting for the Browsery launch scene to finish.');
     const initial = await win.webContents.executeJavaScript(`(() => {
       const video = document.querySelector('.saturn-video');
@@ -1367,7 +1382,7 @@ async function runQa(win, qaDir) {
     const navigatedUrl = await win.webContents.executeJavaScript(`document.querySelector('webview')?.getURL?.() || ''`);
     const resultTitle = await win.webContents.executeJavaScript(`document.querySelector('webview')?.getTitle?.() || ''`);
     await saveCapture(win, path.join(qaDir, 'browsery-desktop-search.png'));
-    const result = { ...initial, guideInitial, extensionGuide, extensionUseReady, settingsGuide, settingsUseReady, settingsOpen, settingChanged, appliedSettings, navigatedUrl, resultTitle };
+    const result = { ...initial, launchVideo, guideInitial, extensionGuide, extensionUseReady, settingsGuide, settingsUseReady, settingsOpen, settingChanged, appliedSettings, navigatedUrl, resultTitle };
     fs.writeFileSync(path.join(qaDir, 'browsery-qa.json'), JSON.stringify(result, null, 2));
     console.log(`BROWSERY_QA ${JSON.stringify(result)}`);
   } catch (error) {

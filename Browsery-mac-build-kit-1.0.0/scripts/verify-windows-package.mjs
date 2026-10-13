@@ -35,10 +35,17 @@ export async function verifyWindowsPackage(directory, expectedVersion) {
     'electron/ai-overview.cjs', 'electron/proton-vpn.cjs',
     'dist/index.html', 'dist/assets/browsery-icon.ico',
     'dist/assets/browsery-icon.png', 'dist/assets/saturn-loop.mp4',
+    'dist/assets/terminal-loading.mp4',
   ]) {
     if (!files.includes(relative) || readArchive(relative).length === 0) {
       throw new Error(`Incomplete Browsery archive: missing ${relative}`);
     }
+  }
+  const launchVideo = readArchive('dist/assets/terminal-loading.mp4');
+  const movieOffset = launchVideo.indexOf(Buffer.from('moov'));
+  const mediaOffset = launchVideo.indexOf(Buffer.from('mdat'));
+  if (!launchVideo.includes(Buffer.from('avc1')) || movieOffset < 0 || mediaOffset < 0 || movieOffset > mediaOffset) {
+    throw new Error('Browsery launch video must be a fast-start H.264 MP4.');
   }
   const html = readArchive('dist/index.html').toString();
   const script = html.match(/src="\.\/([^"\s]+\.js)"/)?.[1];

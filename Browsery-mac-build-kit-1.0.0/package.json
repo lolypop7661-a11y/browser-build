@@ -2,7 +2,7 @@
   "name": "browsery-magic-cursor",
   "productName": "Browsery",
   "private": true,
-  "version": "1.0.11",
+  "version": "1.0.12",
   "description": "A real desktop browser with a Saturn new-tab experience.",
   "main": "electron/main.cjs",
   "type": "module",

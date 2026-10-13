@@ -510,22 +510,19 @@ function MagicCursor({settings}) {
 function GlassButton({icon,label,onClick,active,className='',tour,...props}) { return <SpringButton {...props} data-tour={tour} className={`icon-button magnetic ${active?'active':''} ${className}`} onClick={onClick} aria-label={label} title={label}><Icon name={icon}/></SpringButton> }
 
 function LaunchScreen({onComplete}) {
-  const [phase,setPhase]=useState('ignite');
+  const [phase,setPhase]=useState('video');
   useEffect(()=>{
-    const reduced=window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-    if(reduced){const timer=setTimeout(onComplete,30);return()=>clearTimeout(timer)}
-    // Keep the launch scene open for the full ten-second reference playback.
-    // The Browsery reveal still lands early, then holds while the video finishes.
-    const timers=[setTimeout(()=>setPhase('resolve'),1080),setTimeout(()=>setPhase('reveal'),2920),setTimeout(()=>setPhase('depart'),9560),setTimeout(onComplete,10000)];
-    return()=>timers.forEach(clearTimeout);
-  },[onComplete]);
+    // Local media normally ends at ten seconds; release the app if decoding fails.
+    const fallback=setTimeout(()=>setPhase('brand'),15000);
+    return()=>clearTimeout(fallback);
+  },[]);
+  useEffect(()=>{
+    if(phase!=='brand')return undefined;
+    const timer=setTimeout(onComplete,1400);
+    return()=>clearTimeout(timer);
+  },[phase,onComplete]);
   return <div className={`launch-screen launch-${phase}`} role="status" aria-label="Launching Browsery">
-    <video className="launch-reference-video" src="./assets/terminal-loading.mp4" autoPlay muted playsInline preload="auto" aria-label="Browsery loading animation" />
-    <div className="launch-haze"/><div className="launch-star launch-star-a"/><div className="launch-star launch-star-b"/><div className="launch-star launch-star-c"/>
-    <div className="launch-field" aria-hidden="true">{Array.from({length:12},(_,index)=><i key={index} style={{'--particle':index}}/>)}<b/><b/><b/></div>
-    <div className="launch-stage"><div className="launch-orbit"><i/><i/><i/><span className="launch-satellite"/><span className="launch-core"><b/><em/></span></div><div className="launch-ouroboros" aria-hidden="true"><span/><i/><b/><em/></div>
-      <div className="launch-brand-lockup"><span className="launch-mark"><i/><b/><em/></span><span className="launch-word" aria-label="Browsery">{'Browsery'.split('').map((letter,index)=><span key={`${letter}-${index}`} style={{'--letter':index}}>{letter}</span>)}</span></div>
-    </div>
+    {phase==='video'?<video className="launch-reference-video" src="./assets/terminal-loading.mp4" autoPlay muted playsInline preload="auto" onTimeUpdate={event=>{const video=event.currentTarget;if(video.duration&&video.currentTime>=video.duration-.08)setPhase('brand')}} onEnded={()=>setPhase('brand')} onError={()=>setPhase('brand')} aria-label="Browsery loading video"/>:<div className="launch-final-brand" aria-label="Browsery"><img src="./assets/browsery-icon.png" alt=""/><span>Browsery</span></div>}
   </div>;
 }
 
