@@ -1,0 +1,29 @@
+.account-gate { position: fixed; inset: 0; z-index: 5000; display: grid; grid-template-columns: minmax(0, 1fr) minmax(330px, 460px); align-items: center; gap: clamp(32px, 8vw, 130px); padding: clamp(28px, 7vw, 104px); overflow: hidden; border: 1px solid #161b20; background: #07090c; color: #f2f4f6; animation: account-gate-appear .42s cubic-bezier(.2,.8,.2,1) both; }
+.account-gate-stars { position: absolute; inset: 0; pointer-events: none; opacity: .36; }
+.account-gate-stars::before { content: ''; position: absolute; top: 14%; left: 9%; width: 2px; height: 2px; border-radius: 50%; background: #e8edf4; box-shadow: 126px 211px #aab4c0, 401px 61px #e8edf4, 650px 208px #aab4c0, 847px 17px #e8edf4, 1042px 309px #aab4c0, 1180px 93px #e8edf4, 135px 405px #e8edf4, 521px 376px #aab4c0, 785px 421px #e8edf4, 1105px 497px #aab4c0; }
+.account-gate-orbit { position: absolute; z-index: 0; width: min(48vw, 650px); aspect-ratio: 1; left: 2vw; top: 50%; border: 1px solid #ffffff0d; border-radius: 50%; transform: translateY(-50%) rotate(-24deg) scaleY(.49); pointer-events: none; }
+.account-gate-orbit-two { width: min(42vw, 565px); left: 5vw; transform: translateY(-50%) rotate(31deg) scaleY(.49); }
+.account-gate-card { position: relative; z-index: 1; grid-column: 2; width: 100%; max-width: 460px; padding: clamp(24px, 3.4vw, 42px); border: 1px solid #2a3038; border-radius: 20px; background: #0c0f13; box-shadow: 0 24px 80px #0009; }
+.account-gate-brand { display: flex; align-items: center; gap: 9px; margin-bottom: 42px; color: #f6f7f9; font-size: 15px; font-weight: 650; letter-spacing: -.02em; }
+.account-gate-brand img { width: 27px; height: 27px; object-fit: contain; }
+.account-gate-kicker { color: #9ca5af; font-size: 9px; font-weight: 700; letter-spacing: .16em; }
+.account-gate-card h1 { margin: 12px 0 8px; color: #f4f6f8; font-size: clamp(26px, 3vw, 35px); font-weight: 580; letter-spacing: -.045em; line-height: 1.1; }
+.account-gate-description { max-width: 355px; margin: 0; color: #a3aab3; font-size: 12px; line-height: 1.65; }
+.account-gate-form { display: grid; gap: 14px; margin-top: 25px; }
+.account-gate-form label { display: grid; gap: 7px; color: #c4c9d0; font-size: 10px; font-weight: 560; }
+.account-gate-form input { width: 100%; height: 43px; padding: 0 12px; border: 1px solid #343a43; border-radius: 9px; outline: none; background: #080a0d; color: #f2f4f6; font: inherit; font-size: 12px; transition: border-color .18s ease,background-color .18s ease; }
+.account-gate-form input:focus { border-color: #aeb7c1; background: #101318; }
+.account-gate-form input::placeholder { color: #68717c; }
+.account-gate-submit { min-height: 43px; display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-top: 3px; padding: 0 14px; border: 1px solid #e1e5e9; border-radius: 9px; background: #e9edf0; color: #111419; font-size: 11px; font-weight: 680; cursor: pointer; transition: transform .22s cubic-bezier(.175,.885,.32,1.275),background-color .18s ease; }
+.account-gate-submit:hover { transform: translateY(-2px); background: #fff; }
+.account-gate-submit:active { transform: scale(.98); }
+.account-gate-submit:disabled { opacity: .58; cursor: wait; }
+.account-gate-message { margin: 12px 0 0; padding: 10px 11px; border: 1px solid #454d57; border-radius: 8px; background: #14181d; color: #d7dce2; font-size: 10px; line-height: 1.55; }
+.account-gate-switch { display: block; margin: 16px auto 0; padding: 3px; border: 0; background: transparent; color: #c4cbd3; font-size: 10px; cursor: pointer; }
+.account-gate-switch:hover { color: #fff; text-decoration: underline; }
+.account-gate-divider { height: 1px; margin: 22px 0 13px; background: #272c33; }
+.account-gate-privacy { display: flex; align-items: flex-start; gap: 8px; margin: 0; color: #929ba5; font-size: 9px; line-height: 1.55; }
+.account-gate-privacy svg { flex: 0 0 auto; color: #d4d9de; }
+@keyframes account-gate-appear { from { opacity: 0; transform: scale(1.012); } to { opacity: 1; transform: scale(1); } }
+@media (max-width: 760px) { .account-gate { display: flex; justify-content: center; padding: 20px; } .account-gate-orbit { width: 125vw; left: -40vw; } .account-gate-orbit-two { width: 110vw; left: -32vw; } .account-gate-card { max-width: 440px; padding: 25px 22px; } .account-gate-brand { margin-bottom: 34px; } }
+@media (prefers-reduced-motion: reduce) { .account-gate, .account-gate-submit { animation: none; transition: none; } }

@@ -16,7 +16,7 @@ function formatDate(value) {
 // A deliberately explicit credentials panel. Browsery does not observe web
 // form fields, save submissions, or return passwords to this React renderer.
 // The native layer encrypts the store and only fills/copies after a click.
-export function PersonalCenter({ open, onClose, activeUrl, webContentsId, Icon, Button, CloseButton }) {
+export function PersonalCenter({ open, onClose, onAccountChange, activeUrl, webContentsId, Icon, Button, CloseButton }) {
   const panelRef = useSpringPresence(open, { preset: 'fluid', offset: 90 });
   const desktop = window.browseryDesktop;
   const pageOrigin = useMemo(() => originFromUrl(activeUrl), [activeUrl]);
@@ -51,12 +51,13 @@ export function PersonalCenter({ open, onClose, activeUrl, webContentsId, Icon, 
       setLogins(Array.isArray(nextLogins) ? nextLogins : []);
       setPermissions(Array.isArray(nextPermissions) ? nextPermissions : []);
       setAccount(accountStatus?.account || null);
+      onAccountChange?.(accountStatus?.account || null);
       if (nextUpdate) setUpdate(nextUpdate);
     } catch {
       setStatus({ loading: false, encryptionAvailable: false, count: 0 });
       setMessage('Browsery could not read the local personal-data store.');
     }
-  }, [desktop]);
+  }, [desktop, onAccountChange]);
 
   useEffect(() => {
     if (!open) return;
@@ -175,6 +176,7 @@ export function PersonalCenter({ open, onClose, activeUrl, webContentsId, Icon, 
         : await desktop?.browseryAccountSignIn?.(accountForm);
       if (!result?.ok) { setAccountMessage(result?.message || 'Could not complete the account request.'); return; }
       setAccount(result.confirmationRequired ? null : result.account || null);
+      onAccountChange?.(result.confirmationRequired ? null : result.account || null);
       setAccountMessage(result.message || 'Account request completed.');
       setAccountForm(current => ({ email: current.email, password: '' }));
     } catch { setAccountMessage('Could not contact Browsery Accounts.'); }
@@ -184,6 +186,7 @@ export function PersonalCenter({ open, onClose, activeUrl, webContentsId, Icon, 
   const signOutAccount = async () => {
     await desktop?.browseryAccountSignOut?.();
     setAccount(null); setAccountMessage('Signed out on this device.');
+    onAccountChange?.(null);
   };
 
   const openRelease = async () => {
@@ -215,7 +218,7 @@ export function PersonalCenter({ open, onClose, activeUrl, webContentsId, Icon, 
       </section>
 
       <section className="personal-section browsery-account-section" aria-labelledby="browsery-account-title">
-        <div className="personal-section-head"><div><span>Browsery account</span><h3 id="browsery-account-title">{account ? account.email : accountMode === 'signup' ? 'Create an account' : 'Sign in'}</h3></div><em>{account ? 'SIGNED IN' : 'OPTIONAL'}</em></div>
+        <div className="personal-section-head"><div><span>Browsery account</span><h3 id="browsery-account-title">{account ? account.email : accountMode === 'signup' ? 'Create an account' : 'Sign in'}</h3></div><em>{account ? 'SIGNED IN' : 'REQUIRED'}</em></div>
         {account ? <><p className="personal-note">You are signed in on this device. Owner/admin controls do not use Browsery accounts.</p><Button type="button" onClick={signOutAccount} disabled={busy}>Sign out</Button></> : <form className="login-save-form" onSubmit={submitAccount}><label>Email<input type="email" autoComplete="email" value={accountForm.email} onChange={event => setAccountForm(current => ({ ...current, email: event.target.value }))} required disabled={busy}/></label><label>Password<input type="password" autoComplete={accountMode === 'signup' ? 'new-password' : 'current-password'} minLength={accountMode === 'signup' ? 10 : 1} maxLength={256} value={accountForm.password} onChange={event => setAccountForm(current => ({ ...current, password: event.target.value }))} required disabled={busy}/></label><Button type="submit" disabled={busy}>{accountMode === 'signup' ? 'Create account' : 'Sign in'}</Button><button className="local-control-text-button" type="button" onClick={() => { setAccountMode(current => current === 'signup' ? 'signin' : 'signup'); setAccountMessage(''); }}>{accountMode === 'signup' ? 'Already registered? Sign in' : 'New to Browsery? Create account'}</button></form>}
         {accountMessage && <p className="personal-note" role="status">{accountMessage}</p>}
       </section>
