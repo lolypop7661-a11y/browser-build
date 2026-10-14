@@ -4,12 +4,8 @@ const crypto = require('node:crypto');
 
 const CONTROL_FUNCTION = 'browsery-global-control';
 const MAX_RESPONSE_BYTES = 1_000_000;
-// Supabase falls back to its dashboard Site URL when no redirect is sent.
-// Keep account confirmation links usable for desktop users by sending them to
-// Browsery's public release page instead of a developer's localhost server.
-const PUBLIC_AUTH_REDIRECT_URL = 'https://github.com/lolypop7661-a11y/browser-build/releases';
 
-function createGlobalControl({ app, safeStorage, config }) {
+function createGlobalControl({ app, safeStorage, config, requestCaptcha }) {
   const dataPath = name => path.join(app.getPath('userData'), name);
   const normalizeConfig = value => {
     try {
@@ -57,7 +53,10 @@ function createGlobalControl({ app, safeStorage, config }) {
       if (text.length > MAX_RESPONSE_BYTES) throw new Error('response-too-large');
       let payload;
       try { payload = text ? JSON.parse(text) : {}; } catch { throw new Error('invalid-response'); }
-      if (!response.ok) throw new Error(payload?.message || payload?.error_description || payload?.error || `http-${response.status}`);
+      if (!response.ok) {
+        const detail = payload?.msg || payload?.message || payload?.error_description || payload?.error || '';
+        throw new Error([payload?.error_code, detail].filter(Boolean).join(': ') || `http-${response.status}`);
+      }
       return payload;
     } finally { clearTimeout(timeout); }
   };
@@ -77,6 +76,33 @@ function createGlobalControl({ app, safeStorage, config }) {
     }
     session = readEncrypted('browsery-account.bin');
     if (!session || typeof session.refresh_token !== 'string' || !session.user?.id) session = null;
+  }
+
+  // Supabase Auth verifies this token server-side when CAPTCHA protection is
+  // enabled, so the public sign-up endpoint cannot simply skip the check.
+  async function captchaSecurity() {
+    if (typeof requestCaptcha !== 'function') return {};
+    const result = await requestCaptcha();
+    if (result?.status === 'not-configured') return {};
+    if (result?.status !== 'ready' || typeof result.token !== 'string') {
+      const error = new Error('captcha-cancelled');
+      error.code = 'captcha-cancelled';
+      throw error;
+    }
+    return { gotrue_meta_security: { captcha_token: result.token } };
+  }
+
+  function accountFailure(error, fallback) {
+    const details = String(error?.message || '').toLowerCase();
+    if (error?.code === 'captcha-cancelled') return 'The human check was closed before it finished. Try again when you are ready.';
+    if (details.includes('captcha')) return 'The human check was not accepted. Please try again.';
+    if (details.includes('user_already_exists') || details.includes('already registered')) return 'An account with this email already exists. Sign in instead.';
+    if (details.includes('weak_password')) return 'Choose a stronger password with at least 10 characters.';
+    if (details.includes('email_address_invalid') || details.includes('validation_failed')) return 'Enter a valid email address.';
+    if (details.includes('email_not_confirmed')) return 'This older account was never confirmed. Ask the Browsery owner to confirm it, or create a new account.';
+    if (details.includes('rate_limit') || details.includes('http-429')) return 'Too many attempts. Wait a minute and try again.';
+    if (error?.name === 'AbortError' || details.includes('fetch failed')) return 'Could not reach Browsery accounts. Check your connection and try again.';
+    return fallback;
   }
 
   function publicUser(user) {
@@ -139,32 +165,26 @@ function createGlobalControl({ app, safeStorage, config }) {
       try {
         const policy = await request(`${functionUrl}?action=signup-policy`, { headers: headers({ Accept: 'application/json' }) });
         if (policy.signupsEnabled === false) return { ok: false, message: 'New Browsery accounts are temporarily paused.' };
-        const result = await request(authUrl('signup'), {
-          method: 'POST',
-          headers: headers(),
-          body: JSON.stringify({
-            email: cleanEmail,
-            password,
-            options: { emailRedirectTo: PUBLIC_AUTH_REDIRECT_URL },
-          }),
-        });
+        const security = await captchaSecurity();
+        const result = await request(authUrl('signup'), { method: 'POST', headers: headers(), body: JSON.stringify({ email: cleanEmail, password, ...security }) });
         if (result.access_token && result.refresh_token && result.user) {
           session = { ...result, expires_at: Date.now() + (Number(result.expires_in) || 3600) * 1000 };
           if (!writeEncrypted('browsery-account.bin', session)) { session = null; return { ok: false, message: 'Windows secure storage is unavailable, so Browsery will not keep this account signed in.' }; }
         }
-        return { ok: true, account: publicUser(result.user), confirmationRequired: !result.access_token, message: result.access_token ? 'Browsery account created and signed in.' : 'Account created. Check your email; its confirmation link opens Browsery’s public page.' };
-      } catch { return { ok: false, message: 'Could not create the account. Check the email, password rules, and Supabase Auth settings.' }; }
+        return { ok: true, account: publicUser(result.user), confirmationRequired: !result.access_token, message: result.access_token ? 'Browsery account created and signed in.' : 'Account created. Check your email to confirm it before signing in.' };
+      } catch (error) { return { ok: false, message: accountFailure(error, 'Could not create the account. Check the email and password, then try again.') }; }
     },
     async accountSignIn(email, password) {
       if (!service) return { ok: false, message: 'Accounts are not available until the shared service is configured.' };
       const cleanEmail = String(email || '').trim().slice(0, 254);
       if (!cleanEmail || typeof password !== 'string' || password.length < 1 || password.length > 256) return { ok: false, message: 'Enter your email and password.' };
       try {
-        const result = await request(authUrl('token?grant_type=password'), { method: 'POST', headers: headers(), body: JSON.stringify({ email: cleanEmail, password }) });
+        const security = await captchaSecurity();
+        const result = await request(authUrl('token?grant_type=password'), { method: 'POST', headers: headers(), body: JSON.stringify({ email: cleanEmail, password, ...security }) });
         session = { ...result, expires_at: Date.now() + (Number(result.expires_in) || 3600) * 1000 };
         if (!writeEncrypted('browsery-account.bin', session)) { session = null; return { ok: false, message: 'Windows secure storage is unavailable, so Browsery will not keep this account signed in.' }; }
         return { ok: true, account: publicUser(session.user), message: 'Signed in to your Browsery account.' };
-      } catch { return { ok: false, message: 'Email or password was not accepted. Confirm your email and try again.' }; }
+      } catch (error) { return { ok: false, message: accountFailure(error, 'Email or password was not accepted. Try again.') }; }
     },
     async accountStatus() {
       if (!session) return { account: null, secureStorage: Boolean(safeStorage?.isEncryptionAvailable?.()) };

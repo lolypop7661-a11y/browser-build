@@ -32,7 +32,7 @@ export async function verifyWindowsPackage(directory, expectedVersion) {
   }
   for (const relative of [
     'electron/main.cjs', 'electron/preload.cjs', 'electron/adblocker.cjs', 'electron/adblock-rules.json',
-    'electron/global-control.cjs', 'electron/global-control-config.json',
+    'electron/global-control.cjs', 'electron/global-control-config.json', 'electron/captcha.cjs',
     'electron/ai-overview.cjs', 'electron/proton-vpn.cjs',
     'dist/index.html', 'dist/assets/browsery-icon.ico',
     'dist/assets/browsery-icon.png', 'dist/assets/saturn-loop.mp4',

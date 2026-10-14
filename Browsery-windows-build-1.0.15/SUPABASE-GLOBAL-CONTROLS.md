@@ -38,6 +38,20 @@ This project now contains the shared-service integration for global Browsery acc
 
 If you replace or wipe the owner PC’s Browsery profile, the old device ID stays paired. To move admin control, reset the single row in `public.browsery_admin_device` through the Supabase SQL editor, then save the secret on the replacement PC and perform an admin action. Treat this as an owner-only recovery operation.
 
+## Sign-up without email confirmation, protected by a human check
+
+Browsery accounts no longer use confirmation emails. Instead, sign-up and sign-in open a small Cloudflare Turnstile window. Supabase checks the Turnstile token on its own servers, so calling the public sign-up endpoint directly does not skip the check.
+
+1. In Cloudflare, open **Turnstile → Add widget**. Add the hostname `lolypop7661-a11y.github.io` (or another domain you own; Browsery answers that hostname locally inside the check window, so nothing has to be hosted there). Use the **Managed** widget mode.
+2. Copy the **site key** into `electron/global-control-config.json` as `captchaSiteKey`. If you used a different hostname, set `captchaHost` to it. The site key is public.
+3. In Supabase, go to **Authentication → Bot and Abuse Protection**, turn on **Enable CAPTCHA protection**, choose **Turnstile**, and paste the Turnstile **secret key** there. The secret key goes only in Supabase, never in Browsery.
+4. In Supabase, go to **Authentication → Sign In / Providers → Email** and turn off **Confirm email**.
+5. Build and publish a new Browsery release. Older installs do not send a captcha token, so they can no longer sign in or sign up once step 3 is on. Do steps 3 and 4 when the new release is out.
+
+If `captchaSiteKey` is empty, Browsery skips the check window. Supabase will then reject the request if CAPTCHA protection is turned on.
+
+Accounts created earlier that never confirmed their email may still be refused. Confirm them under **Authentication → Users**, or delete them so the person can sign up again.
+
 ## Security references
 
 - [Supabase Edge Function secrets](https://supabase.com/docs/guides/functions/secrets)

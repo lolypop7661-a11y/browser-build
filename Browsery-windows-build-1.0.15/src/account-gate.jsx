@@ -29,11 +29,11 @@ export function AccountGate({ desktop, onAuthenticated, Icon, checking = false, 
       if (result.confirmationRequired) {
         setMode('signin');
         setPassword('');
-        setMessage('Check your email to confirm your Browsery account, then sign in here.');
+        setMessage('Your account was created. Sign in here to continue.');
         return;
       }
       if (!result.account) {
-        setMessage(result.message || 'Your account is not ready yet. Sign in after confirming your email.');
+        setMessage(result.message || 'Your account is not ready yet. Try signing in.');
         return;
       }
       onAuthenticated(result.account);
@@ -56,7 +56,8 @@ export function AccountGate({ desktop, onAuthenticated, Icon, checking = false, 
       {!checking && <form className="account-gate-form" onSubmit={submit}>
         <label>Email address<input type="email" autoComplete="email" value={email} onChange={event => setEmail(event.target.value)} placeholder="you@example.com" required maxLength={254} disabled={busy} autoFocus/></label>
         <label>Password<input type="password" autoComplete={mode === 'signup' ? 'new-password' : 'current-password'} value={password} onChange={event => setPassword(event.target.value)} placeholder={mode === 'signup' ? 'At least 10 characters' : 'Your password'} required minLength={mode === 'signup' ? 10 : 1} maxLength={256} disabled={busy}/></label>
-        <button className="account-gate-submit" type="submit" disabled={busy}>{busy ? 'Connecting…' : mode === 'signup' ? 'Create account and continue' : 'Sign in and continue'}<Icon name="forward" size={16}/></button>
+        <button className="account-gate-submit" type="submit" disabled={busy}>{busy ? 'Waiting for the human check…' : mode === 'signup' ? 'Create account and continue' : 'Sign in and continue'}<Icon name="forward" size={16}/></button>
+        <p className="account-gate-privacy">A quick human check opens in a small window when you continue.</p>
       </form>}
       {message && <p className="account-gate-message" role="status">{message}</p>}
       {!checking && <button className="account-gate-switch" type="button" onClick={() => { setMode(current => current === 'signup' ? 'signin' : 'signup'); setPassword(''); setMessage(''); }} disabled={busy}>

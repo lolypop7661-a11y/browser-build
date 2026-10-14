@@ -36,24 +36,24 @@ jobs:
         with:
           name: Browsery-Windows-installer
           path: |
-            Browsery-windows-build-1.0.15/outputs/windows-setup-wizard-1.0.18/Browsery-1.0.18-x64.exe
-            Browsery-windows-build-1.0.15/outputs/windows-setup-wizard-1.0.18/latest.yml
-            Browsery-windows-build-1.0.15/outputs/windows-setup-wizard-1.0.18/Browsery-1.0.18-x64.exe.blockmap
-            Browsery-windows-build-1.0.15/outputs/windows-setup-wizard-1.0.18/Browsery-1.0.18-x64.exe.sha256
-            Browsery-windows-build-1.0.15/outputs/windows-setup-wizard-1.0.18/verification.json
+            Browsery-windows-build-1.0.15/outputs/windows-setup-wizard-1.0.19/Browsery-1.0.19-x64.exe
+            Browsery-windows-build-1.0.15/outputs/windows-setup-wizard-1.0.19/latest.yml
+            Browsery-windows-build-1.0.15/outputs/windows-setup-wizard-1.0.19/Browsery-1.0.19-x64.exe.blockmap
+            Browsery-windows-build-1.0.15/outputs/windows-setup-wizard-1.0.19/Browsery-1.0.19-x64.exe.sha256
+            Browsery-windows-build-1.0.15/outputs/windows-setup-wizard-1.0.19/verification.json
           if-no-files-found: error
           compression-level: 0
           retention-days: 7
-      - name: Publish Browsery 1.0.18
+      - name: Publish Browsery 1.0.19
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: >-
-          gh release create v1.0.18
+          gh release create v1.0.19
           --target "$GITHUB_SHA"
-          --title "Browsery 1.0.18"
-          --notes "Fixes account confirmation emails so they no longer point to localhost."
-          outputs/windows-setup-wizard-1.0.18/Browsery-1.0.18-x64.exe
-          outputs/windows-setup-wizard-1.0.18/latest.yml
-          outputs/windows-setup-wizard-1.0.18/Browsery-1.0.18-x64.exe.blockmap
-          outputs/windows-setup-wizard-1.0.18/Browsery-1.0.18-x64.exe.sha256
+          --title "Browsery 1.0.19"
+          --notes "Replaces email confirmation with a Cloudflare Turnstile human check for sign-up and sign-in."
+          outputs/windows-setup-wizard-1.0.19/Browsery-1.0.19-x64.exe
+          outputs/windows-setup-wizard-1.0.19/latest.yml
+          outputs/windows-setup-wizard-1.0.19/Browsery-1.0.19-x64.exe.blockmap
+          outputs/windows-setup-wizard-1.0.19/Browsery-1.0.19-x64.exe.sha256

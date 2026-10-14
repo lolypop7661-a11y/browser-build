@@ -8,6 +8,7 @@ const { createAdblocker } = require('./adblocker.cjs');
 const savedLogins = require('./credentials.cjs');
 const appUpdates = require('./app-updates.cjs');
 const { createGlobalControl } = require('./global-control.cjs');
+const { createCaptchaPrompt } = require('./captcha.cjs');
 
 // QA gets its own profile, so captures can never touch a person's live tabs,
 // cookies, downloads, or encrypted AI credential. Portable output folders can
@@ -1421,7 +1422,15 @@ if (primaryInstance) app.whenReady().then(async () => {
   loadPermissionDecisions();
   loadCookiePurgeState();
   const trustedShell = event => event.sender === mainWindow?.webContents && event.senderFrame === mainWindow.webContents.mainFrame;
-  globalControl = createGlobalControl({ app, safeStorage, config: require('./global-control-config.json') });
+  const globalControlConfig = require('./global-control-config.json');
+  const captcha = createCaptchaPrompt({
+    session,
+    BrowserWindow,
+    siteKey: globalControlConfig.captchaSiteKey,
+    host: globalControlConfig.captchaHost,
+    getParent: () => mainWindow,
+  });
+  globalControl = createGlobalControl({ app, safeStorage, config: globalControlConfig, requestCaptcha: captcha.requestToken });
   globalControl.hydrate();
   // One-time owner provisioning is passed only to this Electron main process.
   // Persist it through safeStorage, then remove it before any renderer/webview
