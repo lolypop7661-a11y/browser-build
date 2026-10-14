@@ -1,0 +1,142 @@
+/* Space cockpit tokens. Native page surfaces must never inherit animated transforms. */
+.desktop-browser {
+  --cockpit-bg: #070b12;
+  --cockpit-surface: #101923;
+  --cockpit-text: #edf6ff;
+  --cockpit-muted: #8294aa;
+  --cockpit-line: #2a3949;
+  --cockpit-radius: 16px;
+  color: var(--cockpit-text);
+}
+.desktop-browser[data-palette="custom"] { forced-color-adjust: none; }
+.desktop-browser .brand-orb,.desktop-browser .favorite>span svg { forced-color-adjust: none; }
+.desktop-browser .browser-shell { transform: none; filter: none; border-radius: 0; }
+.desktop-browser .tabs-row { background: #070c12; border-color: #263342; }
+.desktop-browser .brand { font-weight: 550; letter-spacing: -.025em; }
+.desktop-browser .brand-orb { border-radius: 50%; background: conic-gradient(from 60deg,#9c8cff,#5266ff,#38d7f4,#9c8cff); transform: rotate(-18deg); box-shadow: 0 0 15px #47b8ff22; }
+.desktop-browser .brand-orb i { inset: 5px; background: #080e17; filter: none; border-radius: 50%; }
+.desktop-browser .tab { position: relative; max-width: 250px; border-radius: 12px 12px 0 0; }
+.desktop-browser .tab.selected { background: linear-gradient(125deg,#1b2833,#131c26); border-color: #354858; box-shadow: inset 0 1px #a8d3e71a; }
+.desktop-browser .tab-favicon { color: #b4d1e8; }
+.desktop-browser .tab-close { color: #adc1d5; }
+.desktop-browser .toolbar { gap: 12px; background: #0b121a; border-color: #293746; }
+.desktop-browser .omnibox-wrap { min-width: 0; max-width: 900px; }
+.desktop-browser .omnibox { height: 40px; border-radius: 22px; background: #101923; border-color: #42576b; padding: 0 14px; }
+.desktop-browser .omnibox input { min-width: 0; font-size: 13px; }
+.desktop-browser .omnibox>svg { color: #a3e6f3; }
+.desktop-browser .omnibox.focused { border-color: var(--cyan); background: #14212d; box-shadow: 0 0 0 3px color-mix(in srgb,var(--cyan),transparent 91%); }
+.desktop-browser .toolbar-actions { gap: 2px; }
+.desktop-browser .icon-button { border: 1px solid transparent; border-radius: 10px; }
+.desktop-browser .icon-button svg { transition: transform .5s cubic-bezier(.175,.885,.32,1.275); }
+.desktop-browser .icon-button:active svg { transform: scale(.84) rotate(-12deg); }
+.desktop-browser .icon-button[aria-label="Settings"]:active svg { transform: rotate(65deg) scale(.84); }
+.desktop-browser .toolbar-actions .icon-button.active { background: #182f3c; color: #9ceaff; border-color: #3b6478; }
+.desktop-browser .profile { background: #1e2c3e; border-color: #4e6b86; color: #c8eaff; box-shadow: inset 0 1px #ffffff14; }
+.desktop-browser .analyze-toolbar { display: flex; align-items: center; gap: 7px; height: 34px; padding: 0 10px; border: 1px solid #34465b; border-radius: 10px; background: #14202d; color: #c7dced; font-size: 11px; white-space: nowrap; }
+.desktop-browser .analyze-toolbar svg { color: #a5a2ff; }
+.desktop-browser .analyze-toolbar:hover { border-color: #74849e; background: #1c2c3c; }
+.desktop-browser .new-tab { background: #020509; }
+.desktop-browser .new-tab:before { display: none; }
+.desktop-browser .saturn-video { object-position: 32% center; width: 145%; max-width: none; left: -37%; }
+.desktop-browser .video-shade { background: linear-gradient(90deg,transparent 30%,#02050916 54%,#020509aa 100%),linear-gradient(180deg,#02050912,transparent 65%,#02050980); }
+.desktop-browser .spatial-grid { opacity: .12; animation: none; }
+.desktop-browser .new-tab .webgl { opacity: .16; }
+.desktop-browser .ambient-title { left: 24px; top: 24px; text-transform: none; letter-spacing: .02em; color: #9fb6ca; font-size: 12px; }
+.desktop-browser .ambient-title span { color: #6f8ca6; }
+.desktop-browser .new-tab-center.spatial-rig { left: 74%; top: 51%; width: min(610px,43vw); --ry: -10deg; --rx: 3deg; transform: translate(-50%,-50%) rotateX(var(--rx)) rotateY(var(--ry)) rotateZ(-2deg) scale(var(--ui-scale)); }
+.desktop-browser .command-plane {
+  min-height: 344px;
+  padding: 70px 30px 30px;
+  border: 1px solid color-mix(in srgb,var(--border-glow),#d9faff 35%);
+  border-radius: var(--cockpit-radius);
+  background: linear-gradient(145deg,rgb(24 35 44 / .94),rgb(7 15 21 / var(--panel-opacity,.82)) 65%);
+  box-shadow: 9px 8px 0 #182c3990,10px 9px 0 #7397ad66,17px 16px 0 #091520cc,18px 17px 0 #45647877,0 32px 72px #0009,inset 0 1px #ffffff22;
+  filter: none;
+  animation: cockpit-plane-arrive 850ms cubic-bezier(.16,1,.3,1) both,plane-hover-float var(--float-duration,13s) 900ms ease-in-out infinite;
+}
+.desktop-browser.has-refraction .command-plane { backdrop-filter: blur(min(var(--user-blur),8px)); }
+.desktop-browser .plane-label { left: 30px; right: 30px; top: 27px; height: 30px; font-size: 10px; letter-spacing: .2em; border-color: #a3c5df35; text-transform: none; }
+.desktop-browser .plane-label span { font-size: 9px; color: #edf6ff; letter-spacing: .22em; }
+.desktop-browser .plane-label b { font-weight: 450; letter-spacing: 0; font-size: 12px; }
+.desktop-browser .plane-label em { color: #8ca5bb; letter-spacing: 0; font-size: 10px; }
+.desktop-browser .plane-label:after { content: ""; position: absolute; left: 0; bottom: -1px; height: 2px; width: 42px; background: var(--cyan); }
+.desktop-browser .command-plane .time-block { width: 100%; margin: 8px 0 28px; }
+.desktop-browser .command-plane .time-block time { font-family: "Segoe UI Variable Display","Segoe UI",system-ui,sans-serif; font-size: clamp(72px,7.4vw,110px); font-weight: 200; letter-spacing: -.065em; line-height: 1; text-shadow: none; animation: none; }
+.desktop-browser .command-plane .time-block p { margin: 7px 0 0; font-size: 18px; color: #9fb4cb; font-weight: 350; text-shadow: none; }
+.desktop-browser .command-plane .home-search { height: 60px; width: 100%; border-radius: 17px; padding: 0 7px 0 16px; gap: 12px; background: linear-gradient(120deg,#1d2a35,#0e1822); border-color: #a5c3d7a1; box-shadow: 0 12px 28px #0005,inset 0 1px #ffffff13; animation: search-arrive 700ms cubic-bezier(.16,1,.3,1) .18s both; }
+.desktop-browser .home-search input { min-width: 0; font-size: 14px; color: #e4f4ff; }
+.desktop-browser .home-search input::placeholder { color: #91a8be; }
+.desktop-browser .home-search>svg { color: #d3e9f6; }
+.desktop-browser .home-search button { flex: 0 0 44px; width: 44px; height: 44px; display: grid; place-items: center; border: 1px solid #d7f7ff9e; border-radius: 12px; color: #06232d; background: linear-gradient(140deg,#b9f2ff,#70d6f0); box-shadow: 0 0 20px #7cddff33,inset 0 1px #ffffff99; }
+.desktop-browser .home-search button svg { width: 22px; height: 22px; }
+.desktop-browser .favorites.spatial-shortcut-dock { margin-top: 29px; padding: 0; justify-content: space-around; gap: 10px; }
+.desktop-browser .favorite { width: 72px; gap: 10px; }
+.desktop-browser .favorite>span { width: 57px; height: 57px; border-radius: 14px; border-color: #a4c8e04a; background: linear-gradient(145deg,#273541,#0b121a); color: var(--accent); box-shadow: 0 9px 23px #0008,inset 0 1px #ffffff1c; }
+.desktop-browser .favorite b { color: #cee0ed; font-size: 11px; font-weight: 450; text-shadow: none; }
+.desktop-browser .bottom-status { right: 24px; bottom: 22px; font-size: 10px; letter-spacing: .01em; text-transform: none; color: #9eb7ca; }
+.desktop-browser .bottom-status i { width: 7px; height: 7px; background: #66e9ad; box-shadow: 0 0 10px #66e9ad44; }
+.desktop-browser .drawer { border-color: #40566c; }
+.desktop-browser .drawer-head h2 { font-weight: 550; letter-spacing: -.035em; }
+.desktop-browser .drawer-head .drawer-kicker { color: #91a8be; }
+.desktop-browser .settings-drawer { border-color: #789caf88; box-shadow: 12px 16px 0 #0a1520aa,13px 17px 0 #36536577,0 36px 80px #0009,inset 0 1px #ffffff1f; }
+.desktop-browser .settings-nav button { background: #111c27; border-color: #354b60; border-radius: 12px 12px 3px 3px; }
+.desktop-browser .settings-nav button.active { background: #243748; border-color: #8dd1eb88; color: #e6f8ff; }
+.desktop-browser .setting-row,.desktop-browser .setting-range { font-size: 12px; min-height: 53px; }
+.desktop-browser .setting-row select { font-size: 11px; min-height: 31px; }
+.desktop-browser .setting-range em { color: #a2c4d8; }
+.desktop-browser .setting-range input { height: 5px; accent-color: var(--cyan); }
+.desktop-browser .switch { height: 22px; width: 39px; flex-basis: 39px; }
+.desktop-browser .switch i { width: 16px; height: 16px; transition: transform .45s cubic-bezier(.175,.885,.32,1.275),background .2s; }
+.desktop-browser .switch.on { background: #6dcfe7; border-color: #c0eeff55; }
+.desktop-browser .switch.on i { transform: translateX(15px); background: #f3fcff; }
+.desktop-browser .settings-drawer:has(.motion-preview) .settings-body { height: calc(100% - 193px); }
+.motion-preview { height: 68px; padding: 10px 23px; display: flex; align-items: center; justify-content: space-between; gap: 10px; border-top: 1px solid #293d51; background: #101c28; }
+.motion-preview>div { display: flex; flex-direction: column; gap: 5px; }
+.motion-preview b { font-size: 11px; font-weight: 550; color: #cee4f4; }
+.motion-preview small { font-size: 10px; color: #859eb4; }
+.motion-preview-button { display: flex; gap: 8px; align-items: center; padding: 10px 13px; border: 1px solid #5a92ac; border-radius: 9px; background: #203e51; color: #e0f5ff; font-size: 11px; }
+.vpn-setup-body { padding: 27px; overflow-y: auto; height: calc(100% - 83px); scrollbar-width: thin; scrollbar-color: #3d5369 transparent; }
+.vpn-setup-mark { display: grid; place-items: center; width: 76px; height: 76px; margin: 0 0 23px; border: 1px solid #557d98; border-radius: 23px; background: linear-gradient(135deg,#28475d,#142130); color: #a5e9ff; box-shadow: 0 12px 32px #0004,inset 0 1px #ffffff22; }
+.vpn-setup-body h3 { margin: 0 0 11px; font-size: 24px; line-height: 1.2; font-weight: 500; letter-spacing: -.035em; }
+.vpn-setup-body>p { font-size: 13px; line-height: 1.65; color: #9dafc2; }
+.vpn-honest-state { display: flex; gap: 10px; margin: 23px 0 17px; padding: 14px; border: 1px solid #3e4c5b; border-radius: 11px; background: #101923; }
+.vpn-honest-state>i { flex: 0 0 6px; width: 6px; height: 6px; margin-top: 6px; border-radius: 50%; background: #e1bd7e; }
+.vpn-honest-state b { display: block; margin-bottom: 5px; color: #e5d6b9; font-size: 12px; font-weight: 550; }
+.vpn-honest-state span { display: block; font-size: 11px; color: #91a4b7; line-height: 1.6; }
+.vpn-open-settings,.vpn-proton-guide { width: 100%; min-height: 47px; display: flex; align-items: center; gap: 10px; padding: 12px; border: 1px solid #86c7df80; border-radius: 11px; background: #233d50; color: #dbf4ff; font-size: 12px; }
+.vpn-open-settings span,.vpn-proton-guide span { flex: 1; text-align: left; }
+.vpn-proton-guide { background: linear-gradient(110deg,#334455,#2b3e53); border-color: #9d9fee80; color: #e3e7ff; }
+.vpn-proton-actions { display: grid; gap: 9px; margin-bottom: 15px; }
+.vpn-proton-actions button:disabled { opacity: .5; cursor: not-allowed; }
+.vpn-manual { margin: 0 0 20px; border-bottom: 1px solid #293c4f; padding-bottom: 17px; }
+.vpn-manual summary { color: #a7bdd0; font-size: 12px; cursor: pointer; }
+.vpn-manual p { color: #8b9fb4; font-size: 11px; line-height: 1.7; }
+.vpn-setup-steps { list-style: none; margin: 28px 0 20px; padding: 0; }
+.vpn-setup-steps li { display: flex; gap: 13px; margin: 0; padding: 16px 0; border-bottom: 1px solid #263848; }
+.vpn-setup-steps li>span { font: 11px ui-monospace,monospace; color: #6fa5c4; padding-top: 2px; }
+.vpn-setup-steps b { color: #d9e8f4; font-size: 12px; font-weight: 550; }
+.vpn-setup-steps p { margin: 6px 0 0; color: #95a8bd; font-size: 12px; line-height: 1.65; }
+.vpn-setup-body .vpn-setup-note { font-size: 11px; color: #73899d; }
+.vpn-setup-message { padding: 12px; border: 1px solid #41677c; border-radius: 9px; background: #162a38; color: #baddf0; font-size: 12px; line-height: 1.6; }
+
+/* A bounded, event-only WAAPI layer. No pointer tracking, layout animation or idle loop. */
+.browsery-click-layer { color: var(--cyan,#83e7ff); contain: strict; forced-color-adjust: none; }
+.browsery-click-burst { position: absolute; width: 0; height: 0; pointer-events: none; }
+.browsery-click-ring { position: absolute; left: 0; top: 0; width: var(--burst-size); height: var(--burst-size); border: 2px solid currentColor; border-radius: 50%; box-shadow: 0 0 15px #8bdbff55,inset 0 0 9px #8bdbff22; will-change: transform,opacity; }
+.browsery-click-ring.ring-2 { border-width: 1px; color: #c1b2ff; }
+.browsery-click-ray { position: absolute; left: 0; top: -1px; width: 14px; height: 2px; border-radius: 2px; background: currentColor; transform-origin: 0 50%; will-change: transform,opacity; }
+@keyframes cockpit-plane-arrive {
+  from { opacity: 0; translate: 45px 24px; rotate: y -12deg; scale: .91; }
+  to { opacity: 1; translate: 0 0; rotate: y 0deg; scale: 1; }
+}
+@media(min-width:1401px) { .desktop-browser .zoom-controls { display: none; } }
+@media(max-width:1400px) { .desktop-browser .zoom-controls { display: none; } .desktop-browser .analyze-toolbar span { display: none; } .desktop-browser .analyze-toolbar { width: 34px; padding: 0; justify-content: center; } }
+@media(max-width:1200px) { .desktop-browser .new-tab-center.spatial-rig { left: 69%; width: min(560px,52vw); } .desktop-browser .command-plane { min-height: 318px; padding: 65px 25px 28px; } .desktop-browser .toolbar-actions .icon-button[aria-label="VPN setup"] { display: grid; } }
+@media(max-width:900px) { .desktop-browser .new-tab-center.spatial-rig { left: 60%; width: min(560px,65vw); } .desktop-browser .brand { width: 55px; } .desktop-browser .home-search input { font-size: 11px; } .desktop-browser .toolbar { gap: 5px; padding: 0 8px; } .desktop-browser .toolbar-actions .icon-button { width: 30px; } .desktop-browser .toolbar-actions .icon-button[aria-label="Cookies & site data"],.desktop-browser .toolbar-actions .icon-button[aria-label="Bookmarks"] { display: none; } }
+@media(max-width:620px) { .desktop-browser .new-tab-center.spatial-rig { left: 50%; width: 88vw; } .desktop-browser .command-plane { min-height: 290px; padding: 65px 17px 24px; } .desktop-browser .plane-label { left: 18px; right: 18px; font-size: 9px; } .desktop-browser .command-plane .time-block p { font-size: 14px; } .desktop-browser .favorite { width: 53px; } .desktop-browser .favorite>span { width: 45px; height: 45px; } .desktop-browser .favorite>span svg { width: 25px; height: 25px; } .desktop-browser .toolbar-actions .analyze-toolbar { display: none; } .desktop-browser .ambient-title { font-size: 10px; left: 18px; } .desktop-browser .bottom-status { left: 18px; bottom: 19px; } .desktop-browser .settings-nav { overflow-x: auto; scrollbar-width: none; } .motion-preview { padding: 10px 13px; } }
+/* Preference overrides keep the native pointer and stop decorative work immediately. */
+.reduce-effects .desktop-browser .command-plane { animation: none; opacity: 1; translate: none; scale: 1; rotate: none; }
+.reduce-effects .desktop-browser .spatial-rig { --rx: 0deg !important; --ry: 0deg !important; }
+.desktop-browser.light .toolbar,.desktop-browser.light .tabs-row { background: #1a2530; }
+.desktop-browser.light .omnibox { background: #253644; border-color: #63869b; }
+@media(prefers-reduced-motion:reduce) { .desktop-browser .command-plane { animation: none !important; opacity: 1; translate: none; scale: 1; rotate: none; } .desktop-browser .spatial-rig { --rx: 0deg !important; --ry: 0deg !important; } .browsery-click-layer { display: none; } .desktop-browser .icon-button:active svg { transform: none; } }

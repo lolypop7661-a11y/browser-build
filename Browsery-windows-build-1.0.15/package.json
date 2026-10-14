@@ -1,0 +1,91 @@
+{
+  "name": "browsery-magic-cursor",
+  "productName": "Browsery",
+  "private": true,
+  "version": "1.0.15",
+  "description": "A real desktop browser with a Saturn new-tab experience.",
+  "main": "electron/main.cjs",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/lolypop7661-a11y/browser-build.git"
+  },
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "vite build",
+    "preview": "vite preview --host 0.0.0.0",
+    "desktop": "electron .",
+    "package:win": "node scripts/create-browsery-icon.mjs && vite build && node scripts/package-desktop.mjs",
+    "package:win:installer": "node scripts/create-browsery-icon.mjs && vite build && node scripts/package-windows-installer.mjs",
+    "package:mac": "node scripts/package-macos.mjs",
+    "package:mac:signed": "node scripts/package-macos.mjs --signed"
+  },
+  "dependencies": {
+    "electron-updater": "6.8.9"
+  },
+  "devDependencies": {
+    "@electron/packager": "^20.3.0",
+    "@vitejs/plugin-react": "latest",
+    "electron": "^44.7.0",
+    "electron-builder": "^26.15.3",
+    "react": "latest",
+    "react-dom": "latest",
+    "three": "latest",
+    "typescript": "latest",
+    "vite": "latest"
+  },
+  "build": {
+    "appId": "com.browsery.desktop",
+    "productName": "Browsery",
+    "artifactName": "Browsery-${version}-${arch}.${ext}",
+    "directories": {
+      "output": "outputs/desktop"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "package.json"
+    ],
+    "asar": true,
+    "asarUnpack": [
+      "electron/native/*.exe"
+    ],
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "lolypop7661-a11y",
+        "repo": "browser-build",
+        "releaseType": "release"
+      }
+    ],
+    "win": {
+      "icon": "public/assets/browsery-icon.ico",
+      "target": [
+        "nsis"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": false,
+      "createDesktopShortcut": "always",
+      "createStartMenuShortcut": true,
+      "shortcutName": "Browsery",
+      "include": "scripts/windows-installer.nsh",
+      "deleteAppDataOnUninstall": false
+    },
+    "mac": {
+      "category": "public.app-category.productivity",
+      "darkModeSupport": true,
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        }
+      ]
+    }
+  }
+}

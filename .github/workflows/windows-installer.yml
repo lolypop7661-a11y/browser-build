@@ -4,11 +4,11 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 defaults:
   run:
-    working-directory: Browsery-mac-build-kit-1.0.0
+    working-directory: Browsery-windows-build-1.0.15
 
 jobs:
   build:
@@ -36,10 +36,24 @@ jobs:
         with:
           name: Browsery-Windows-installer
           path: |
-            Browsery-mac-build-kit-1.0.0/outputs/windows-*/*.exe
-            Browsery-mac-build-kit-1.0.0/outputs/windows-*/*.blockmap
-            Browsery-mac-build-kit-1.0.0/outputs/windows-*/latest.yml
-            Browsery-mac-build-kit-1.0.0/outputs/windows-*/verification.json
+            Browsery-windows-build-1.0.15/outputs/windows-setup-wizard-1.0.15/Browsery-1.0.15-x64.exe
+            Browsery-windows-build-1.0.15/outputs/windows-setup-wizard-1.0.15/latest.yml
+            Browsery-windows-build-1.0.15/outputs/windows-setup-wizard-1.0.15/Browsery-1.0.15-x64.exe.blockmap
+            Browsery-windows-build-1.0.15/outputs/windows-setup-wizard-1.0.15/Browsery-1.0.15-x64.exe.sha256
+            Browsery-windows-build-1.0.15/outputs/windows-setup-wizard-1.0.15/verification.json
           if-no-files-found: error
           compression-level: 0
           retention-days: 7
+      - name: Publish Browsery 1.0.15
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >-
+          gh release create v1.0.15
+          --target "$GITHUB_SHA"
+          --title "Browsery 1.0.15"
+          --notes "Device-bound owner controls, account moderation, scheduled maintenance, global feature policy, audit history, and corrected update enforcement. Admin keys are not embedded in the installer."
+          outputs/windows-setup-wizard-1.0.15/Browsery-1.0.15-x64.exe
+          outputs/windows-setup-wizard-1.0.15/latest.yml
+          outputs/windows-setup-wizard-1.0.15/Browsery-1.0.15-x64.exe.blockmap
+          outputs/windows-setup-wizard-1.0.15/Browsery-1.0.15-x64.exe.sha256

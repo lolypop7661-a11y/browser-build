@@ -1,0 +1,123 @@
+/* Native browser behaviors: deliberately quiet so a permission request reads
+   like part of the browser, not another animated product surface. */
+.permission-layer {
+  position: fixed;
+  z-index: 460;
+  inset: 0;
+  display: grid;
+  place-items: start center;
+  padding: 92px 18px 18px;
+  background: rgba(0, 0, 0, .22);
+  pointer-events: none;
+}
+
+.permission-card {
+  width: min(394px, calc(100vw - 36px));
+  display: grid;
+  grid-template-columns: 42px 1fr;
+  gap: 0 13px;
+  padding: 16px;
+  border: 1px solid rgba(255, 255, 255, .22);
+  border-radius: 17px;
+  background: rgba(15, 19, 24, .96);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, .48), inset 0 1px rgba(255, 255, 255, .09);
+  color: #f5f8fa;
+  pointer-events: auto;
+  will-change: transform, opacity;
+  animation: permission-arrive 220ms cubic-bezier(.2, .9, .25, 1.08) both;
+}
+
+.permission-mark {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, .17);
+  border-radius: 13px;
+  color: #fff;
+  background: rgba(255, 255, 255, .07);
+}
+
+.permission-copy > span {
+  display: block;
+  margin-bottom: 3px;
+  color: #9aa6b0;
+  font-size: 9px;
+  font-weight: 720;
+  letter-spacing: .11em;
+  text-transform: uppercase;
+}
+
+.permission-copy h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 670;
+  letter-spacing: -.025em;
+}
+
+.permission-copy p,
+.permission-private {
+  margin: 6px 0 0;
+  color: #aeb9c1;
+  font-size: 11px;
+  line-height: 1.48;
+}
+
+.permission-copy p b { color: #edf4f8; font-weight: 600; }
+
+.permission-remember,
+.permission-private,
+.permission-actions {
+  grid-column: 1 / -1;
+}
+
+.permission-remember {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 15px;
+  color: #bdc8cf;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.permission-remember input { accent-color: #fff; }
+
+.permission-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 15px;
+}
+
+.permission-actions button {
+  min-height: 31px;
+  padding: 0 13px;
+  border: 1px solid rgba(255, 255, 255, .15);
+  border-radius: 9px;
+  color: #e8eef2;
+  font: 640 11px/1 var(--ui-font, Inter, system-ui, sans-serif);
+  cursor: pointer;
+  transition: transform 150ms cubic-bezier(.2, .9, .25, 1.08), background 150ms ease, border-color 150ms ease;
+}
+
+.permission-actions button:active { transform: scale(.96); }
+.permission-block { background: rgba(255, 255, 255, .04); }
+.permission-block:hover { background: rgba(255, 255, 255, .1); }
+.permission-allow { background: #edf1f3; color: #101417 !important; border-color: #fff !important; }
+.permission-allow:hover { background: #fff; }
+
+@keyframes permission-arrive {
+  from { opacity: 0; transform: translate3d(0, -10px, 0) scale(.98); }
+  to { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .permission-card { animation: none; }
+  .permission-actions button { transition: none; }
+}
+
+@media (max-width: 600px) {
+  .permission-layer { padding-top: 60px; }
+  .permission-card { border-radius: 14px; }
+}
