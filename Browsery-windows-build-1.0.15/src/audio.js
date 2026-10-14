@@ -75,7 +75,9 @@ export class BrowseryAudioEngine {
 
     if (this.canPlayAmbience()) {
       window.clearTimeout(this.ambientStopTimer);
+      window.clearTimeout(this.sleepTimer);
       this.ambientStopTimer = 0;
+      if (this.context.state === 'suspended') this.unlock();
       if (this.ambientNodes.length === 0) this.startAmbience();
       else if (previousTheme !== this.settings.theme) this.applyTheme();
       this.applySpatialField();
@@ -227,6 +229,7 @@ export class BrowseryAudioEngine {
       this.ambientNodes = [];
       this.ambientVoices = [];
       this.ambientStopTimer = 0;
+      this.sleepWhenIdle(1000);
     }, 900);
   }
 
@@ -297,6 +300,24 @@ export class BrowseryAudioEngine {
         panner.disconnect();
       };
     });
+    if (!this.canPlayAmbience()) this.sleepWhenIdle(1500);
     return Promise.resolve(true);
+  }
+
+  // Suspending the audio graph stops all audio processing, and its CPU use,
+  // while nothing can be heard. The next sound resumes it on demand.
+  sleep() {
+    window.clearTimeout(this.sleepTimer);
+    if (this.context?.state === 'running') this.context.suspend().catch(() => {});
+  }
+
+  sleepWhenIdle(delay = 4000) {
+    window.clearTimeout(this.sleepTimer);
+    this.sleepTimer = window.setTimeout(() => { if (!this.canPlayAmbience()) this.sleep(); }, delay);
+  }
+
+  wake() {
+    window.clearTimeout(this.sleepTimer);
+    if (this.context && this.canPlayAmbience()) this.unlock();
   }
 }

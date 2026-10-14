@@ -1,116 +1,77 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { useSpringPresence } from './motion.js';
+import { extensionById, extensionCatalog, extensionCategories, siteOf } from './extensions/catalog.js';
+import { extensionTools } from './extensions/tools.jsx';
 
-// Browsery extensions are configuration packs bundled with the app.  They are
-// intentionally declarative: an entry can adjust a known preference, but it
-// can never download or execute third-party JavaScript in the browser process.
-const EXTENSION_STORAGE_KEY = 'browsery:extensions-v1';
+const isAutomatic = extension => Boolean(extension.onPageReady || extension.checkNavigation || extension.onZoom);
 
-export const extensionCatalog = [
-  { id: 'deep-shield', name: 'Deep Shield', category: 'Protection', icon: 'shield', description: 'Turns on Browsery’s strict local tracker and suspicious-link protections.', settings: { adblock: true, trackers: 'Strict', phishing: true, https: true } },
-  { id: 'privacy-signals', name: 'Privacy Signals', category: 'Protection', icon: 'shield', description: 'Sends privacy preference headers and limits high-entropy browser hints.', settings: { dnt: true, fingerprint: true, webrtc: true } },
-  { id: 'download-guard', name: 'Download Guard', category: 'Protection', icon: 'download', description: 'Asks where to save each download so nothing silently lands in an unexpected folder.', settings: { path: 'Ask every time', phishing: true } },
-  { id: 'quiet-tabs', name: 'Quiet Tabs', category: 'Performance', icon: 'volume', description: 'Keeps background tabs muted and lets Browsery sleep inactive tabs.', settings: { sleep: true, mutetabs: true } },
-  { id: 'tab-wake', name: 'Tab Wake', category: 'Performance', icon: 'reload', description: 'Keeps open tabs restored between launches for a quick return to your workspace.', settings: { restore: true, sleep: false } },
-  { id: 'calm-motion', name: 'Calm Motion', category: 'Accessibility', icon: 'spark', description: 'Keeps the spatial look while reducing particle density and click energy.', settings: { particles: 22, motionStrength: 34, speed: 42, cursorEnabled: false } },
-  { id: 'type-comfort', name: 'Type Comfort', category: 'Accessibility', icon: 'sliders', description: 'Raises the interface scale for longer reading sessions.', settings: { fontScale: 66, chromeDensity: 'Spacious' } },
-  { id: 'contrast-lens', name: 'Contrast Lens', category: 'Accessibility', icon: 'alert', description: 'Uses the Windows contrast preference and clearer, less translucent browser chrome.', settings: { systemContrast: true, opacity: 86, blur: 28 } },
-  { id: 'search-compass', name: 'Search Compass', category: 'Search', icon: 'search', description: 'Uses Browsery search with typed suggestions and local history matches.', settings: { engine: 'Browsery', suggestions: true } },
-  { id: 'research-brief', name: 'Research Brief', category: 'Search', icon: 'spark', description: 'Turns on concise Groq web overviews for searches when your key is configured.', settings: { aiOverview: true } },
-  { id: 'image-atlas', name: 'Image Atlas', category: 'Search', icon: 'grid', description: 'Keeps Browsery’s visual-search route ready from the custom results page.', settings: { engine: 'Browsery', suggestions: true } },
-  { id: 'clean-start', name: 'Clean Start', category: 'Workspace', icon: 'home', description: 'Makes the Saturn new tab page your home and keeps the shortcut dock visible.', settings: { homepage: 'New Space', showFavorites: true, showStatus: true } },
-  { id: 'focus-deck', name: 'Focus Deck', category: 'Workspace', icon: 'find', description: 'Tightens tab chrome and removes the shortcut dock for a quieter workspace.', settings: { compact: true, showFavorites: false, showStatus: true } },
-  { id: 'tab-rail', name: 'Tab Rail', category: 'Workspace', icon: 'grid', description: 'Switches Browsery to a vertical tab rail when you need a wider workspace.', settings: { tabs: 'Vertical', compact: false } },
-  { id: 'bookmark-dock', name: 'Bookmark Dock', category: 'Workspace', icon: 'bookmark', description: 'Keeps the shortcut dock visible and browser navigation comfortably spaced.', settings: { showFavorites: true, chromeDensity: 'Comfortable' } },
-  { id: 'ambient-deck', name: 'Ambient Deck', category: 'Media', icon: 'music', description: 'Enables Browsery’s local procedural ambience and understated click feedback.', settings: { ambience: true, ambienceVolume: 42, master: 45, clicks: true, spatialaudio: true } },
-  { id: 'media-quiet', name: 'Media Quiet', category: 'Media', icon: 'volume', description: 'Mutes background tabs while keeping the audio visualizer available.', settings: { mutetabs: true, visualizer: true, hover: false } },
-  { id: 'saturn-studio', name: 'Saturn Studio', category: 'Appearance', icon: 'globe', description: 'Returns the focused Original Saturn scene with a gentle, readable tilt.', settings: { backgroundScene: 'Original Saturn', saturnTilt: -24, backgroundBrightness: 50, backgroundContrast: 50 } },
-  { id: 'mono-orbit', name: 'Mono Orbit', category: 'Appearance', icon: 'spark', description: 'Uses Browsery’s black-and-white palette with soft spatial geometry.', settings: { accentPreset: 'Monochrome', cornerStyle: 'Soft', glow: '#ffffff' } },
-  { id: 'safe-session', name: 'Private Session', category: 'Privacy', icon: 'cookie', description: 'Starts a local private Browsery session and clears cookies when it closes.', settings: { private: true, cookies: 'On close', dnt: true } },
-];
-
-const categories = ['All', ...new Set(extensionCatalog.map(extension => extension.category))];
-
-function readInstalled() {
-  try {
-    const parsed = JSON.parse(localStorage.getItem(EXTENSION_STORAGE_KEY) || '{}');
-    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {};
-    return Object.fromEntries(Object.entries(parsed).filter(([id, value]) => extensionCatalog.some(extension => extension.id === id) && value?.installed));
-  } catch {
-    return {};
-  }
-}
-
-function ExtensionCard({ extension, installed, onInstall, onRemove, Icon, Button }) {
-  return <article className={`extension-card ${installed ? 'is-installed' : ''}`}>
-    <div className="extension-card-top">
-      <span className="extension-icon"><Icon name={extension.icon} size={17}/></span>
-      <div><span className="extension-category">{extension.category}</span><h3>{extension.name}</h3></div>
-      {installed && <span className="extension-installed" aria-label="Installed">Installed</span>}
-    </div>
-    <p>{extension.description}</p>
-    <div className="extension-card-footer">
-      <small>Built in · local settings only</small>
-      {installed
-        ? <Button className="extension-action subtle" onClick={() => onRemove(extension)}>Remove</Button>
-        : <Button className="extension-action" onClick={() => onInstall(extension)}>Install</Button>}
-    </div>
-  </article>;
-}
-
-export function ExtensionStore({ open, onClose, setSettings, onNotice, Icon, Button, CloseButton }) {
-  const panelRef = useSpringPresence(open, { preset: 'fluid', offset: 90 });
-  const [installed, setInstalled] = useState(readInstalled);
+/** The Extensions drawer: installed tools, the tool view, and the store. */
+export function ExtensionsDrawer({ open, onClose, host, activeTab, onNotice, onOpenTab, Icon, Button, CloseButton }) {
+  const state = useSyncExternalStore(host.subscribe, host.getState);
+  const [view, setView] = useState('mine');
+  const [toolId, setToolId] = useState(null);
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState('All');
+  const [hidden, setHidden] = useState(false);
+  const installed = extensionCatalog.filter(extension => state.installed[extension.id]);
+  const tool = toolId && state.installed[toolId] ? extensionById.get(toolId) : null;
+  const visible = open && !hidden;
+  const panelRef = useSpringPresence(visible, { preset: 'fluid', offset: 90 });
 
-  useEffect(() => {
-    try { localStorage.setItem(EXTENSION_STORAGE_KEY, JSON.stringify(installed)); } catch {}
-  }, [installed]);
+  useEffect(() => { if (open && !installed.length) setView('store'); }, [open]);
+  useEffect(() => { if (toolId && !state.installed[toolId]) setToolId(null); }, [state.installed, toolId]);
 
-  useEffect(() => {
-    if (!open) return;
-    setQuery('');
-    setCategory('All');
-  }, [open]);
+  const ctx = useMemo(() => ({
+    host, url: activeTab?.url || '', title: activeTab?.title || '', site: siteOf(activeTab?.url || ''), tabId: activeTab?.id,
+    notify: onNotice, openTab: onOpenTab, setDrawerHidden: setHidden,
+  }), [host, activeTab?.url, activeTab?.title, activeTab?.id, onNotice, onOpenTab]);
 
-  const visible = useMemo(() => {
-    const term = query.trim().toLowerCase();
-    return extensionCatalog.filter(extension => (category === 'All' || extension.category === category) && (!term || `${extension.name} ${extension.description} ${extension.category}`.toLowerCase().includes(term)));
-  }, [category, query]);
+  const results = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    return extensionCatalog.filter(extension => (category === 'All' || extension.category === category)
+      && (!needle || `${extension.name} ${extension.description} ${extension.category}`.toLowerCase().includes(needle)));
+  }, [query, category]);
 
-  const install = extension => {
-    setInstalled(current => ({ ...current, [extension.id]: { installed: true, installedAt: Date.now() } }));
-    if (extension.settings) setSettings(current => ({ ...current, ...extension.settings }));
-    onNotice?.(`${extension.name} installed`);
-  };
+  const install = extension => { host.install(extension.id); onNotice?.(`${extension.name} installed`); setToolId(extension.id); };
+  const remove = extension => { host.uninstall(extension.id); onNotice?.(`${extension.name} removed`); };
+  const Tool = tool ? extensionTools[tool.id] : null;
 
-  const remove = extension => {
-    setInstalled(current => {
-      const next = { ...current };
-      delete next[extension.id];
-      return next;
-    });
-    // Deliberately leave preferences alone: silently reverting several browser
-    // settings after a remove would be more surprising than useful.
-    onNotice?.(`${extension.name} removed — its current preferences were kept`);
-  };
-
-  const installedCount = Object.keys(installed).length;
-  return <aside ref={panelRef} className={`drawer extensions-drawer ${open ? 'open' : ''}`} aria-hidden={!open} aria-label="Browsery extension store">
-    <div className="drawer-head extensions-head">
-      <div><span className="drawer-kicker">Safe local catalogue</span><h2>Extensions</h2></div>
-      <CloseButton icon="close" label="Close extensions" onClick={onClose}/>
+  return <aside ref={panelRef} className={`drawer extensions-drawer ${visible ? 'open' : ''} ${tool?.wide ? 'is-wide' : ''}`} aria-hidden={!visible} aria-label="Browsery extensions">
+    <div className="drawer-head ext-head">
+      {tool ? <div className="ext-title">
+        <button type="button" className="ext-back" onClick={() => setToolId(null)} aria-label="Back to extensions"><Icon name="back" size={16} /></button>
+        <span className="ext-glyph"><Icon name={tool.icon} size={17} /></span>
+        <div><span className="drawer-kicker">{tool.category}{isAutomatic(tool) ? ' · works automatically' : ''}</span><h2>{tool.name}</h2></div>
+      </div> : <div><span className="drawer-kicker">Built into Browsery</span><h2>Extensions</h2></div>}
+      <CloseButton icon="close" label="Close extensions" onClick={onClose} />
     </div>
-    <div className="extensions-body">
-      <section className="extensions-intro">
-        <div><span className="extensions-orb"><Icon name="grid" size={18}/></span><div><b>Browsery Extension Store</b><small>{installedCount} of {extensionCatalog.length} local extensions installed</small></div></div>
-        <p>Every extension is bundled with Browsery. Installing one only applies visible preferences; Browsery never downloads or runs extension code from the web.</p>
-      </section>
-      <label className="extensions-search"><Icon name="search" size={15}/><input value={query} onChange={event => setQuery(event.target.value)} placeholder="Find an extension" aria-label="Find an extension"/></label>
-      <div className="extension-filters" role="tablist" aria-label="Extension categories">{categories.map(item => <button key={item} type="button" role="tab" aria-selected={category === item} className={category === item ? 'active' : ''} onClick={() => setCategory(item)}>{item}</button>)}</div>
-      <div className="extension-grid">{visible.map(extension => <ExtensionCard key={extension.id} extension={extension} installed={Boolean(installed[extension.id])} onInstall={install} onRemove={remove} Icon={Icon} Button={Button}/>)}</div>
-      {visible.length === 0 && <div className="extensions-empty"><Icon name="search" size={19}/><b>No extension found</b><span>Try another name or category.</span></div>}
-    </div>
+
+    {tool ? <div className="ext-body ext-tool" key={tool.id}>
+      {Tool && <Tool ctx={ctx} config={state.configs[tool.id]} setConfig={update => host.setConfig(tool.id, update)} hostState={state} Icon={Icon} Button={Button} />}
+      <div className="ext-tool-footer"><p>{tool.description}</p><button type="button" className="ext-remove" onClick={() => remove(tool)}>Remove {tool.name}</button></div>
+    </div> : <>
+      <nav className="ext-tabs" aria-label="Extension views">
+        <button type="button" className={view === 'mine' ? 'active' : ''} aria-pressed={view === 'mine'} onClick={() => setView('mine')}>Your extensions <em>{installed.length}</em></button>
+        <button type="button" className={view === 'store' ? 'active' : ''} aria-pressed={view === 'store'} onClick={() => setView('store')}>Store <em>{extensionCatalog.length}</em></button>
+      </nav>
+      {view === 'mine' ? <div className="ext-body">
+        {installed.length ? <div className="ext-tiles">{installed.map(extension => <button type="button" key={extension.id} className="ext-tile" onClick={() => setToolId(extension.id)}>
+          <span className="ext-glyph"><Icon name={extension.icon} size={18} /></span>
+          <b>{extension.name}</b>
+          <small>{isAutomatic(extension) ? 'Automatic' : 'Tool'}{extension.id === 'auto-refresh' && Object.keys(state.refresh).length ? ` · ${Object.keys(state.refresh).length} running` : ''}{extension.id === 'focus-mode' && state.configs['focus-mode'].endsAt > Date.now() ? ' · focusing' : ''}</small>
+        </button>)}</div> : <div className="ext-empty"><Icon name="extension" size={26} /><b>No extensions yet</b><span>Add tools like Reader View, Night Shift and Focus Mode from the store.</span><Button onClick={() => setView('store')}>Browse the store</Button></div>}
+      </div> : <div className="ext-body">
+        <label className="ext-search"><Icon name="search" size={15} /><input value={query} onChange={event => setQuery(event.target.value)} placeholder="Search extensions" aria-label="Search extensions" /></label>
+        <div className="ext-categories" role="group" aria-label="Categories">{extensionCategories.map(name => <button type="button" key={name} className={category === name ? 'active' : ''} aria-pressed={category === name} onClick={() => setCategory(name)}>{name}</button>)}</div>
+        {results.length ? <div className="ext-cards">{results.map(extension => {
+          const has = Boolean(state.installed[extension.id]);
+          return <article key={extension.id} className={`ext-card ${has ? 'installed' : ''}`}>
+            <div className="ext-card-head"><span className="ext-glyph"><Icon name={extension.icon} size={17} /></span><div><span>{extension.category}</span><h3>{extension.name}</h3></div></div>
+            <p>{extension.description}</p>
+            <div className="ext-card-actions">{has ? <><Button onClick={() => setToolId(extension.id)}>Open</Button><button type="button" className="ext-remove" onClick={() => remove(extension)}>Remove</button></> : <Button className="ext-install" onClick={() => install(extension)}>Add</Button>}</div>
+          </article>;
+        })}</div> : <div className="ext-empty"><b>No matches</b><span>Try another word or category.</span></div>}
+      </div>}
+    </>}
   </aside>;
 }

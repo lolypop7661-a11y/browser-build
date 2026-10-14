@@ -114,6 +114,32 @@ control. The workflow has not been run from this Windows workspace.
 - Real file downloads from webpages appear in the downloads drawer.
 - Click the avatar to shift the visual theme.
 
+## Extensions
+
+The puzzle-piece button opens 20 built-in extensions. Each adds something the
+base browser does not have; none of them just change settings. They ship inside
+Browsery, so nothing is downloaded or run from the web.
+
+- **Reading:** Night Shift (dark mode for bright sites), Reader View, Read Aloud, Page Outline
+- **Media:** Pop-out Video, Video Speed, Image Grabber, Snapshot, Color Picker
+- **Cleanup:** Cookie Pop-up Killer, Element Zapper, JSON Viewer
+- **Productivity:** Focus Mode, Site Notes, Clipboard Clips, Time Tracker, Auto Refresh
+- **Tools:** Password Generator, Link Inspector, Zoom Memory
+
+Code lives in `src/extensions/`: `catalog.js` (definitions and automatic page
+hooks), `scripts.js` (code run inside pages), `host.js` (runs installed
+extensions and stores their settings), and `tools.jsx` (panels). Anything a
+page script returns is treated as untrusted and rendered as text.
+
+## Memory and GPU use
+
+Inactive tabs unload after 30 minutes by default (Settings → Browser → Unload
+inactive tabs), freeing their page process; they reload where you left off.
+Pinned tabs, tabs playing sound and auto-refreshing tabs stay loaded.
+Decorative animations play once instead of looping, closed panels stop
+rendering, and panels no longer blur the video behind them. Audio processing
+sleeps whenever nothing is audible or Browsery is hidden.
+
 ## Space cockpit and click motion
 
 The browser chrome, floating new-tab console, shortcut dock and drawers share the

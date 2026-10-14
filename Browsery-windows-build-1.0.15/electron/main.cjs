@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, session, shell, protocol, dialog, webContents, safeStorage } = require('electron');
+const { app, BrowserWindow, ipcMain, session, shell, protocol, dialog, webContents, safeStorage, clipboard, nativeImage } = require('electron');
 const fs = require('fs');
 const path = require('path');
 const { randomUUID } = require('node:crypto');
@@ -1628,6 +1628,32 @@ if (primaryInstance) app.whenReady().then(async () => {
       console.warn('Browsery could not capture the active page:', error.name || 'capture error');
       return { status: 'invalid-image' };
     }
+  });
+  // Extension helpers. The renderer passes a tab id, never a path or URL, and
+  // only Browsery's own shell frame may call these.
+  ipcMain.handle('browser:capture-tab', async (event, { webContentsId } = {}) => {
+    const guest = getBrowserGuestFromShell(event, webContentsId);
+    if (!guest || guest.isLoading()) return { ok: false, status: guest ? 'page-loading' : 'no-page' };
+    try {
+      const image = await guest.capturePage();
+      if (image.isEmpty()) return { ok: false, status: 'empty' };
+      const { width, height } = image.getSize();
+      return { ok: true, dataUrl: image.toDataURL(), width, height };
+    } catch {
+      return { ok: false, status: 'failed' };
+    }
+  });
+  ipcMain.handle('clipboard:write-text', (event, text) => {
+    if (!trustedShell(event) || typeof text !== 'string' || text.length > 1_000_000) return { ok: false };
+    clipboard.writeText(text);
+    return { ok: true };
+  });
+  ipcMain.handle('clipboard:write-image', (event, dataUrl) => {
+    if (!trustedShell(event) || typeof dataUrl !== 'string' || dataUrl.length > 40_000_000 || !dataUrl.startsWith('data:image/png;base64,')) return { ok: false };
+    const image = nativeImage.createFromDataURL(dataUrl);
+    if (image.isEmpty()) return { ok: false };
+    clipboard.writeImage(image);
+    return { ok: true };
   });
   ipcMain.handle('downloads:list', event => trustedShell(event) ? completedDownloads.map(item => ({ ...item })) : []);
   ipcMain.handle('browser-data:list-cookies', async (event, partition) => {

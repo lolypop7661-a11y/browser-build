@@ -52,7 +52,7 @@ jobs:
           gh release create v1.0.19
           --target "$GITHUB_SHA"
           --title "Browsery 1.0.19"
-          --notes "Replaces email confirmation with a Cloudflare Turnstile human check for sign-up and sign-in."
+          --notes "20 new built-in extensions (Reader View, Night Shift, Focus Mode, Element Zapper and more), lower CPU, GPU and memory use with inactive-tab unloading, visual fixes, and a Cloudflare Turnstile human check in place of email confirmation."
           outputs/windows-setup-wizard-1.0.19/Browsery-1.0.19-x64.exe
           outputs/windows-setup-wizard-1.0.19/latest.yml
           outputs/windows-setup-wizard-1.0.19/Browsery-1.0.19-x64.exe.blockmap

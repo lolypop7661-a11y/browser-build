@@ -3,7 +3,8 @@ import { createRoot } from 'react-dom/client';
 import { useClickFeedback, useSpringInteraction, useSpringPresence } from './motion.js';
 import { BrowseryAudioEngine } from './audio.js';
 import { migrateAppearance, saturnTiltAngle } from './appearance.js';
-import { ExtensionStore } from './extensions.jsx';
+import { ExtensionsDrawer } from './extensions.jsx';
+import { createExtensionHost } from './extensions/host.js';
 import { VoiceAssistantDrawer } from './voice-assistant.jsx';
 import { PersonalCenter } from './personal-center.jsx';
 import { AccountGate } from './account-gate.jsx';
@@ -21,6 +22,8 @@ import './account-gate.css';
 import './local-control.css';
 import './onboarding.css';
 import './desktop-behavior.css';
+import './performance.css';
+import './polish.css';
 
 const Icon = ({ name, size = 18, stroke = 1.7 }) => {
   const paths = {
@@ -66,6 +69,24 @@ const Icon = ({ name, size = 18, stroke = 1.7 }) => {
     windowMax: <rect x="5" y="5" width="14" height="14" rx="1.5"/>,
     windowClose: <><path d="m6 6 12 12M18 6 6 18"/></>,
     cookie: <><path d="M20.5 13.2A8.5 8.5 0 1 1 10.8 3.5a3 3 0 0 0 4 4 3 3 0 0 0 2.7 4.3 3 3 0 0 0 3 1.4Z"/><circle cx="8" cy="9" r=".8"/><circle cx="7.5" cy="14" r=".8"/><circle cx="12" cy="17" r=".8"/></>,
+    moon: <path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5Z"/>,
+    book: <><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5Z"/><path d="M4 20.5A2.5 2.5 0 0 1 6.5 18H20v3H6.5A2.5 2.5 0 0 1 4 20.5ZM8 7h8M8 11h6"/></>,
+    speaker: <><path d="M4 10v4h4l5 4V6l-5 4Z"/><path d="M16.5 9.5a3.5 3.5 0 0 1 0 5"/></>,
+    list: <><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r=".9"/><circle cx="4.5" cy="12" r=".9"/><circle cx="4.5" cy="18" r=".9"/></>,
+    pip: <><rect x="3" y="5" width="18" height="14" rx="2"/><rect x="12" y="11" width="7" height="6" rx="1"/></>,
+    gauge: <><path d="M4.5 18a9 9 0 1 1 15 0"/><path d="m12 13 4-5"/><circle cx="12" cy="13.5" r="1.2"/></>,
+    image: <><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="1.8"/><path d="m4 18 5.5-5 4 3.5 2.5-2 4 3.5"/></>,
+    camera: <><path d="M4 8h3l2-3h6l2 3h3v11H4Z"/><circle cx="12" cy="13" r="3.5"/></>,
+    droplet: <path d="M12 3s6.5 7 6.5 11.5a6.5 6.5 0 0 1-13 0C5.5 10 12 3 12 3Z"/>,
+    target: <><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></>,
+    braces: <><path d="M8 4c-2 0-2.5 1-2.5 3v2c0 1.5-.8 2.5-2 3 1.2.5 2 1.5 2 3v2c0 2 .5 3 2.5 3"/><path d="M16 4c2 0 2.5 1 2.5 3v2c0 1.5.8 2.5 2 3-1.2.5-2 1.5-2 3v2c0 2-.5 3-2.5 3"/></>,
+    focus: <><circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3.5 2"/><path d="M5 3.5 3 5.5M19 3.5l2 2"/></>,
+    note: <><path d="M5 3h10l4 4v14H5Z"/><path d="M15 3v4h4M8.5 12h7M8.5 16h5"/></>,
+    quote: <><path d="M10 7H6.5A1.5 1.5 0 0 0 5 8.5V12h4v5H5"/><path d="M19 7h-3.5A1.5 1.5 0 0 0 14 8.5V12h4v5h-4"/></>,
+    clock: <><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></>,
+    refresh: <><path d="M20 5v5h-5"/><path d="M4 19v-5h5"/><path d="M5.6 9a7 7 0 0 1 12.2-1.6L20 10M18.4 15a7 7 0 0 1-12.2 1.6L4 14"/></>,
+    key: <><circle cx="8" cy="15" r="4"/><path d="m11 12 8.5-8.5M16 7l2.5 2.5M14 9l2 2"/></>,
+    link: <><path d="M10 14a4 4 0 0 0 5.7 0l3.6-3.6a4 4 0 0 0-5.7-5.7L12 6.3"/><path d="M14 10a4 4 0 0 0-5.7 0l-3.6 3.6a4 4 0 0 0 5.7 5.7l1.6-1.6"/></>,
     database: <><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/><path d="M4 8c0 1.7 3.6 3 8 3s8-1.3 8-3"/></>,
   };
   return <svg aria-hidden="true" viewBox="0 0 24 24" width={size} height={size} fill="none" stroke="currentColor" strokeWidth={stroke} strokeLinecap="round" strokeLinejoin="round">{paths[name]}</svg>;
@@ -121,7 +142,7 @@ const settingsSchema = [
   { id:'privacy', label:'Privacy', icon:'shield', items:[
     ['adblock','Ad blocker','toggle',true],['trackers','Tracker blocking','select','Strict'],['https','HTTPS enforcement','toggle',true],['phishing','Suspicious-link guard','toggle',true],['dnt','Global privacy control','toggle',true],['cookies','Cookie purge timer','select','24 hours'],['private','Private session mode','toggle',false],['doh','DNS over HTTPS','toggle',true],['fingerprint','Fingerprint defense','toggle',true],['webrtc','WebRTC protection','toggle',true],['telemetry','Anonymous telemetry','toggle',false] ]},
   { id:'browser', label:'Browser', icon:'globe', items:[
-    ['tabs','Tab layout','select','Horizontal'],['engine','Search engine','select','Browsery'],['homepage','Homepage','select','New Space'],['homepageUrl','Custom homepage URL','text','https://example.com'],['path','Download path','select','Downloads'],['suggestions','Search suggestions','toggle',true],['sleep','Sleeping tabs','toggle',true],['restore','Restore last session','toggle',true],['preload','Predictive preload','toggle',false],['compact','Compact tab mode','toggle',false],['closewarn','Close warning','toggle',true] ]},
+    ['tabs','Tab layout','select','Horizontal'],['engine','Search engine','select','Browsery'],['homepage','Homepage','select','New Space'],['homepageUrl','Custom homepage URL','text','https://example.com'],['path','Download path','select','Downloads'],['suggestions','Search suggestions','toggle',true],['sleep','Sleeping tabs','toggle',true],['unloadAfter','Unload inactive tabs','select','30 minutes'],['restore','Restore last session','toggle',true],['preload','Predictive preload','toggle',false],['compact','Compact tab mode','toggle',false],['closewarn','Close warning','toggle',true] ]},
   { id:'ai', label:'AI Overview', icon:'spark', items:[
     ['aiOverview','Groq web overview','toggle',true],['aiModel','Groq model','select','openai/gpt-oss-120b'] ]},
   { id:'sound', label:'Sound', icon:'volume', items:[
@@ -161,11 +182,15 @@ function useBrowseryAudio(settings) {
       wake();
       audioEngine.play('click',target.getBoundingClientRect().left/Math.max(innerWidth,1));
     };
+    // Nothing is audible while Browsery is minimized or hidden, so let the audio graph sleep.
+    const visibility = () => { if (document.hidden) audioEngine.sleep(); else audioEngine.wake(); };
     document.addEventListener('pointerdown',pointerDown,true);
     document.addEventListener('pointerover',pointerOver,true);
     document.addEventListener('keydown',keyDown,true);
+    document.addEventListener('visibilitychange',visibility);
     return () => {
       mounted = false;
+      document.removeEventListener('visibilitychange',visibility);
       document.removeEventListener('pointerdown',pointerDown,true);
       document.removeEventListener('pointerover',pointerOver,true);
       document.removeEventListener('keydown',keyDown,true);
@@ -191,8 +216,12 @@ function SoundVisualizer({audioEngine,enabled}) {
     context.scale(ratio,ratio);
     const bars = 18;
     const samples = new Uint8Array(analyser.frequencyBinCount);
-    let frame = 0;
-    const draw = () => {
+    let frame = 0, last = 0;
+    const draw = now => {
+      frame = requestAnimationFrame(draw);
+      // About 20 frames per second is plenty for a level meter.
+      if (document.hidden || now - last < 50) return;
+      last = now;
       analyser.getByteFrequencyData(samples);
       const width = bounds.width;
       const height = bounds.height;
@@ -206,7 +235,6 @@ function SoundVisualizer({audioEngine,enabled}) {
         context.fillStyle = `rgba(240,240,240,${0.24+level*0.7})`;
         context.fillRect(index*(barWidth+gap),height-barHeight,barWidth,barHeight);
       }
-      frame = requestAnimationFrame(draw);
     };
     frame = requestAnimationFrame(draw);
     return () => cancelAnimationFrame(frame);
@@ -553,7 +581,7 @@ function TabContextMenu({menu,groups,onClose,onPin,onCloseTab,onCloseOthers,onCl
   </div>;
 }
 
-function TabStrip({tabs,setTabs,active,setActive,onNewTab,onCloseTab,onReopenClosed,closedCount=0,groups=[],onCloseOthers,onCloseRight,onSetGroup,onCreateGroup}) {
+function TabStrip({tabs,setTabs,active,setActive,onNewTab,onCloseTab,onReopenClosed,closedCount=0,groups=[],onCloseOthers,onCloseRight,onSetGroup,onCreateGroup,unloaded}) {
   const drag=useRef(null),rowRef=useRef(null);
   const [menu,setMenu]=useState(null);
   const orderedTabs=useMemo(()=>[...tabs].sort((a,b)=>Number(Boolean(b.pinned))-Number(Boolean(a.pinned))),[tabs]);
@@ -570,7 +598,7 @@ function TabStrip({tabs,setTabs,active,setActive,onNewTab,onCloseTab,onReopenClo
     <div className="brand" data-magnetic><span className="brand-orb"><i/><b/><em/></span><span className="brand-name">Browsery</span></div>
     <div className="tabs">{orderedTabs.map(t=>{
       const group=t.groupId?groupById.get(t.groupId):null;
-      return <SpringButton spring="fluid" hoverScale={1.012} pressScale={.975} draggable onDragStart={()=>drag.current=t.id} onDragEnd={()=>{drag.current=null}} onDragOver={event=>event.preventDefault()} onDrop={()=>drop(t.id)} onClick={()=>setActive(t.id)} onAuxClick={event=>{if(event.button===1){event.preventDefault();onCloseTab(t.id)}}} onContextMenu={event=>openMenu(event,t)} className={`tab ${active===t.id?'selected':''} ${t.pinned?'pinned':''} ${group?'has-group':''}`} style={group?{'--group-color':group.color}:undefined} key={t.id} title={t.title}>
+      return <SpringButton spring="fluid" hoverScale={1.012} pressScale={.975} draggable onDragStart={()=>drag.current=t.id} onDragEnd={()=>{drag.current=null}} onDragOver={event=>event.preventDefault()} onDrop={()=>drop(t.id)} onClick={()=>setActive(t.id)} onAuxClick={event=>{if(event.button===1){event.preventDefault();onCloseTab(t.id)}}} onContextMenu={event=>openMenu(event,t)} className={`tab ${active===t.id?'selected':''} ${t.pinned?'pinned':''} ${group?'has-group':''} ${unloaded?.has(t.id)?'is-unloaded':''}`} style={group?{'--group-color':group.color}:undefined} key={t.id} title={unloaded?.has(t.id)?`${t.title} · unloaded to save memory`:t.title}>
         <Favicon className="tab-favicon" url={t.url} title={t.title} favicon={t.favicon}/>{group&&<span className="tab-group-dot" title={group.name}/>}<span className="tab-title">{t.title}</span>{t.pinned&&<span className="tab-pin" title="Pinned"><Icon name="pin" size={11}/></span>}<span onClick={event=>{event.stopPropagation();onCloseTab(t.id)}} role="button" aria-label={`Close ${t.title}`} className="tab-close"><Icon name="close" size={13}/></span>
       </SpringButton>;
     })}</div>
@@ -614,7 +642,7 @@ function Control({item,value,onChange}) {
   if(type==='angle')return <label {...tourTarget} className="setting-range"><span><b>{label}</b><em>{v}°</em></span><input aria-label={label} type="range" min="-45" max="45" step="1" value={v} onChange={e=>onChange(id,+e.target.value)}/></label>;
   if(type==='color')return <label {...tourTarget} className="setting-row"><span>{label}</span><span className="color-input"><input type="color" value={v} onChange={e=>onChange(id,e.target.value)}/>{v}</span></label>;
   if(type==='text')return <label {...tourTarget} className="setting-row"><span>{label}</span><input className="setting-text" type="url" value={v} onChange={e=>onChange(id,e.target.value)} placeholder="https://example.com"/></label>;
-  const opts={aa:['Off','FXAA','TAA'],fps:['30 FPS','60 FPS','120 FPS','144 FPS'],texture:['Low','Medium','High','Ultra'],dpr:['1×','1.5×','2×','Auto'],trail:['Dust','Ribbon','Comet'],corners:['Soft','Compact','Sharp'],trackers:['Standard','Balanced','Strict'],cookies:['On close','1 hour','24 hours','7 days'],tabs:['Horizontal','Vertical'],engine:[['Mojeek · Independent','Mojeek'],['Browsery · Custom','Browsery'],['DuckDuckGo','DuckDuckGo'],['Bing','Bing']],aiModel:[['GPT-OSS 120B · Groq','openai/gpt-oss-120b'],['GPT-OSS 20B · Groq','openai/gpt-oss-20b']],homepage:['New Space','Blank','Custom'],path:['Downloads','Desktop','Ask every time'],theme:['Soft','Crystalline','Analog','Solar Wind'],accentPreset:['Monochrome','Browsery Cyan','Ultraviolet','Solar Amber','Signal Green','Rose Quartz'],backgroundScene:['Original Saturn','Spatial overlay'],clockStyle:['24-hour','12-hour','Hidden'],chromeDensity:['Compact','Comfortable','Spacious'],cornerStyle:['Square','Rounded','Soft'],...{}};
+  const opts={aa:['Off','FXAA','TAA'],fps:['30 FPS','60 FPS','120 FPS','144 FPS'],texture:['Low','Medium','High','Ultra'],dpr:['1×','1.5×','2×','Auto'],trail:['Dust','Ribbon','Comet'],corners:['Soft','Compact','Sharp'],trackers:['Standard','Balanced','Strict'],cookies:['On close','1 hour','24 hours','7 days'],tabs:['Horizontal','Vertical'],engine:[['Mojeek · Independent','Mojeek'],['Browsery · Custom','Browsery'],['DuckDuckGo','DuckDuckGo'],['Bing','Bing']],aiModel:[['GPT-OSS 120B · Groq','openai/gpt-oss-120b'],['GPT-OSS 20B · Groq','openai/gpt-oss-20b']],homepage:['New Space','Blank','Custom'],unloadAfter:['Never','5 minutes','10 minutes','30 minutes','1 hour'],path:['Downloads','Desktop','Ask every time'],theme:['Soft','Crystalline','Analog','Solar Wind'],accentPreset:['Monochrome','Browsery Cyan','Ultraviolet','Solar Amber','Signal Green','Rose Quartz'],backgroundScene:['Original Saturn','Spatial overlay'],clockStyle:['24-hour','12-hour','Hidden'],chromeDensity:['Compact','Comfortable','Spacious'],cornerStyle:['Square','Rounded','Soft'],...{}};
   return <label {...tourTarget} className="setting-row"><span>{label}</span><select value={v} onChange={e=>onChange(id,e.target.value)}>{(opts[id]||[v,'Default']).map(option=>Array.isArray(option)?<option key={option[1]} value={option[1]}>{option[0]}</option>:<option key={option}>{option}</option>)}</select></label>;
 }
 
@@ -999,7 +1027,7 @@ function LocalMusicPlayer({compact=false}) {
   const load=event=>{const file=event.target.files?.[0];if(!file)return;if(objectUrl.current)URL.revokeObjectURL(objectUrl.current);const url=URL.createObjectURL(file);objectUrl.current=url;setTrack({name:file.name.replace(/\.[^.]+$/,''),url});setProgress(0);setDuration(0);requestAnimationFrame(()=>audioRef.current?.play().catch(()=>{}));};
   const toggle=()=>{const audio=audioRef.current;if(!audio)return;if(audio.paused)audio.play().catch(()=>{});else audio.pause()};
   const seek=event=>{const audio=audioRef.current;if(!audio||!duration)return;audio.currentTime=Number(event.target.value);setProgress(audio.currentTime)};
-  return <section className={`local-music-player ${compact?'is-compact':''}`} aria-label="Ad-free local music player">
+  return <section className={`local-music-player ${compact?'is-compact':''} ${playing?'is-playing':''}`} aria-label="Ad-free local music player">
     <audio ref={audioRef} src={track?.url} onPlay={()=>setPlaying(true)} onPause={()=>setPlaying(false)} onEnded={()=>setPlaying(false)} onLoadedMetadata={e=>setDuration(e.currentTarget.duration||0)} onTimeUpdate={e=>setProgress(e.currentTarget.currentTime||0)}/>
     <input ref={inputRef} className="music-file-input" type="file" accept="audio/*" onChange={load}/>
     <button className="music-art" onClick={choose} aria-label="Choose a music file"><Icon name="music" size={20}/></button>
@@ -1010,7 +1038,7 @@ function LocalMusicPlayer({compact=false}) {
   </section>;
 }
 
-function MusicDrawer({open,onClose}) { return <aside className={`drawer music-drawer ${open?'open':''}`}><div className="drawer-head"><div><span className="drawer-kicker">LOCAL, AD-FREE</span><h2>Music</h2></div><GlassButton icon="close" label="Close music" onClick={onClose}/></div><div className="music-drawer-body"><LocalMusicPlayer/><p>Your files stay on this device. Browsery does not use a streaming service, ads, or an account for this player.</p></div></aside> }
+function MusicDrawer({open,onClose}) { const panelRef=useSpringPresence(open,{preset:'fluid',offset:90}); return <aside ref={panelRef} className={`drawer music-drawer ${open?'open':''}`} aria-hidden={!open}><div className="drawer-head"><div><span className="drawer-kicker">LOCAL, AD-FREE</span><h2>Music</h2></div><GlassButton icon="close" label="Close music" onClick={onClose}/></div><div className="music-drawer-body"><LocalMusicPlayer/><p>Your files stay on this device. Browsery does not use a streaming service, ads, or an account for this player.</p></div></aside> }
 
 function normalizeShortcut(raw) {
   const candidate=String(raw||'').trim();
@@ -1046,7 +1074,9 @@ function ShortcutDock({shortcuts,onOpen,onUpdate}) {
 function NewTab({onSearch, onOpenMusic, settings, pointer, shortcuts=defaultShortcuts, onUpdateShortcuts, musicEnabled=true}) {
   const [query,setQuery]=useState(''); const [time,setTime]=useState('10:09');
   const videoRef=useRef(null),tiltState=useRef({frame:0,rect:null,x:0,y:0});
-  useEffect(()=>{const f=()=>setTime(new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',hour12:settings.clockStyle==='12-hour'}));f();const i=setInterval(f,1000);return()=>clearInterval(i)},[settings.clockStyle]);
+  useEffect(()=>{
+    // The clock shows minutes, so wake once per minute (aligned to the minute) instead of every second.
+    let timer=0;const f=()=>{setTime(new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',hour12:settings.clockStyle==='12-hour'}));timer=setTimeout(f,60000-Date.now()%60000+50)};f();return()=>clearTimeout(timer)},[settings.clockStyle]);
   useEffect(()=>{if(videoRef.current)videoRef.current.playbackRate=.5+(settings.videoSpeed??50)/100},[settings.videoSpeed]);
   useEffect(()=>{const video=videoRef.current;if(!video)return;const visibility=()=>{if(document.hidden)video.pause();else video.play().catch(()=>{})};document.addEventListener('visibilitychange',visibility);return()=>document.removeEventListener('visibilitychange',visibility)},[]);
   useEffect(()=>()=>{if(tiltState.current.frame)cancelAnimationFrame(tiltState.current.frame)},[]);
@@ -1057,7 +1087,6 @@ function NewTab({onSearch, onOpenMusic, settings, pointer, shortcuts=defaultShor
   },[settings.tilt,settings.power]);
   return <main className="new-tab">
     <video ref={videoRef} className="saturn-video" style={{'--saturn-tilt':`${saturnTiltAngle(settings.saturnTilt)}deg`}} src="./assets/saturn-loop.mp4" poster="./assets/saturn-poster.jpg" autoPlay muted loop playsInline preload="metadata"/>
-    <div className="saturn-ouroboros" style={{'--saturn-tilt':`${saturnTiltAngle(settings.saturnTilt)}deg`}} aria-hidden="true"><span/><i/><b/><em/></div>
     {settings.backgroundScene==='Spatial overlay'?<><WebGLScene pointer={pointer} settings={settings}/><div className="spatial-grid"/></>:null}
     <div className="ambient-title">Browsery <span>/ spatial new tab</span></div>
     <section className="new-tab-center spatial-rig" onPointerEnter={e=>{tiltState.current.rect=e.currentTarget.getBoundingClientRect()}} onPointerMove={tilt} onPointerLeave={e=>{const s=tiltState.current;if(s.frame)cancelAnimationFrame(s.frame);s.frame=0;s.rect=null;e.currentTarget.style.setProperty('--rx','3deg');e.currentTarget.style.setProperty('--ry','-10deg')}}>
@@ -1075,7 +1104,7 @@ function NewTab({onSearch, onOpenMusic, settings, pointer, shortcuts=defaultShor
   </main>;
 }
 
-function BrowserTabContents({tab,active,onSearch,onOpenMusic,onPageUpdate,onFindUpdate,settings,pointer,register,shortcuts,onUpdateShortcuts,musicEnabled=true}) {
+function BrowserTabContents({tab,active,onSearch,onOpenMusic,onPageUpdate,onFindUpdate,settings,pointer,register,shortcuts,onUpdateShortcuts,musicEnabled=true,extensionHost,unloaded=false,onBlocked}) {
   const webviewRef=useRef(null),source=useRef(tab.url),mountAddress=useRef(tab.url),isDesktop=Boolean(window.browseryDesktop?.isDesktop);
   const [loadError,setLoadError]=useState(false);
   const [safetyAlert,setSafetyAlert]=useState(null);
@@ -1088,7 +1117,9 @@ function BrowserTabContents({tab,active,onSearch,onOpenMusic,onPageUpdate,onFind
   if(!tab.url){source.current=null;mountAddress.current=null}else if(!source.current){source.current=tab.url;mountAddress.current=tab.url}
   const [hasBeenActive,setHasBeenActive]=useState(Boolean(active&&tab.url));
   useEffect(()=>{if(active&&tab.url)setHasBeenActive(true)},[active,Boolean(tab.url)]);
-  const shouldLoad=Boolean(tab.url)&&(active||hasBeenActive);
+  const shouldLoad=Boolean(tab.url)&&(active||(hasBeenActive&&!unloaded));
+  // An unloaded tab reopens at the page it was last on, not the address it was first opened with.
+  if(!shouldLoad&&tab.url)mountAddress.current=tab.url;
   useEffect(()=>setLoadError(false),[tab.url]);
   useEffect(()=>{
     // Electron exposes these methods before the guest exists. Only call them after dom-ready.
@@ -1097,7 +1128,7 @@ function BrowserTabContents({tab,active,onSearch,onOpenMusic,onPageUpdate,onFind
   },[active,settings.mutetabs,shouldLoad]);
   useEffect(()=>{
     const view=webviewRef.current;if(!view||!shouldLoad||!isDesktop)return;
-    const controller={view,ready:false,pendingUrl:null};guest.current=controller;register(tab.id,controller);
+    const controller={view,ready:false,pendingUrl:null};guest.current=controller;register(tab.id,controller);extensionHost?.attach(tab.id,controller);
     const currentUrl=()=>{try{return controller.ready?view.getURL():source.current}catch{return source.current}};
     const ready=()=>{
       controller.ready=true;
@@ -1107,9 +1138,11 @@ function BrowserTabContents({tab,active,onSearch,onOpenMusic,onPageUpdate,onFind
       try{const webContentsId=view.getWebContentsId?.();if(Number.isSafeInteger(webContentsId))window.browseryDesktop?.updateTabActivity?.({webContentsId,active:Boolean(visibility.current.active)}).catch(()=>{})}catch{}
       if(controller.pendingUrl){const target=controller.pendingUrl;controller.pendingUrl=null;view.loadURL(target).catch(()=>{});return}
       setPageReady(true);
+      // Run installed extensions (Night Shift, cookie pop-ups, zoom memory…) on each loaded page.
+      Promise.resolve(extensionHost?.pageReady(tab.id,controller,currentUrl())).catch(()=>{});
     };
-    const nav=event=>{const nextUrl=event.url||currentUrl();if(nextUrl)source.current=nextUrl;try{const webContentsId=view.getWebContentsId?.();if(nextUrl&&Number.isSafeInteger(webContentsId))window.browseryDesktop?.predictivePreload?.({webContentsId,url:nextUrl}).catch(()=>{})}catch{}setSafetyAlert(null);setLoadError(false);onPageUpdate(tab.id,{url:nextUrl})};
-    const guard=event=>{const nextUrl=event.url;if(bypassSafety.current===nextUrl){bypassSafety.current='';return}const reason=settings.phishing?suspiciousUrl(nextUrl):null;if(reason){event.preventDefault();setSafetyAlert({url:nextUrl,reason});onPageUpdate(tab.id,{loading:false});}};
+    const nav=event=>{const nextUrl=event.url||currentUrl();const blocked=extensionHost?.checkNavigation(nextUrl);if(blocked){onBlocked?.(blocked);try{if(view.canGoBack())view.goBack();else view.loadURL('about:blank')}catch{}return}if(nextUrl)source.current=nextUrl;try{const webContentsId=view.getWebContentsId?.();if(nextUrl&&Number.isSafeInteger(webContentsId))window.browseryDesktop?.predictivePreload?.({webContentsId,url:nextUrl}).catch(()=>{})}catch{}setSafetyAlert(null);setLoadError(false);onPageUpdate(tab.id,{url:nextUrl})};
+    const guard=event=>{const nextUrl=event.url;const blocked=extensionHost?.checkNavigation(nextUrl);if(blocked){try{view.stop()}catch{}onBlocked?.(blocked);onPageUpdate(tab.id,{loading:false});return}if(bypassSafety.current===nextUrl){bypassSafety.current='';return}const reason=settings.phishing?suspiciousUrl(nextUrl):null;if(reason){event.preventDefault();try{view.stop()}catch{}setSafetyAlert({url:nextUrl,reason});onPageUpdate(tab.id,{loading:false});}};
     const title=event=>onPageUpdate(tab.id,{title:event.title,currentUrl:currentUrl()});
     const favicon=event=>{const icon=Array.isArray(event.favicons)?event.favicons.find(value=>/^https?:/i.test(value)):'';if(icon)onPageUpdate(tab.id,{favicon:icon,currentUrl:currentUrl()});};
     const start=()=>{setLoadError(false);setPageReady(false);onPageUpdate(tab.id,{loading:true})};
@@ -1117,8 +1150,8 @@ function BrowserTabContents({tab,active,onSearch,onOpenMusic,onPageUpdate,onFind
     const fail=event=>{if(event.isMainFrame&&event.errorCode!==-3){setLoadError(true);setPageReady(true)}};
     const found=event=>{if(visibility.current.active)onFindUpdate?.({matches:event.matches||0,active:event.activeMatchOrdinal||0})};
     view.addEventListener('dom-ready',ready);view.addEventListener('will-navigate',guard);view.addEventListener('did-navigate',nav);view.addEventListener('did-navigate-in-page',nav);view.addEventListener('page-title-updated',title);view.addEventListener('page-favicon-updated',favicon);view.addEventListener('did-start-loading',start);view.addEventListener('did-stop-loading',stop);view.addEventListener('did-fail-load',fail);view.addEventListener('found-in-page',found);
-    return()=>{controller.ready=false;guest.current=null;register(tab.id,null);view.removeEventListener('dom-ready',ready);view.removeEventListener('will-navigate',guard);view.removeEventListener('did-navigate',nav);view.removeEventListener('did-navigate-in-page',nav);view.removeEventListener('page-title-updated',title);view.removeEventListener('page-favicon-updated',favicon);view.removeEventListener('did-start-loading',start);view.removeEventListener('did-stop-loading',stop);view.removeEventListener('did-fail-load',fail);view.removeEventListener('found-in-page',found)};
-  },[tab.id,shouldLoad,settings.private,settings.phishing,isDesktop,onPageUpdate,onFindUpdate,register]);
+    return()=>{controller.ready=false;guest.current=null;register(tab.id,null);extensionHost?.detach(tab.id);view.removeEventListener('dom-ready',ready);view.removeEventListener('will-navigate',guard);view.removeEventListener('did-navigate',nav);view.removeEventListener('did-navigate-in-page',nav);view.removeEventListener('page-title-updated',title);view.removeEventListener('page-favicon-updated',favicon);view.removeEventListener('did-start-loading',start);view.removeEventListener('did-stop-loading',stop);view.removeEventListener('did-fail-load',fail);view.removeEventListener('found-in-page',found)};
+  },[tab.id,shouldLoad,settings.private,settings.phishing,isDesktop,onPageUpdate,onFindUpdate,register,extensionHost,onBlocked]);
   useEffect(()=>{
     if(!isDesktop||!shouldLoad)return;
     const view=guest.current?.view;
@@ -1130,7 +1163,7 @@ function BrowserTabContents({tab,active,onSearch,onOpenMusic,onPageUpdate,onFind
   return <div className={`browser-tab-surface ${active?'is-active':''}`} style={{display:active?'flex':'none'}} aria-hidden={!active}>{isDesktop?<webview ref={webviewRef} key={`${tab.id}-${settings.private?'private':'normal'}`} src={mountAddress.current} partition={settings.private?'browsery-private':'persist:browsery'} webpreferences="contextIsolation=yes,sandbox=yes"/>:<iframe title={tab.title} src={tab.url} />}{isDesktop&&!pageReady&&!loadError&&!safetyAlert&&<div className="browser-load-state" role="status"><span className="browser-load-orbit"/><h2>{tab.url?.startsWith('browsery:')?'Opening Browsery Search…':'Opening page…'}</h2><p>{failedQuery||addressHost(tab.url)}</p></div>}{safetyAlert&&<div className="browser-safety-alert" role="alert"><span><Icon name="shield" size={25}/></span><h2>Browsery paused this link</h2><p>{safetyAlert.reason} Browsery has not loaded the page.</p><small>Local phishing checks are not antivirus protection. Groq can explain a page after it is opened, but does not decide this warning.</small><div><SpringButton onClick={()=>{bypassSafety.current=safetyAlert.url;setSafetyAlert(null);webviewRef.current?.loadURL?.(safetyAlert.url).catch(()=>{})}}>Open anyway</SpringButton><SpringButton onClick={()=>onSearch('')}>Return to search</SpringButton></div></div>}{loadError&&<div className="browser-load-error" role="alert"><span className="browser-load-error-icon"><Icon name="alert" size={19}/></span><h2>{tab.url?.startsWith('browsery:')?'Browsery Search did not load':'This page did not load'}</h2><p>The page request failed before Browsery received any content. Your tabs and saved browser data are unchanged.</p><div><SpringButton onClick={()=>onSearch(tab.url)}>Retry</SpringButton>{failedQuery&&<SpringButton onClick={()=>onSearch(`https://www.bing.com/search?q=${encodeURIComponent(failedQuery)}`)}>Try another search source</SpringButton>}</div></div>}</div>;
 }
 
-const BrowserViewport=React.forwardRef(function BrowserViewport({tabs,active,onSearch,onOpenMusic,onPageUpdate,onFindUpdate,settings,pointer,shortcuts,onUpdateShortcuts,musicEnabled=true},ref){
+const BrowserViewport=React.forwardRef(function BrowserViewport({tabs,active,onSearch,onOpenMusic,onPageUpdate,onFindUpdate,settings,pointer,shortcuts,onUpdateShortcuts,musicEnabled=true,extensionHost,unloadedTabs,onBlocked},ref){
   const views=useRef(new Map());
   const register=useCallback((id,view)=>{if(view)views.current.set(id,view);else views.current.delete(id)},[]);
   React.useImperativeHandle(ref,()=>{
@@ -1144,7 +1177,7 @@ const BrowserViewport=React.forwardRef(function BrowserViewport({tabs,active,onS
       zoom:step=>{if(!current()?.ready)return null;const factor=invoke('getZoomFactor')||1;if(step==='read')return Math.round(factor*100);const next=step===0?1:Math.max(.5,Math.min(2,factor+step));invoke('setZoomFactor',next);return Math.round(next*100)},
     };
   },[active]);
-  return <div className="browser-page browser-viewport-stack">{tabs.map(tab=><BrowserTabContents key={tab.id} tab={tab} active={tab.id===active} onSearch={onSearch} onOpenMusic={onOpenMusic} onPageUpdate={onPageUpdate} onFindUpdate={onFindUpdate} settings={settings} pointer={pointer} register={register} shortcuts={shortcuts} onUpdateShortcuts={onUpdateShortcuts} musicEnabled={musicEnabled}/>)}</div>;
+  return <div className="browser-page browser-viewport-stack">{tabs.map(tab=><BrowserTabContents key={tab.id} tab={tab} active={tab.id===active} onSearch={onSearch} onOpenMusic={onOpenMusic} onPageUpdate={onPageUpdate} onFindUpdate={onFindUpdate} settings={settings} pointer={pointer} register={register} shortcuts={shortcuts} onUpdateShortcuts={onUpdateShortcuts} musicEnabled={musicEnabled} extensionHost={extensionHost} unloaded={unloadedTabs?.has(tab.id)} onBlocked={onBlocked}/>)}</div>;
 });
 
 const settingTourDetails = Object.freeze({
@@ -1190,7 +1223,7 @@ const presentationSteps = [
   {id:'tabs',title:'Tabs and workspaces',body:'The top strip is where you create, close, switch, pin, group, and reorder tabs. Right-click a tab for its workspace actions.',target:'[data-tour="tabs"]'},
   {id:'search',title:'Search, URLs and navigation',body:'Type a website address or a question here. Back, forward, reload, and Home sit immediately to its left.',target:'[data-tour="omnibox"]'},
   {id:'library',title:'Bookmarks, history and closed tabs',body:'This grid button opens Bookmarks. The clock button is History and includes recently closed tabs; the magnifier finds text on the page.',target:'.bookmark-drawer',panel:'bookmarks',actionLabel:'Use Bookmarks'},
-  {id:'extensions',title:'Extensions are here',body:'Extensions are the third icon in the first tools group. Browsery’s store has 20 bundled, local preference packs—nothing is downloaded or run from random websites.',target:'.extensions-drawer',panel:'extensions',actionLabel:'Use Extensions'},
+  {id:'extensions',title:'Extensions are here',body:'Extensions are the third icon in the first tools group. The store has 20 built-in tools, like Reader View, Night Shift, Focus Mode and Element Zapper. They ship with Browsery, so nothing is downloaded from the web.',target:'.extensions-drawer',panel:'extensions',actionLabel:'Use Extensions'},
   {id:'downloads',title:'Downloads, in one place',body:'The download arrow opens live transfers. Pause, cancel, open, and reveal files from this panel. You can also press Ctrl+J.',target:'.download-drawer',panel:'downloads',actionLabel:'Use Downloads'},
   {id:'privacy',title:'Protection and site data',body:'The shield opens Browsery’s protection dashboard. Cookies and site data are in the button directly beside it, so you can review or clear them without searching.',target:'.protection-drawer',panel:'protection',actionLabel:'Open Protection'},
   {id:'vpn',title:'Proton VPN',body:'The VPN button opens Browsery’s Proton connection panel. It can launch the Proton app or send you to the official setup when Proton needs attention.',target:'.vpn-drawer',panel:'vpn',actionLabel:'Open Proton VPN'},
@@ -1300,6 +1333,38 @@ function App() {
   const {audioEngine,audioReady}=useBrowseryAudio(settings);
   useClickFeedback(settings);
   const activeTab=tabs.find(t=>t.id===active)||tabs[0];
+  const activeTabHasPage=Boolean(activeTab?.url);
+  const [extensionHost]=useState(()=>createExtensionHost());
+  useEffect(()=>()=>extensionHost.dispose(),[extensionHost]);
+  useEffect(()=>{extensionHost.setActive({tabId:active,url:activeTab?.url||'',title:activeTab?.title||''})},[extensionHost,active,activeTab?.url,activeTab?.title]);
+  // Memory saver: background tabs left alone long enough are unloaded (their
+  // page process is closed) and reload when you return. Pinned tabs, tabs
+  // playing sound and auto-refreshing tabs are never unloaded.
+  const [unloadedTabs,setUnloadedTabs]=useState(()=>new Set());
+  const lastSeen=useRef(new Map()),previousActive=useRef(active),tabsRef=useRef(tabs);
+  tabsRef.current=tabs;
+  useEffect(()=>{
+    const now=Date.now();
+    lastSeen.current.set(previousActive.current,now);lastSeen.current.set(active,now);previousActive.current=active;
+    setUnloadedTabs(current=>{if(!current.has(active))return current;const next=new Set(current);next.delete(active);return next});
+  },[active]);
+  useEffect(()=>{
+    const minutes={'5 minutes':5,'10 minutes':10,'30 minutes':30,'1 hour':60}[settings.unloadAfter];
+    if(!minutes){setUnloadedTabs(current=>current.size?new Set():current);return undefined}
+    const sweep=()=>{
+      const now=Date.now(),limit=minutes*60000;
+      const idle=tabsRef.current.filter(tab=>{
+        if(tab.id===previousActive.current||!tab.url||tab.pinned||extensionHost.isBusy(tab.id))return false;
+        const seen=lastSeen.current.get(tab.id);
+        if(!seen||now-seen<limit)return false;
+        try{if(extensionHost.controller(tab.id)?.view.isCurrentlyAudible?.())return false}catch{}
+        return true;
+      }).map(tab=>tab.id);
+      if(idle.length)setUnloadedTabs(current=>{const next=new Set(current);let changed=false;for(const id of idle)if(!next.has(id)){next.add(id);changed=true}return changed?next:current});
+    };
+    const timer=setInterval(sweep,60000);
+    return()=>clearInterval(timer);
+  },[settings.unloadAfter,extensionHost]);
   useEffect(()=>{nextTabId.current=Math.max(1,...tabs.map(tab=>Number(tab.id)||0))+1},[tabs]);
   useEffect(()=>{setFindOpen(false);setFindCounts({matches:0,active:0});setZoomPercent(browserRef.current?.zoom('read')||100)},[active]);
   useEffect(()=>{analysisRun.current+=1;setScreenAnalysis({status:'idle'})},[active,activeTab?.url]);
@@ -1321,7 +1386,7 @@ function App() {
   useEffect(()=>{const panelFeature={analyze:'ai',voice:'voice',extensions:'extensions',music:'music',vpn:'vpn'}[panel];if(panelFeature&&remoteFeatures[panelFeature]===false)setPanel(null)},[panel,remoteFeatures.ai,remoteFeatures.voice,remoteFeatures.extensions,remoteFeatures.music,remoteFeatures.vpn]);
   useEffect(()=>{document.body.classList.toggle('remote-music-disabled',remoteFeatures.music===false);return()=>document.body.classList.remove('remote-music-disabled')},[remoteFeatures.music]);
   useEffect(()=>{const minimum=localControlState.policy?.minimumVersion;if(!launchComplete||!forcedVersionRequired||!minimum||forcedUpdateVersionChecked.current===minimum||!window.browseryDesktop?.checkForAppUpdate||['checking','available','downloading','downloaded','installing'].includes(appUpdate.status))return;forcedUpdateVersionChecked.current=minimum;const timer=setTimeout(()=>window.browseryDesktop.checkForAppUpdate().then(next=>next&&setAppUpdate(next)).catch(()=>{}),900);return()=>clearTimeout(timer)},[launchComplete,forcedVersionRequired,localControlState.policy?.minimumVersion,appUpdate.status]);
-  useEffect(()=>{if(settings.power||window.matchMedia('(prefers-reduced-motion: reduce)').matches)return;let frame=0,lastX=0,lastY=0;const move=e=>{lastX=e.clientX;lastY=e.clientY;pointer.current={x:lastX/innerWidth-.5,y:lastY/innerHeight-.5};if(frame)return;frame=requestAnimationFrame(()=>{frame=0;const x=lastX/innerWidth-.5,y=lastY/innerHeight-.5,newTab=document.querySelector('.new-tab'),settingsPanel=document.querySelector('.settings-drawer.open');if(newTab){newTab.style.setProperty('--scene-rx',`${-y*((settings.tilt||0)/7)}deg`);newTab.style.setProperty('--scene-ry',`${x*((settings.tilt||0)/6)}deg`)}if(settingsPanel){settingsPanel.style.setProperty('--panel-rx',`${-y*2.2}deg`);settingsPanel.style.setProperty('--panel-ry',`${x*3.1}deg`)}})};addEventListener('mousemove',move,{passive:true});return()=>{removeEventListener('mousemove',move);if(frame)cancelAnimationFrame(frame)}},[settings.tilt,settings.power]);
+  useEffect(()=>{if(activeTabHasPage||settings.power||window.matchMedia('(prefers-reduced-motion: reduce)').matches)return;let frame=0,lastX=0,lastY=0;const move=e=>{lastX=e.clientX;lastY=e.clientY;pointer.current={x:lastX/innerWidth-.5,y:lastY/innerHeight-.5};if(frame)return;frame=requestAnimationFrame(()=>{frame=0;const x=lastX/innerWidth-.5,y=lastY/innerHeight-.5,newTab=document.querySelector('.new-tab'),settingsPanel=document.querySelector('.settings-drawer.open');if(newTab){newTab.style.setProperty('--scene-rx',`${-y*((settings.tilt||0)/7)}deg`);newTab.style.setProperty('--scene-ry',`${x*((settings.tilt||0)/6)}deg`)}if(settingsPanel){settingsPanel.style.setProperty('--panel-rx',`${-y*2.2}deg`);settingsPanel.style.setProperty('--panel-ry',`${x*3.1}deg`)}})};addEventListener('mousemove',move,{passive:true});return()=>{removeEventListener('mousemove',move);if(frame)cancelAnimationFrame(frame)}},[settings.tilt,settings.power,activeTabHasPage]);
   useEffect(()=>{setUrl(activeTab?.url||'')},[active,activeTab?.url]);
   useEffect(()=>{
     const accentMap={'Monochrome':'#ffffff','Browsery Cyan':'#65d9ff','Ultraviolet':'#a78bfa','Solar Amber':'#ffbd59','Signal Green':'#56f2a6','Rose Quartz':'#ff7fbc'};
@@ -1463,7 +1528,7 @@ function App() {
   },[setTabGroup]);
   const closeOtherTabs=useCallback(id=>closeTabs(tabs.filter(tab=>tab.id!==id&&!tab.pinned).map(tab=>tab.id)),[tabs,closeTabs]);
   const closeTabsToRight=useCallback(id=>{const index=tabs.findIndex(tab=>tab.id===id);if(index<0)return;closeTabs(tabs.slice(index+1).filter(tab=>!tab.pinned).map(tab=>tab.id))},[tabs,closeTabs]);
-  const go=useCallback(q=>{const entry=q||url;const address=resolveAddress(entry,settings.engine);if(!address)return;if(activeTab?.url)browserRef.current?.navigate(address);setTabs(current=>current.map(tab=>tab.id===active?{...tab,title:entry.slice(0,48),url:address,loading:true}:tab));setUrl(address);setPanel(null);setFindOpen(false)},[url,active,activeTab?.url,settings.engine]);
+  const go=useCallback(q=>{const entry=q||url;const address=resolveAddress(entry,settings.engine);if(!address)return;const blocked=extensionHost.checkNavigation(address);if(blocked){notify(blocked);return}if(activeTab?.url)browserRef.current?.navigate(address);setTabs(current=>current.map(tab=>tab.id===active?{...tab,title:entry.slice(0,48),url:address,loading:true}:tab));setUrl(address);setPanel(null);setFindOpen(false)},[url,active,activeTab?.url,settings.engine,extensionHost,notify]);
   const pageUpdate=useCallback((tabId,update)=>{
     const {currentUrl,...tabUpdate}=update;
     setTabs(current=>current.map(tab=>tab.id===tabId?{...tab,...tabUpdate}:tab));
@@ -1493,7 +1558,7 @@ function App() {
     if(!additions.length){notify('Those bookmarks are already in your library');return}
     const now=Date.now();setBookmarks(current=>[...additions.map(item=>({...item,savedAt:now})),...current]);setBookmarkFolders(current=>Array.from(new Set([...current,...additions.map(item=>item.folder)])));notify(`${additions.length} bookmark${additions.length===1?'':'s'} imported`);
   },[bookmarks,notify]);
-  const zoom=useCallback(step=>{const next=browserRef.current?.zoom(step);if(next){setZoomPercent(next);notify(`Zoom ${next}%`)}},[notify]);
+  const zoom=useCallback(step=>{const next=browserRef.current?.zoom(step);if(next){setZoomPercent(next);notify(`Zoom ${next}%`);extensionHost.zoomChanged(activeTab?.url,next/100)}},[notify,extensionHost,activeTab?.url]);
   const openAnalysis=useCallback(()=>{if(remoteFeatures.ai===false){notify('Groq analysis is temporarily unavailable');return}setPanel('analyze')},[remoteFeatures.ai,notify]);
   const updateBrowsery=useCallback(async()=>{
     const desktop=window.browseryDesktop;
@@ -1572,8 +1637,8 @@ function App() {
   const updateToolbarIcon=appUpdate.status==='downloaded'?'reload':'download';
   const updateToolbarBusy=['checking','downloading','installing'].includes(appUpdate.status);
   const updateRequired=launchComplete&&(appUpdate.available||appUpdate.downloaded||forcedVersionRequired);
-  return <div data-palette={settings.systemContrast?'system':'custom'} data-accent={settings.accentPreset==='Monochrome'?'monochrome':'color'} className={`app ${theme} desktop-browser ${classes} ${activeTab?.loading?'is-loading':''} ${launchComplete?'':'is-launching'}`}>{!launchComplete&&<LaunchScreen onComplete={finishLaunch}/>}<MagicCursor settings={settings}/>{launchComplete&&!accountStatus.loading&&accountStatus.account&&<div className="browser-shell"><SoundVisualizer audioEngine={audioEngine} enabled={audioReady&&settings.visualizer&&settings.ambience&&settings.ambienceVolume>0&&settings.master>0}/>
-    <TabStrip tabs={tabs} setTabs={setTabs} active={active} setActive={setActive} onNewTab={()=>openTab()} onCloseTab={closeTab} onReopenClosed={reopenClosedTab} closedCount={closedTabs.length} groups={tabGroups} onCloseOthers={closeOtherTabs} onCloseRight={closeTabsToRight} onSetGroup={setTabGroup} onCreateGroup={createTabGroup}/>
+  return <div data-palette={settings.systemContrast?'system':'custom'} data-accent={settings.accentPreset==='Monochrome'?'monochrome':'color'} className={`app ${theme} desktop-browser ${classes} ${activeTab?.loading?'is-loading':''} ${launchComplete?'':'is-launching'}`}>{!launchComplete&&<LaunchScreen onComplete={finishLaunch}/>}<MagicCursor settings={settings}/>{launchComplete&&!accountStatus.loading&&accountStatus.account&&<div className="browser-shell"><SoundVisualizer audioEngine={audioEngine} enabled={audioReady&&!activeTab?.url&&settings.visualizer&&settings.ambience&&settings.ambienceVolume>0&&settings.master>0}/>
+    <TabStrip tabs={tabs} setTabs={setTabs} active={active} setActive={setActive} onNewTab={()=>openTab()} onCloseTab={closeTab} onReopenClosed={reopenClosedTab} closedCount={closedTabs.length} groups={tabGroups} onCloseOthers={closeOtherTabs} onCloseRight={closeTabsToRight} onSetGroup={setTabGroup} onCreateGroup={createTabGroup} unloaded={unloadedTabs}/>
     <div className="toolbar">
       <div className="nav-controls" data-tour="navigation"><GlassButton tour="back" icon="back" label="Back · Alt+←" onClick={()=>browserRef.current?.back()}/><GlassButton tour="forward" icon="forward" label="Forward · Alt+→" onClick={()=>browserRef.current?.forward()}/><GlassButton tour="reload" icon={activeTab?.loading?'close':'reload'} label={activeTab?.loading?'Stop loading':'Reload · Ctrl+R'} onClick={()=>activeTab?.loading?browserRef.current?.stop():browserRef.current?.reload()}/><GlassButton tour="home" icon="home" label="Home" onClick={home}/></div>
       <Omnibox value={url} setValue={setUrl} onGo={go} onAnalyze={openAnalysis} suggestionsEnabled={settings.suggestions} engine={settings.engine} history={settings.private?[]:history} bookmarks={bookmarks}/>
@@ -1584,8 +1649,8 @@ function App() {
         <div className="toolbar-cluster" data-tour="system-tools"><GlassButton tour="downloads" icon="download" label="Downloads · Ctrl+J" active={panel==='downloads'} onClick={()=>togglePanel('downloads')}/><GlassButton tour="settings" icon="settings" label="Settings" active={panel==='settings'} onClick={()=>togglePanel('settings')}/>{remoteFeatures.vpn!==false&&<GlassButton tour="vpn" icon="vpn" label="Proton VPN" active={panel==='vpn'} onClick={()=>togglePanel('vpn')}/>}<SpringButton className={`update-toolbar ${appUpdate.available?'is-ready':''} ${updateToolbarBusy?'is-busy':''}`} onClick={updateBrowsery} disabled={updateToolbarBusy} aria-label={appUpdate.status==='downloaded'?'Restart Browsery to install update':appUpdate.status==='available'?'Download Browsery update':appUpdate.status==='downloading'?`Downloading Browsery update ${Math.round(Number(appUpdate.progress)||0)} percent`:'Check Browsery updates'}><Icon name={updateToolbarIcon} size={15}/><span>{updateToolbarLabel}</span></SpringButton>{ownerControlReady&&<SpringButton className={`local-control-toolbar ${panel==='local-control'?'active':''}`} onClick={()=>togglePanel('local-control')} aria-label="Open owner controls on this device"><Icon name="shield" size={15}/><span>Owner</span></SpringButton>}<SpringButton data-tour="theme" className="profile" onClick={()=>{setTheme(current=>current==='dark'?'light':'dark');notify('Theme shifted')}} aria-label="Toggle theme">MK</SpringButton><SpringButton data-tour="tour" className={`owner-guide-button ${tourOpen?'active':''}`} onClick={startTour} aria-label="Open owner guide"><Icon name="help" size={16}/><span>Guide</span></SpringButton></div>
       </div>
     </div>
-    <div className="loading-line"/>{remoteFeatures.announcements!==false&&localControlState.announcements?.length>0&&dismissedAnnouncement!==localControlState.announcements[0].id&&<div className="local-announcement-banner" role="status"><Icon name="alert" size={16}/><div><b>{localControlState.announcements[0].title}</b><span>{localControlState.announcements[0].body}</span><small>Browsery announcement · {localControlState.online?'global':'last known'}</small></div><GlassButton icon="close" label="Dismiss announcement" onClick={()=>setDismissedAnnouncement(localControlState.announcements[0].id)}/></div>}<div className="viewport"><FindBar open={findOpen} onClose={()=>setFindOpen(false)} onFind={find} count={findCounts.matches} active={findCounts.active}/><BrowserViewport ref={browserRef} tabs={tabs} active={active} onSearch={go} onOpenMusic={()=>remoteFeatures.music!==false&&togglePanel('music')} onPageUpdate={pageUpdate} onFindUpdate={onFindUpdate} settings={settings} pointer={pointer} shortcuts={shortcuts} onUpdateShortcuts={setShortcuts}/></div>
-     <AnalyzeDrawer open={panel==='analyze'} onClose={()=>setPanel(null)} tab={activeTab} result={screenAnalysis} onAnalyze={analyzeVisiblePage}/><VoiceAssistantDrawer open={panel==='voice'} onClose={()=>setPanel(null)} model={settings.aiModel} Icon={Icon} Button={SpringButton} CloseButton={GlassButton}/><ExtensionStore open={panel==='extensions'} onClose={()=>setPanel(null)} setSettings={setSettings} onNotice={notify} Icon={Icon} Button={SpringButton} CloseButton={GlassButton}/><SettingsDrawer open={panel==='settings'||panel==='privacy'} initialSection={panel==='privacy'?'privacy':'graphics'} focusSection={tourSection} onClose={()=>setPanel(null)} onManageData={()=>setPanel('data')} onManageProtection={()=>setPanel('protection')} onManagePersonal={()=>setPanel('personal')} values={settings} setValues={setSettings} audioEngine={audioEngine} audioReady={audioReady}/><PersonalCenter open={panel==='personal'} onClose={()=>setPanel(null)} onAccountChange={acceptBrowseryAccount} activeUrl={activeTab?.url} webContentsId={browserRef.current?.getWebContentsId?.()} Icon={Icon} Button={SpringButton} CloseButton={GlassButton}/><LocalControlCenter open={panel==='local-control'&&ownerControlReady} onClose={()=>setPanel(null)} state={localControlState} onStateChange={setLocalControlState} onAdminReadyChange={setOwnerControlReady} Icon={Icon} Button={SpringButton} CloseButton={GlassButton}/><ProtectionDrawer open={panel==='protection'} onClose={()=>setPanel(null)} tab={activeTab} onOpenSettings={()=>setPanel('privacy')}/><MusicDrawer open={panel==='music'} onClose={()=>setPanel(null)}/><BrowserDataDrawer open={panel==='data'} onClose={()=>setPanel(null)} history={settings.private?[]:history} onClearHistory={()=>setHistory([])}/><DownloadDrawer open={panel==='downloads'} onClose={()=>setPanel(null)} audioEngine={audioEngine}/><VpnPanel open={panel==='vpn'} onClose={()=>setPanel(null)} onOpenGuide={()=>go(window.browseryDesktop?.platform==='darwin'?'https://protonvpn.com/download-macos':'https://protonvpn.com/download-windows')}/>
+    <div className="loading-line"/>{remoteFeatures.announcements!==false&&localControlState.announcements?.length>0&&dismissedAnnouncement!==localControlState.announcements[0].id&&<div className="local-announcement-banner" role="status"><Icon name="alert" size={16}/><div><b>{localControlState.announcements[0].title}</b><span>{localControlState.announcements[0].body}</span><small>Browsery announcement · {localControlState.online?'global':'last known'}</small></div><GlassButton icon="close" label="Dismiss announcement" onClick={()=>setDismissedAnnouncement(localControlState.announcements[0].id)}/></div>}<div className="viewport"><FindBar open={findOpen} onClose={()=>setFindOpen(false)} onFind={find} count={findCounts.matches} active={findCounts.active}/><BrowserViewport ref={browserRef} tabs={tabs} active={active} onSearch={go} onOpenMusic={()=>remoteFeatures.music!==false&&togglePanel('music')} onPageUpdate={pageUpdate} onFindUpdate={onFindUpdate} settings={settings} pointer={pointer} shortcuts={shortcuts} onUpdateShortcuts={setShortcuts} extensionHost={extensionHost} unloadedTabs={unloadedTabs} onBlocked={notify}/></div>
+     <AnalyzeDrawer open={panel==='analyze'} onClose={()=>setPanel(null)} tab={activeTab} result={screenAnalysis} onAnalyze={analyzeVisiblePage}/><VoiceAssistantDrawer open={panel==='voice'} onClose={()=>setPanel(null)} model={settings.aiModel} Icon={Icon} Button={SpringButton} CloseButton={GlassButton}/><ExtensionsDrawer open={panel==='extensions'} onClose={()=>setPanel(null)} host={extensionHost} activeTab={activeTab} onNotice={notify} onOpenTab={openTab} Icon={Icon} Button={SpringButton} CloseButton={GlassButton}/><SettingsDrawer open={panel==='settings'||panel==='privacy'} initialSection={panel==='privacy'?'privacy':'graphics'} focusSection={tourSection} onClose={()=>setPanel(null)} onManageData={()=>setPanel('data')} onManageProtection={()=>setPanel('protection')} onManagePersonal={()=>setPanel('personal')} values={settings} setValues={setSettings} audioEngine={audioEngine} audioReady={audioReady}/><PersonalCenter open={panel==='personal'} onClose={()=>setPanel(null)} onAccountChange={acceptBrowseryAccount} activeUrl={activeTab?.url} webContentsId={browserRef.current?.getWebContentsId?.()} Icon={Icon} Button={SpringButton} CloseButton={GlassButton}/><LocalControlCenter open={panel==='local-control'&&ownerControlReady} onClose={()=>setPanel(null)} state={localControlState} onStateChange={setLocalControlState} onAdminReadyChange={setOwnerControlReady} Icon={Icon} Button={SpringButton} CloseButton={GlassButton}/><ProtectionDrawer open={panel==='protection'} onClose={()=>setPanel(null)} tab={activeTab} onOpenSettings={()=>setPanel('privacy')}/><MusicDrawer open={panel==='music'} onClose={()=>setPanel(null)}/><BrowserDataDrawer open={panel==='data'} onClose={()=>setPanel(null)} history={settings.private?[]:history} onClearHistory={()=>setHistory([])}/><DownloadDrawer open={panel==='downloads'} onClose={()=>setPanel(null)} audioEngine={audioEngine}/><VpnPanel open={panel==='vpn'} onClose={()=>setPanel(null)} onOpenGuide={()=>go(window.browseryDesktop?.platform==='darwin'?'https://protonvpn.com/download-macos':'https://protonvpn.com/download-windows')}/>
     <LibraryDrawer open={panel==='history'} onClose={()=>setPanel(null)} title="History" historyMode items={settings.private?[]:history} onSelect={go} onRemove={address=>setHistory(current=>current.filter(item=>item.url!==address))} onClear={()=>setHistory([])}/>
     <BookmarkDrawer open={panel==='bookmarks'} onClose={()=>setPanel(null)} items={bookmarks} folders={bookmarkFolders} onOpen={go} onRemove={address=>setBookmarks(current=>current.filter(item=>item.url!==address))} onMove={moveBookmark} onCreateFolder={createBookmarkFolder} onImport={importBookmarks}/>
     {['maintenance','shutdown'].includes(localControlState.mode)&&<div className="maintenance-lock" role="alertdialog" aria-modal="true" aria-labelledby="maintenance-lock-title"><div className="maintenance-lock-card"><span className="maintenance-lock-kicker">GLOBAL · {localControlState.mode==='shutdown'?'SHUTDOWN':'MAINTENANCE'}</span><h2 id="maintenance-lock-title">{localControlState.mode==='shutdown'?'Browsery is temporarily shut down':'Browsery is under maintenance'}</h2><p>{localControlState.message||'The Browsery team has temporarily paused browsing.'}</p><small>Browsery will resume when the owner changes the global status. Offline devices update after reconnecting.</small>{ownerControlReady&&<SpringButton type="button" onClick={()=>setPanel('local-control')}>Open owner controls</SpringButton>}</div></div>}

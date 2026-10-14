@@ -113,4 +113,7 @@ contextBridge.exposeInMainWorld('browseryDesktop', {
   listBrowserCookies: partition => ipcRenderer.invoke('browser-data:list-cookies', partition),
   removeBrowserCookie: cookie => ipcRenderer.invoke('browser-data:remove-cookie', cookie),
   clearBrowserData: request => ipcRenderer.invoke('browser-data:clear', request),
+  captureTab: webContentsId => ipcRenderer.invoke('browser:capture-tab', { webContentsId }),
+  copyText: text => ipcRenderer.invoke('clipboard:write-text', text),
+  copyImage: dataUrl => ipcRenderer.invoke('clipboard:write-image', dataUrl),
 });

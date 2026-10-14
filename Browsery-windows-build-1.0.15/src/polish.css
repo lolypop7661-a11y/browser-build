@@ -1,0 +1,29 @@
+/* Visual fixes found by screenshotting every surface at 1440×900. */
+
+/* The status line ran under the music player's buttons. Keep it to the left. */
+.desktop-browser .bottom-status { right: auto; gap: 18px; }
+
+/* The audio meter sat on top of the music player; give it its own corner. */
+.desktop-browser .sound-visualizer { right: auto; left: 24px; bottom: 46px; }
+
+/* Settings opens over the new tab; its quick buttons collided with the music player. */
+.desktop-browser:has(.settings-drawer.open) :is(.new-tab-music, .sound-visualizer) { opacity: 0; pointer-events: none; transition: opacity .15s; }
+
+/* Unloaded (memory-saving) tabs read as resting. */
+.desktop-browser .tab.is-unloaded { opacity: .6; }
+.desktop-browser .tab.is-unloaded .tab-favicon { filter: grayscale(1); }
+
+/* Voice assistant still used the old blue palette; match the monochrome chrome. */
+.desktop-browser[data-accent="monochrome"] .voice-core { border-color: #4a4a4a; background: radial-gradient(circle at 36% 30%, #3a3a3a, #161616 70%); color: #f2f2f2; box-shadow: none; }
+.desktop-browser[data-accent="monochrome"] :is(.voice-primary, .voice-send) { border-color: #ededed; background: #ededed; color: #111; }
+.desktop-browser[data-accent="monochrome"] .voice-speak-toggle { border-color: #444; background: #161616; color: #bbb; }
+.desktop-browser[data-accent="monochrome"] .voice-speak-toggle.on { border-color: #888; background: #262626; color: #fff; }
+.desktop-browser[data-accent="monochrome"] .voice-assistant-drawer :is(textarea, .voice-question) { border-color: #333; background: #111; color: #eee; }
+
+/* The Music drawer was never wired to the slide-in animation, so it stayed invisible;
+   now that it opens, give it the same solid surface as the other drawers. */
+.desktop-browser .drawer.music-drawer { border-left: 1px solid #2b2b2b; }
+
+/* Drawers were 98% opaque, enough for the bright new-tab clock to ghost through. */
+.desktop-browser[data-accent="monochrome"] .drawer.drawer { background-color: #0c0c0c; }
+.desktop-browser[data-accent="monochrome"] .download-summary { background: #141414; border-color: #2b2b2b; }

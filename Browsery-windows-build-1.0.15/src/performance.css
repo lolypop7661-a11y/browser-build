@@ -1,0 +1,41 @@
+/* Resource budget.
+   Each rule here was measured on an idle new tab: before this file, 21 animations
+   ran forever, 15 elements blurred what was behind them (12 of them closed drawers
+   over a playing video), and 100 elements held a permanent GPU layer. Decorative
+   motion now plays once when something appears, then the page goes quiet. */
+
+/* GPU layers only where something is actually moving. */
+.desktop-browser *:not(.cursor-dot):not(.cursor-ring):not(.saturn-video) { will-change: auto; }
+.desktop-browser .drawer.open { will-change: transform, opacity; }
+
+/* Closed drawers stop rendering once their closing animation finishes. */
+.desktop-browser .drawer:not(.open) { visibility: hidden; transition: visibility 0s linear .6s; }
+.desktop-browser .drawer.open { visibility: visible; transition: visibility 0s; }
+
+/* Drawers are near-solid, so blurring the video behind them cost GPU for no visible
+   difference. The glow becomes a cached box shadow instead of a per-frame filter. */
+.desktop-browser .drawer,
+.desktop-browser .drawer:not(.settings-drawer) {
+  --panel-opacity: .97;
+  backdrop-filter: none;
+  filter: none;
+  box-shadow: -18px 0 45px rgba(0, 0, 0, .42), 0 0 22px color-mix(in srgb, var(--border-glow, #fff), transparent 88%);
+}
+
+/* The new-tab card no longer re-blurs every video frame behind it. */
+.desktop-browser .command-plane,
+.desktop-browser.has-refraction .command-plane,
+.desktop-browser .command-plane .home-search { backdrop-filter: none; }
+.desktop-browser .command-plane { --panel-opacity: .92; }
+
+/* Endless ambient loops off; arrival animations still play once. */
+.desktop-browser .new-tab::before,
+.desktop-browser .new-tab::after,
+.desktop-browser .spatial-grid { animation: none; }
+.desktop-browser .command-plane { animation: cockpit-plane-arrive 850ms cubic-bezier(.16, 1, .3, 1) both; }
+.desktop-browser .command-plane .time-block time { animation: clock-arrive .85s cubic-bezier(.16, .8, .2, 1) .2s both; }
+.desktop-browser .command-plane .home-search { animation: search-arrive .8s cubic-bezier(.16, .8, .2, 1) .32s both; }
+.desktop-browser .spatial-tabs span { animation: tab-arrive .7s cubic-bezier(.16, .8, .2, 1) calc(.16s + var(--tab-index, 0) * .08s) both; }
+
+/* The music bars only move while music is actually playing. */
+.local-music-player:not(.is-playing) .music-wave i { animation: none; }
