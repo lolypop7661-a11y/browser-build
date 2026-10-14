@@ -4,6 +4,10 @@ const crypto = require('node:crypto');
 
 const CONTROL_FUNCTION = 'browsery-global-control';
 const MAX_RESPONSE_BYTES = 1_000_000;
+// Supabase falls back to its dashboard Site URL when no redirect is sent.
+// Keep account confirmation links usable for desktop users by sending them to
+// Browsery's public release page instead of a developer's localhost server.
+const PUBLIC_AUTH_REDIRECT_URL = 'https://github.com/lolypop7661-a11y/browser-build/releases';
 
 function createGlobalControl({ app, safeStorage, config }) {
   const dataPath = name => path.join(app.getPath('userData'), name);
@@ -135,12 +139,20 @@ function createGlobalControl({ app, safeStorage, config }) {
       try {
         const policy = await request(`${functionUrl}?action=signup-policy`, { headers: headers({ Accept: 'application/json' }) });
         if (policy.signupsEnabled === false) return { ok: false, message: 'New Browsery accounts are temporarily paused.' };
-        const result = await request(authUrl('signup'), { method: 'POST', headers: headers(), body: JSON.stringify({ email: cleanEmail, password }) });
+        const result = await request(authUrl('signup'), {
+          method: 'POST',
+          headers: headers(),
+          body: JSON.stringify({
+            email: cleanEmail,
+            password,
+            options: { emailRedirectTo: PUBLIC_AUTH_REDIRECT_URL },
+          }),
+        });
         if (result.access_token && result.refresh_token && result.user) {
           session = { ...result, expires_at: Date.now() + (Number(result.expires_in) || 3600) * 1000 };
           if (!writeEncrypted('browsery-account.bin', session)) { session = null; return { ok: false, message: 'Windows secure storage is unavailable, so Browsery will not keep this account signed in.' }; }
         }
-        return { ok: true, account: publicUser(result.user), confirmationRequired: !result.access_token, message: result.access_token ? 'Browsery account created and signed in.' : 'Account created. Check your email to confirm it before signing in.' };
+        return { ok: true, account: publicUser(result.user), confirmationRequired: !result.access_token, message: result.access_token ? 'Browsery account created and signed in.' : 'Account created. Check your email; its confirmation link opens Browsery’s public page.' };
       } catch { return { ok: false, message: 'Could not create the account. Check the email, password rules, and Supabase Auth settings.' }; }
     },
     async accountSignIn(email, password) {
