@@ -1500,14 +1500,15 @@ function App() {
     if(!desktop?.isDesktop){notify('Updates are available in the Browsery desktop app');return}
     if(['checking','downloading','installing'].includes(appUpdate.status))return;
     try{
+      // The desktop updater now checks and downloads in one action. The next
+      // press becomes Restart once the installer has been verified.
       const result=appUpdate.status==='downloaded'
         ? await desktop.installAppUpdate?.()
-        : appUpdate.status==='available'
-          ? await desktop.downloadAppUpdate?.()
-          : await desktop.checkForAppUpdate?.();
+        : await desktop.downloadAppUpdate?.();
       if(result&&typeof result==='object')setAppUpdate(result);
       if(result?.message&&!['available','downloaded','downloading','installing'].includes(result.status))notify(result.message);
-    }catch{notify('Browsery could not update right now')}
+      if(result?.ok===false&&result.message)notify(result.message);
+    }catch{notify('Browsery could not update right now. Check your connection and try again.')}
   },[appUpdate.status,notify]);
   const analyzeVisiblePage=useCallback(async()=>{
     if(remoteFeatures.ai===false){notify('Groq analysis is temporarily unavailable');return}

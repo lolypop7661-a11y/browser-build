@@ -131,7 +131,27 @@ async function checkForUpdates(app, { force = false } = {}) {
   if (inFlightCheck) return inFlightCheck;
 
   inFlightCheck = Promise.resolve(autoUpdater.checkForUpdates())
-    .then(() => publicState())
+    .then(result => {
+      // Do not depend on event delivery order: the promise result is the
+      // authoritative answer and some updater versions emit the event after
+      // resolving the check promise.
+      const info = result?.updateInfo;
+      if (result?.isUpdateAvailable && info?.version) {
+        return publish({
+          status: 'available', checkedAt: Date.now(), currentVersion: app?.getVersion?.() || state.currentVersion,
+          latestVersion: String(info.version), available: true, downloaded: false, progress: 0,
+          releaseUrl: RELEASES_URL, message: `Browsery ${info.version} is ready to download.`,
+        });
+      }
+      if (state.status === 'checking') {
+        return publish({
+          status: 'up-to-date', checkedAt: Date.now(), currentVersion: app?.getVersion?.() || state.currentVersion,
+          latestVersion: String(info?.version || state.currentVersion), available: false, downloaded: false,
+          progress: 0, releaseUrl: RELEASES_URL, message: 'Browsery is up to date.',
+        });
+      }
+      return publicState();
+    })
     .catch(error => publish({
       status: 'error', checkedAt: Date.now(), currentVersion: app?.getVersion?.() || state.currentVersion,
       available: false, downloaded: false, progress: 0, message: updateErrorMessage(error),
@@ -144,9 +164,16 @@ async function downloadUpdate(app) {
   if (!initialized) configure(app);
   if (!supportsClickToUpdate(app)) return publicState();
   if (state.status === 'downloaded') return publicState();
-  if (state.status !== 'available') {
-    return publish({ ...state, message: 'Check for an available Browsery update before downloading.' });
+
+  // The primary Update button should work from every state: check the release
+  // feed, then immediately download if a release is available. Previously a
+  // first click from Ready only checked; users had to discover and click again.
+  if (state.status !== 'available' && state.status !== 'downloading') {
+    const checked = await checkForUpdates(app, { force: true });
+    if (checked.status !== 'available') return checked;
   }
+  if (state.status === 'downloading') return publicState();
+
   publish({ status: 'downloading', available: true, downloaded: false, progress: 0, message: `Downloading Browsery ${state.latestVersion || 'update'}…` });
   try {
     await autoUpdater.downloadUpdate();
