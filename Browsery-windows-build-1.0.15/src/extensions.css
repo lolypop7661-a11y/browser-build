@@ -31,18 +31,18 @@
 .ext-card-actions .spring-interactive,.ext-tool .spring-interactive{display:inline-flex;align-items:center;justify-content:center;gap:7px;height:32px;padding:0 13px;border:1px solid var(--x-line-hi);border-radius:9px;background:#1a1a1a;color:var(--x-text);font:inherit;font-size:12px;cursor:pointer}
 .ext-card-actions .spring-interactive:hover,.ext-tool .spring-interactive:hover{background:#242424}
 .ext-tool .spring-interactive:disabled{opacity:.45;cursor:default}
-.ext-install,.ext-tool .ext-primary{background:#ededed!important;border-color:#ededed!important;color:#111!important}
-.ext-install:hover,.ext-tool .ext-primary:hover{background:#fff!important}
-.ext-tool .ext-primary{height:42px!important;font-size:13px!important;font-weight:600;width:100%}
+.ext-card-actions .ext-install,.ext-tool .spring-interactive.ext-primary{background:#ededed;border-color:#ededed;color:#111}
+.ext-card-actions .ext-install:hover,.ext-tool .spring-interactive.ext-primary:hover{background:#fff}
+.ext-tool .spring-interactive.ext-primary{height:42px;font-size:13px;font-weight:600;width:100%}
 .ext-remove{border:0;background:transparent;color:var(--x-faint);font:inherit;font-size:12px;cursor:pointer;text-decoration:underline;text-underline-offset:3px}.ext-remove:hover{color:#ff9d9d}
 .ext-empty{display:flex;flex-direction:column;align-items:center;gap:8px;padding:48px 20px;color:var(--x-muted);text-align:center;font-size:12px}.ext-empty b{color:var(--x-text);font-size:14px}.ext-empty .spring-interactive{margin-top:8px;height:34px;padding:0 14px;border:1px solid #ededed;border-radius:9px;background:#ededed;color:#111;font:inherit;font-weight:600;cursor:pointer}
 .ext-tool-footer{margin-top:auto;padding-top:16px;border-top:1px solid var(--x-line);display:flex;align-items:flex-start;justify-content:space-between;gap:16px}.ext-tool-footer p{margin:0;color:var(--x-faint);font-size:11px;line-height:1.55}.ext-tool-footer .ext-remove{white-space:nowrap}
 .ext-note{margin:0;color:var(--x-muted);font-size:12px;line-height:1.6}.ext-note.warn{color:#e6c07a}
 .ext-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border:1px solid var(--x-line);border-radius:11px;background:var(--x-card)}
 .ext-row b{display:block;font-size:13px}.ext-row small{color:var(--x-muted);font-size:11px}
-.ext-tool .ext-switch{width:42px!important;height:24px!important;padding:0!important;border-radius:12px!important;position:relative;background:#2a2a2a!important}
+.ext-tool .spring-interactive.ext-switch{width:42px;height:24px;padding:0;border-radius:12px;position:relative;background:#2a2a2a}
 .ext-switch i{position:absolute;left:3px;top:3px;width:16px;height:16px;border-radius:50%;background:#888;transition:transform .18s,background .18s}
-.ext-switch.on{background:#ededed!important;border-color:#ededed!important}.ext-switch.on i{transform:translateX(18px);background:#111}
+.ext-tool .spring-interactive.ext-switch.on{background:#ededed;border-color:#ededed}.ext-switch.on i{transform:translateX(18px);background:#111}
 .ext-section h4,.ext-heading{margin:4px 0 9px;color:var(--x-faint);font-size:10px;font-weight:600;letter-spacing:.07em;text-transform:uppercase}
 .ext-list{list-style:none;margin:0;padding:0;display:grid;gap:6px}.ext-list li{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:38px;padding:6px 8px 6px 12px;border:1px solid var(--x-line);border-radius:9px;background:#111;font-size:12px}
 .ext-list li>span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
