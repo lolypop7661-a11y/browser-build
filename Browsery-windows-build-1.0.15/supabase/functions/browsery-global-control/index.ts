@@ -2,7 +2,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, apikey, content-type, x-browsery-admin, x-browsery-device',
+  'Access-Control-Allow-Headers': 'authorization, apikey, content-type, x-browsery-admin, x-browsery-device, x-browsery-user',
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
   'Content-Type': 'application/json; charset=utf-8',
   'Cache-Control': 'no-store',
@@ -11,6 +11,9 @@ const json = (value: unknown, status = 200) => new Response(JSON.stringify(value
 const backendUrl = Deno.env.get('SUPABASE_URL');
 const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 const adminSecret = Deno.env.get('BROWSERY_ADMIN_SECRET');
+// Owner accounts: comma-separated Supabase Auth user IDs (Authentication → Users → copy UID).
+// A signed-in Browsery account on this list gets owner controls on any device.
+const ownerUserIds = new Set((Deno.env.get('BROWSERY_OWNER_USER_IDS') || '').split(',').map(id => id.trim().toLowerCase()).filter(id => /^[0-9a-f-]{36}$/.test(id)));
 const database = backendUrl && serviceKey ? createClient(backendUrl, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } }) : null;
 const defaultConfig = { signupsEnabled: true, minimumVersion: '', releaseUrl: '', releaseNotes: '', maintenanceStart: '', maintenanceEnd: '', features: { ai: true, extensions: true, voice: true, music: true, vpn: true } };
 
@@ -21,7 +24,19 @@ function constantTimeEqual(left: string, right: string) {
   return mismatch === 0;
 }
 
+// Verifies the caller's Browsery session token with Supabase Auth and returns the
+// user ID only when that account is listed in BROWSERY_OWNER_USER_IDS.
+async function ownerAccountId(request: Request) {
+  const token = request.headers.get('x-browsery-user') || '';
+  if (!database || !ownerUserIds.size || token.length < 20 || token.length > 4096) return '';
+  const { data, error } = await database.auth.getUser(token);
+  if (error || !data?.user?.id) return '';
+  const id = data.user.id.toLowerCase();
+  return ownerUserIds.has(id) && !data.user.banned_until ? id : '';
+}
+
 async function authorizeAdmin(request: Request) {
+  if (await ownerAccountId(request)) return true;
   const supplied = request.headers.get('x-browsery-admin') || '';
   const deviceId = request.headers.get('x-browsery-device') || '';
   if (!database || !adminSecret || adminSecret.length < 32 || !constantTimeEqual(supplied, adminSecret) || !/^[0-9a-f-]{36}$/i.test(deviceId)) return false;
@@ -71,6 +86,7 @@ Deno.serve(async request => {
   try {
     if (request.method === 'GET') {
       const url = new URL(request.url);
+      if (url.searchParams.get('action') === 'owner-status') return json({ owner: Boolean(await ownerAccountId(request)) });
       if (url.searchParams.get('action') === 'signup-policy') {
         const config = await readConfig();
         return json({ signupsEnabled: config.signupsEnabled !== false });
@@ -128,6 +144,7 @@ Deno.serve(async request => {
       const id = typeof payload.id === 'string' ? payload.id.trim() : '';
       const duration = ['24h', '168h', '876000h'].includes(payload.duration) ? payload.duration : '168h';
       if (!/^[0-9a-f-]{36}$/i.test(id)) return json({ error: 'invalid_user_id' }, 400);
+      if (action === 'ban-user' && ownerUserIds.has(id.toLowerCase())) return json({ error: 'cannot_ban_owner' }, 400);
       const { data, error } = await database.auth.admin.updateUserById(id, { ban_duration: action === 'unban-user' ? 'none' : duration });
       if (error) throw error;
       result = { user: data.user ? safeUser(data.user) : null };

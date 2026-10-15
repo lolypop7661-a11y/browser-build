@@ -38,6 +38,17 @@ This project now contains the shared-service integration for global Browsery acc
 
 If you replace or wipe the owner PC’s Browsery profile, the old device ID stays paired. To move admin control, reset the single row in `public.browsery_admin_device` through the Supabase SQL editor, then save the secret on the replacement PC and perform an admin action. Treat this as an owner-only recovery operation.
 
+## Owner account (recommended)
+
+Instead of (or as well as) the device-paired key, you can make your own Browsery account the owner. The Owner button then appears on any computer where you are signed in to that account, and survives reinstalls.
+
+1. In Supabase, open **Authentication → Users**, find your Browsery account, and copy its **UID**.
+2. Open **Edge Functions → Secrets** (or run `npx supabase secrets set ...`) and add `BROWSERY_OWNER_USER_IDS` with that UID. Separate several owners with commas.
+3. Redeploy the function so it has the owner-account check: `npx supabase functions deploy browsery-global-control`.
+4. Restart Browsery (version 1.0.19 or later) and sign in with that account. The **Owner** button appears in the toolbar.
+
+The server checks your session token with Supabase Auth on every owner request, so the list cannot be faked from the app. Owner accounts cannot be banned from the Owner panel. Anyone who signs in to your account gets owner controls, so use a strong, unique password.
+
 ## Sign-up without email confirmation, protected by a human check
 
 Browsery accounts no longer use confirmation emails. Instead, sign-up and sign-in open a small Cloudflare Turnstile window. Supabase checks the Turnstile token on its own servers, so calling the public sign-up endpoint directly does not skip the check.

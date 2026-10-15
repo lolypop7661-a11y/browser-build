@@ -102,7 +102,7 @@ export function LocalControlCenter({ open, onClose, state, onStateChange, onAdmi
     <div className="drawer-head"><div><span className="drawer-kicker">Owner controls · this PC only</span><h2>Browsery Operations</h2></div><CloseButton icon="close" label="Close owner controls" onClick={onClose}/></div>
     <div className="local-control-body">
       {!service.configured ? <section className="local-control-intro"><Icon name="alert" size={20}/><div><b>Global service unavailable</b><p>This owner key is device-bound, but the hosted service is not configured.</p></div></section> : <>
-        <section className="local-control-intro"><Icon name="shield" size={20}/><div><b>{state?.online ? 'Owner device verified' : 'Global service offline'}</b><p>No admin account is used. This profile’s encrypted key is paired to one Browsery device ID on the server.</p></div></section>
+        <section className="local-control-intro"><Icon name="shield" size={20}/><div><b>{!state?.online ? 'Global service offline' : service.ownerAccount ? 'Owner account verified' : 'Owner device verified'}</b><p>{service.ownerAccount ? `Signed in as ${service.account?.email || 'a Browsery owner'}. The server confirmed this account is on the owner list, so these controls work on any device you sign in on.` : 'This profile’s encrypted key is paired to one Browsery device ID on the server.'}</p></div></section>
 
         <section className="local-control-section"><div className="local-control-section-title"><div><span>01 · Service control</span><h3>{mode === 'active' ? 'All systems active' : mode === 'maintenance' ? 'Maintenance is active' : 'Global shutdown is active'}</h3></div><em className={state?.online ? 'online' : 'offline'}>{state?.online ? 'ONLINE' : 'OFFLINE'}</em></div>
           <p className="local-control-note">{state?.message || 'Service status for connected Browsery installs.'}</p>
@@ -144,7 +144,7 @@ export function LocalControlCenter({ open, onClose, state, onStateChange, onAdmi
         <section className="local-control-section"><div className="local-control-section-title"><div><span>07 · Audit history</span><h3>Owner actions</h3></div></div><Button type="button" onClick={loadAudit} disabled={busy}>Load recent admin activity</Button><div className="admin-audit-list">{auditEvents.map(event => <article key={event.id}><b>{event.action}</b><small>{dateLabel(event.created_at)} · {event.target || 'global'}</small></article>)}{!auditEvents.length && <p className="local-control-empty">Audit history is private to this owner console.</p>}</div></section>
       </>}
       {message && <p className="local-control-message" role="status">{message}</p>}
-      <p className="local-control-footnote">Admin access uses an encrypted local key and one server-bound device identifier—there is no admin account, and no admin secret is embedded in the public installer.</p>
+      <p className="local-control-footnote">Owner access comes from a server-verified owner account or an encrypted key paired to one device. No admin secret is embedded in the public installer.</p>
     </div>
   </aside>;
 }

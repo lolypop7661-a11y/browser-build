@@ -1383,6 +1383,8 @@ function App() {
     return()=>{active=false};
   },[]);
   const acceptBrowseryAccount=useCallback(account=>setAccountStatus({loading:false,account:account||null,error:''}),[]);
+  // The Owner button follows the signed-in account: re-check with the server whenever it changes.
+  useEffect(()=>{const desktop=window.browseryDesktop;if(!desktop?.globalControlStatus)return;let live=true;desktop.globalControlStatus().then(status=>{if(live)setOwnerControlReady(Boolean(status?.adminReady))}).catch(()=>{});return()=>{live=false}},[accountStatus.account?.id]);
   useEffect(()=>{const panelFeature={analyze:'ai',voice:'voice',extensions:'extensions',music:'music',vpn:'vpn'}[panel];if(panelFeature&&remoteFeatures[panelFeature]===false)setPanel(null)},[panel,remoteFeatures.ai,remoteFeatures.voice,remoteFeatures.extensions,remoteFeatures.music,remoteFeatures.vpn]);
   useEffect(()=>{document.body.classList.toggle('remote-music-disabled',remoteFeatures.music===false);return()=>document.body.classList.remove('remote-music-disabled')},[remoteFeatures.music]);
   useEffect(()=>{const minimum=localControlState.policy?.minimumVersion;if(!launchComplete||!forcedVersionRequired||!minimum||forcedUpdateVersionChecked.current===minimum||!window.browseryDesktop?.checkForAppUpdate||['checking','available','downloading','downloaded','installing'].includes(appUpdate.status))return;forcedUpdateVersionChecked.current=minimum;const timer=setTimeout(()=>window.browseryDesktop.checkForAppUpdate().then(next=>next&&setAppUpdate(next)).catch(()=>{}),900);return()=>clearTimeout(timer)},[launchComplete,forcedVersionRequired,localControlState.policy?.minimumVersion,appUpdate.status]);

@@ -19,6 +19,8 @@ function createGlobalControl({ app, safeStorage, config, requestCaptcha }) {
   let adminBundle = null;
   let deviceId = '';
   let session = null;
+  // Server-verified: true only when the signed-in account is listed in BROWSERY_OWNER_USER_IDS.
+  let ownerAccount = { userId: '', owner: false, checkedAt: 0 };
 
   function readEncrypted(file) {
     if (!safeStorage?.isEncryptionAvailable?.()) return null;
@@ -119,10 +121,36 @@ function createGlobalControl({ app, safeStorage, config, requestCaptcha }) {
     } catch { session = null; deleteStored('browsery-account.bin'); return null; }
   }
 
+  async function freshAccessToken() {
+    if (!service || !session) return '';
+    if ((Number(session.expires_at) || 0) < Date.now() + 60_000) await refreshSession();
+    return typeof session?.access_token === 'string' ? session.access_token : '';
+  }
+
+  // Asks the server whether the signed-in account is a Browsery owner. Cached for
+  // five minutes per account; a network failure keeps the last verified answer.
+  async function checkOwnerAccount(force = false) {
+    const userId = session?.user?.id || '';
+    if (!service || !userId) { ownerAccount = { userId: '', owner: false, checkedAt: 0 }; return false; }
+    if (!force && ownerAccount.userId === userId && Date.now() - ownerAccount.checkedAt < 300_000) return ownerAccount.owner;
+    const keep = ownerAccount.userId === userId ? ownerAccount.owner : false;
+    try {
+      const token = await freshAccessToken();
+      if (!token) { ownerAccount = { userId: '', owner: false, checkedAt: 0 }; return false; }
+      const result = await request(`${functionUrl}?action=owner-status`, { headers: headers({ Accept: 'application/json', 'x-browsery-user': token }) });
+      ownerAccount = { userId, owner: result?.owner === true, checkedAt: Date.now() };
+    } catch { ownerAccount = { userId, owner: keep, checkedAt: 0 }; }
+    return ownerAccount.owner;
+  }
+
+  const isOwnerAccount = () => Boolean(session?.user?.id) && ownerAccount.userId === session.user.id && ownerAccount.owner;
+
   return {
     hydrate,
+    checkOwnerAccount,
     status() {
-      return { configured: Boolean(service), secureStorage: Boolean(safeStorage?.isEncryptionAvailable?.()), adminReady: Boolean(adminBundle?.secret), account: publicUser(session?.user) };
+      const ownerByAccount = isOwnerAccount();
+      return { configured: Boolean(service), secureStorage: Boolean(safeStorage?.isEncryptionAvailable?.()), adminReady: Boolean(adminBundle?.secret) || ownerByAccount, ownerKey: Boolean(adminBundle?.secret), ownerAccount: ownerByAccount, account: publicUser(session?.user) };
     },
     async globalState() {
       if (!service) return { ok: false, online: false, mode: 'active', message: '', announcements: [], error: 'not-configured' };
@@ -144,17 +172,19 @@ function createGlobalControl({ app, safeStorage, config, requestCaptcha }) {
     clearAdminSecret() { adminBundle = null; deleteStored('browsery-global-admin.bin'); return { ok: true }; },
     async adminAction(payload) {
       if (!service) return { ok: false, message: 'The shared service is not configured in this Browsery build yet.' };
-      if (!adminBundle?.secret) return { ok: false, message: 'Save the Supabase admin secret on this computer first.' };
+      const userToken = isOwnerAccount() ? await freshAccessToken() : '';
+      if (!adminBundle?.secret && !userToken) return { ok: false, message: 'Sign in with your Browsery owner account, or save the Supabase admin secret on this computer first.' };
       try {
+        const authHeaders = { ...(adminBundle?.secret ? { 'x-browsery-admin': adminBundle.secret, 'x-browsery-device': deviceId } : {}), ...(userToken ? { 'x-browsery-user': userToken } : {}) };
         const result = await request(functionUrl, {
           method: 'POST',
-          headers: headers({ 'x-browsery-admin': adminBundle.secret, 'x-browsery-device': deviceId }),
+          headers: headers(authHeaders),
           body: JSON.stringify(payload),
         });
         return { ok: true, ...result, state: { ok: true, online: true, mode: result.mode, message: result.message || '', updatedAt: result.updatedAt || result.updated_at || null, announcements: Array.isArray(result.announcements) ? result.announcements.map(item => ({ id: String(item.id), title: String(item.title), body: String(item.body), createdAt: item.created_at || null })) : [], policy: result.policy || {} } };
       } catch (error) {
         const details = String(error.message || 'request-failed');
-        const message = details.includes('admin_not_authorized') ? 'This computer is not paired as the Browsery admin device, or the server secret is incorrect.' : details.includes('Failed to fetch') ? 'Could not reach the shared service. Check your connection.' : 'The shared admin request failed. Check the Supabase function and server secret.';
+        const message = details.includes('admin_not_authorized') ? 'Owner access was refused. Check that your account ID is in BROWSERY_OWNER_USER_IDS on the server, or that this computer holds the paired admin key.' : details.includes('Failed to fetch') ? 'Could not reach the shared service. Check your connection.' : 'The shared admin request failed. Check the Supabase function and server secret.';
         return { ok: false, message };
       }
     },
@@ -195,6 +225,7 @@ function createGlobalControl({ app, safeStorage, config, requestCaptcha }) {
     async accountSignOut() {
       const accessToken = session?.access_token;
       session = null;
+      ownerAccount = { userId: '', owner: false, checkedAt: 0 };
       deleteStored('browsery-account.bin');
       if (service && accessToken) request(authUrl('logout'), { method: 'POST', headers: headers({ Authorization: `Bearer ${accessToken}` }) }).catch(() => {});
       return { ok: true };

@@ -1459,7 +1459,13 @@ if (primaryInstance) app.whenReady().then(async () => {
       : { ...remoteGlobalState, ok: false, online: false, error: state.error || 'network-error' };
     send('global-control:state-changed', remoteGlobalState);
   };
-  ipcMain.handle('global-control:status', event => trustedShell(event) ? { ...globalControl.status(), state: remoteGlobalState } : null);
+  ipcMain.handle('global-control:status', async event => {
+    if (!trustedShell(event)) return null;
+    // Re-verify owner status with the server (cached briefly) so the Owner
+    // panel follows the signed-in account instead of only a local key file.
+    await Promise.race([globalControl.checkOwnerAccount().catch(() => false), new Promise(resolve => setTimeout(resolve, 6_000))]);
+    return { ...globalControl.status(), state: remoteGlobalState };
+  });
   ipcMain.handle('global-control:state', async event => {
     if (!trustedShell(event)) return { ok: false, online: false, error: 'untrusted' };
     const state = await globalControl.globalState(); publishGlobalState(state); return remoteGlobalState;
