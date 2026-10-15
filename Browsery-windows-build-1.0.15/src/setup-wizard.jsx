@@ -133,7 +133,7 @@ export function SetupWizard({ open, account, desktop, platform = '', onFinish, o
 
   if (!open) return null;
   if (minimized) return <aside className="setup-resume" role="region" aria-label="Browsery setup paused">
-    <div><span>Setup paused</span><b>Copy your key from the Groq console, then come back.</b></div>
+    <div><span>BROWSERY SETUP · PAUSED</span><b>Copy your key from the Groq console, then come back.</b></div>
     <button type="button" className="setup-primary" onClick={() => setMinimized(false)} autoFocus>Resume setup<Icon name="forward" size={14}/></button>
   </aside>;
 
@@ -143,7 +143,7 @@ export function SetupWizard({ open, account, desktop, platform = '', onFinish, o
   return <div className="setup-wizard" role="presentation">
     <section ref={cardRef} className="setup-card" role="dialog" aria-modal="true" aria-labelledby="setup-title" aria-describedby="setup-description">
       <header className="setup-top">
-        <span className="setup-kicker">Step {stepIndex + 1} of {STEPS.length}</span>
+        <span className="setup-kicker">BROWSERY SETUP · STEP {stepIndex + 1} OF {STEPS.length}</span>
         {step !== 'done' && <button type="button" className="setup-link" onClick={() => finish(false)} disabled={busy}>Skip setup</button>}
       </header>
       <ol className="setup-progress" aria-hidden="true">{STEPS.map((id, index) => <li key={id} className={index < stepIndex ? 'done' : index === stepIndex ? 'current' : ''}/>)}</ol>

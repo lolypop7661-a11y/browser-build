@@ -134,7 +134,7 @@ export function SupportDrawer({ open, onClose, account, appVersion = '', platfor
   const openCount = tickets.filter(ticket => ticket.status !== 'closed').length;
 
   return <aside ref={panelRef} className={`drawer support-drawer ${open ? 'open' : ''}`} aria-hidden={!open} aria-label="Help and support">
-    <div className="drawer-head"><div><h2>Help &amp; Support</h2></div><CloseButton icon="close" label="Close help and support" onClick={onClose}/></div>
+    <div className="drawer-head"><div><span className="drawer-kicker">Help · questions · bug reports</span><h2>Help &amp; Support</h2></div><CloseButton icon="close" label="Close help and support" onClick={onClose}/></div>
     <div className="support-body">
       <section className="support-quick">
         {voiceAvailable && <button type="button" className="support-groq" onClick={onAskGroq} disabled={!open}><span className="support-groq-icon"><Icon name="spark" size={17}/></span><span><b>Ask Hey Groq first</b><small>Instant answers about Browsery’s buttons, settings and extensions.</small></span><Icon name="forward" size={15}/></button>}

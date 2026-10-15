@@ -42,7 +42,7 @@ export function ExtensionsDrawer({ open, onClose, host, activeTab, onNotice, onO
         <button type="button" className="ext-back" onClick={() => setToolId(null)} aria-label="Back to extensions"><Icon name="back" size={16} /></button>
         <span className="ext-glyph"><Icon name={tool.icon} size={17} /></span>
         <div><span className="drawer-kicker">{tool.category}{isAutomatic(tool) ? ' · works automatically' : ''}</span><h2>{tool.name}</h2></div>
-      </div> : <div><h2>Extensions</h2></div>}
+      </div> : <div><span className="drawer-kicker">Built into Browsery</span><h2>Extensions</h2></div>}
       <CloseButton icon="close" label="Close extensions" onClick={onClose} />
     </div>
 

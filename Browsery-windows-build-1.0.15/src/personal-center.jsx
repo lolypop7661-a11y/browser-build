@@ -208,7 +208,7 @@ export function PersonalCenter({ open, onClose, onAccountChange, activeUrl, webC
   const updateActionDisabled = !nativeReady || busy || ['checking', 'downloading', 'installing'].includes(update.status);
   return <aside ref={panelRef} className={`drawer personal-center ${open ? 'open' : ''}`} aria-hidden={!open}>
     <div className="drawer-head">
-      <div><h2>Personal browser</h2></div>
+      <div><span className="drawer-kicker">This device · explicit controls</span><h2>Personal browser</h2></div>
       <CloseButton icon="close" label="Close personal browser" onClick={onClose}/>
     </div>
     <div className="personal-center-body">
@@ -218,7 +218,7 @@ export function PersonalCenter({ open, onClose, onAccountChange, activeUrl, webC
       </section>
 
       <section className="personal-section browsery-account-section" aria-labelledby="browsery-account-title">
-        <div className="personal-section-head"><div><span>Browsery account</span><h3 id="browsery-account-title">{account ? account.email : accountMode === 'signup' ? 'Create an account' : 'Sign in'}</h3></div><em>{account ? 'Signed in' : 'Required'}</em></div>
+        <div className="personal-section-head"><div><span>Browsery account</span><h3 id="browsery-account-title">{account ? account.email : accountMode === 'signup' ? 'Create an account' : 'Sign in'}</h3></div><em>{account ? 'SIGNED IN' : 'REQUIRED'}</em></div>
         {account ? <><p className="personal-note">You are signed in on this device. Owner/admin controls do not use Browsery accounts.</p><Button type="button" onClick={signOutAccount} disabled={busy}>Sign out</Button></> : <form className="login-save-form" onSubmit={submitAccount}><label>Email<input type="email" autoComplete="email" value={accountForm.email} onChange={event => setAccountForm(current => ({ ...current, email: event.target.value }))} required disabled={busy}/></label><label>Password<input type="password" autoComplete={accountMode === 'signup' ? 'new-password' : 'current-password'} minLength={accountMode === 'signup' ? 10 : 1} maxLength={256} value={accountForm.password} onChange={event => setAccountForm(current => ({ ...current, password: event.target.value }))} required disabled={busy}/></label><Button type="submit" disabled={busy}>{accountMode === 'signup' ? 'Create account' : 'Sign in'}</Button><button className="local-control-text-button" type="button" onClick={() => { setAccountMode(current => current === 'signup' ? 'signin' : 'signup'); setAccountMessage(''); }}>{accountMode === 'signup' ? 'Already registered? Sign in' : 'New to Browsery? Create account'}</button></form>}
         {accountMessage && <p className="personal-note" role="status">{accountMessage}</p>}
       </section>

@@ -459,8 +459,18 @@
 @keyframes launch-final-brand-in { from { opacity: 0; transform: translate3d(0, 20px, 0) scale(.95); } to { opacity: 1; transform: translate3d(0, 0, 0) scale(1); } }
 @media (prefers-reduced-motion: reduce) { .launch-screen { display: grid; }.launch-final-brand { animation: none; } }
 
-/* The flat hero pass (forced #000/#111 surfaces with !important) moved to planetarium.css,
-   which now owns the new-tab layout and surface colors. */
+/* Flat hero pass: keep the focal plane off-center and use solid surfaces. */
+.desktop-browser .new-tab,
+.desktop-browser .new-tab::before,
+.desktop-browser .new-tab::after,
+.desktop-browser .video-shade { background: #000 !important; background-image: none !important; }
+.desktop-browser .new-tab-center.spatial-rig { left: 70%; }
+.desktop-browser .command-plane,
+.desktop-browser .command-plane .home-search,
+.desktop-browser .favorite > span,
+.desktop-browser .local-music-player,
+.desktop-browser .tour-card,
+.desktop-browser .mandatory-update-card { background: #111 !important; background-image: none !important; }
 .desktop-browser .spatial-grid { background: transparent !important; background-image: none !important; border-top: 1px solid #ffffff18; }
 @media (max-width: 620px) { .desktop-browser .new-tab-center.spatial-rig { left: 58%; } }
 @media (max-width: 540px) { .launch-brand-lockup { max-width: calc(100vw - 18px); gap: 8px; }.launch-word { max-width: calc(100vw - 76px); padding-inline: .08em; font-size: clamp(34px, 13vw, 62px); letter-spacing: -.01em; }.launch-word span { min-width: .48em; padding-inline: .025em; } }

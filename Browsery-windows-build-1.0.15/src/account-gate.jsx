@@ -116,7 +116,7 @@ export function AccountGate({ desktop, onAuthenticated, Icon, checking = false, 
     <div className="account-gate-orbit account-gate-orbit-two" aria-hidden="true"/>
     <section className="account-gate-card">
       <div className="account-gate-brand"><img src="./assets/browsery-icon.png" alt=""/><span>Browsery</span></div>
-      {recovering && <span className="account-gate-kicker">Password reset · step {mode === 'recover-email' ? 1 : 2} of 2</span>}
+      <span className="account-gate-kicker">{recovering ? `PASSWORD RECOVERY · STEP ${mode === 'recover-email' ? 1 : 2} OF 2` : 'YOUR BROWSER · YOUR ACCOUNT'}</span>
       <h1 id="account-gate-title">{title}</h1>
       <p className="account-gate-description">{description}</p>
       {!checking && !recovering && <form className="account-gate-form" onSubmit={submit}>

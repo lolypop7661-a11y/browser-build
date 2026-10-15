@@ -229,7 +229,7 @@ export function VoiceAssistantDrawer({ open, onClose, model, getContext, Icon, B
 
   const listeningDescription = listening ? 'Listening for “Hey Groq”…' : status === 'awaiting-command' ? 'Wake word heard — say your question.' : 'Voice session is paused.';
   return <aside ref={panelRef} className={`drawer voice-assistant-drawer ${open ? 'open' : ''}`} aria-hidden={!open} aria-label="Hey Groq voice assistant">
-    <div className="drawer-head voice-head"><div><h2>Hey Groq</h2></div><CloseButton icon="close" label="Close Hey Groq" onClick={onClose}/></div>
+    <div className="drawer-head voice-head"><div><span className="drawer-kicker">Groq · opt-in voice session</span><h2>Hey Groq</h2></div><CloseButton icon="close" label="Close Hey Groq" onClick={onClose}/></div>
     <div className="voice-body">
       <section className={`voice-orbit ${listening ? 'is-listening' : ''} ${status === 'thinking' ? 'is-thinking' : ''}`}>
         <span className="voice-core"><Icon name="spark" size={23}/></span><i/><i/><i/>
