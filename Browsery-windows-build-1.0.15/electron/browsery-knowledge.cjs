@@ -128,7 +128,7 @@ const EXTENSION_NAMES = Object.freeze({
 // Only these settings may be reported to Groq. Each entry is
 // [group, label, type, allowed options (select only)].
 const CONTEXT_SETTINGS = Object.freeze({
-  chill: ['Settings (top)', 'Chill mode', 'toggle'],
+  chill: ['Mode', 'Chill mode', 'toggle'],
   power: ['Graphics', 'Low-power mode', 'toggle'],
   gpu: ['Graphics', 'GPU acceleration', 'toggle'],
   fps: ['Graphics', 'Frame rate limit', 'select', ['30 FPS', '60 FPS', '120 FPS', '144 FPS']],
