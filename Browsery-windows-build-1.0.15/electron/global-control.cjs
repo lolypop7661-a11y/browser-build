@@ -107,6 +107,69 @@ function createGlobalControl({ app, safeStorage, config, requestCaptcha }) {
     return fallback;
   }
 
+  // Password-recovery errors. The reset code is a one-time token from the
+  // Supabase "Reset password" email ({{ .Token }}), so no redirect URL is used.
+  function recoveryFailure(error, fallback) {
+    const details = String(error?.message || '').toLowerCase();
+    if (details.includes('otp_expired') || details.includes('expired or is invalid') || details.includes('invalid otp') || details.includes('otp_disabled')) return 'That code is invalid or has expired. Request a new code and try again.';
+    if (details.includes('same_password') || details.includes('different from the old')) return 'Choose a new password that is different from your old one.';
+    if (details.includes('user_banned')) return 'This account cannot be recovered right now. Contact the Browsery owner.';
+    if (details.includes('reauthentication')) return 'Supabase asked for an extra confirmation. Request a new code and try again.';
+    return accountFailure(error, fallback);
+  }
+
+  // Support-ticket errors returned by the browsery-global-control function.
+  function supportFailure(error) {
+    const details = String(error?.message || '').toLowerCase();
+    if (details.includes('support_ticket_limit')) return 'You can open up to 5 tickets a day. Reply to an existing ticket, or try again tomorrow.';
+    if (details.includes('support_message_limit')) return 'You have sent a lot of messages in the last hour. Please wait a little before replying again.';
+    if (details.includes('user_not_authenticated')) return 'Your Browsery session expired. Sign out and sign in again, then retry.';
+    if (details.includes('user_banned')) return 'This account cannot contact support right now.';
+    if (details.includes('ticket_not_found')) return 'That ticket no longer exists.';
+    if (details.includes('ticket_closed')) return 'This ticket is closed. Open a new ticket if you still need help.';
+    if (details.includes('subject_') || details.includes('body_') || details.includes('invalid_')) return 'Check the subject (up to 120 characters) and message (up to 4,000 characters), then try again.';
+    if (details.includes('unknown_action') || details.includes('http-404')) return 'Support is not set up on the Browsery server yet. Please try again later.';
+    if (error?.name === 'AbortError' || details.includes('fetch failed')) return 'Could not reach Browsery support. Check your connection and try again.';
+    return 'Browsery support could not complete that request. Try again in a moment.';
+  }
+
+  const cleanTicketText = (value, max) => String(value || '').replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '').slice(0, max);
+  const cleanTicket = ticket => ({
+    id: String(ticket?.id || ''),
+    category: String(ticket?.category || 'other'),
+    subject: cleanTicketText(ticket?.subject, 120),
+    body: cleanTicketText(ticket?.body, 4000),
+    status: ['open', 'answered', 'closed'].includes(ticket?.status) ? ticket.status : 'open',
+    email: cleanTicketText(ticket?.email, 254),
+    appVersion: cleanTicketText(ticket?.appVersion, 32),
+    platform: cleanTicketText(ticket?.platform, 40),
+    createdAt: ticket?.createdAt || null,
+    updatedAt: ticket?.updatedAt || null,
+    messages: Array.isArray(ticket?.messages) ? ticket.messages.slice(0, 200).map(message => ({ id: String(message?.id || ''), author: message?.author === 'owner' ? 'owner' : 'user', body: cleanTicketText(message?.body, 4000), createdAt: message?.createdAt || null })) : [],
+  });
+
+  // Support requests are authenticated by the signed-in user's own session.
+  async function supportRequest(payload) {
+    if (!service) return { ok: false, message: 'Support is not available until the shared service is configured.' };
+    const token = await freshAccessToken();
+    if (!token) return { ok: false, message: 'Sign in to your Browsery account to contact support.' };
+    try {
+      const result = await request(functionUrl, { method: 'POST', headers: headers({ 'x-browsery-user': token }), body: JSON.stringify(payload) });
+      return { ok: true, tickets: Array.isArray(result?.tickets) ? result.tickets.slice(0, 50).map(cleanTicket) : [], ticketId: typeof result?.ticketId === 'string' ? result.ticketId : '' };
+    } catch (error) { return { ok: false, message: supportFailure(error) }; }
+  }
+
+  function storeSession(result) {
+    session = { ...result, expires_at: Date.now() + (Number(result.expires_in) || 3600) * 1000 };
+    ownerAccount = { userId: '', owner: false, checkedAt: 0 };
+    if (!writeEncrypted('browsery-account.bin', session)) { session = null; return false; }
+    return true;
+  }
+
+  // A verified recovery session is kept in memory for a few minutes so a
+  // rejected new password can be retried without spending another code.
+  let recovery = null;
+
   function publicUser(user) {
     return user && typeof user.id === 'string' ? { id: user.id, email: typeof user.email === 'string' ? user.email : '', createdAt: user.created_at || null } : null;
   }
@@ -216,6 +279,54 @@ function createGlobalControl({ app, safeStorage, config, requestCaptcha }) {
         return { ok: true, account: publicUser(session.user), message: 'Signed in to your Browsery account.' };
       } catch (error) { return { ok: false, message: accountFailure(error, 'Email or password was not accepted. Try again.') }; }
     },
+    // Step 1 of password recovery: Supabase emails a one-time code. The answer is
+    // the same whether or not the account exists, so emails cannot be probed.
+    async accountRecover(email) {
+      if (!service) return { ok: false, message: 'Accounts are not available until the shared service is configured.' };
+      const cleanEmail = String(email || '').trim().slice(0, 254);
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) return { ok: false, message: 'Enter the email address of your Browsery account.' };
+      try {
+        const security = await captchaSecurity();
+        await request(authUrl('recover'), { method: 'POST', headers: headers(), body: JSON.stringify({ email: cleanEmail, ...security }) });
+      } catch (error) {
+        const details = String(error?.message || '').toLowerCase();
+        const visible = error?.code === 'captcha-cancelled' || details.includes('captcha') || details.includes('rate_limit') || details.includes('http-429') || error?.name === 'AbortError' || details.includes('fetch failed');
+        if (visible) return { ok: false, message: accountFailure(error, 'Could not send a reset code. Try again.') };
+      }
+      return { ok: true, message: 'If an account exists for that email, we sent a 6-digit code. Enter it below with a new password.' };
+    },
+    // Step 2: exchange the emailed code for a session, set the new password,
+    // then keep the session so the person is signed in afterwards.
+    async accountResetPassword(email, code, password) {
+      if (!service) return { ok: false, message: 'Accounts are not available until the shared service is configured.' };
+      const cleanEmail = String(email || '').trim().slice(0, 254);
+      const cleanCode = String(code || '').replace(/\s+/g, '');
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) return { ok: false, message: 'Enter the email address of your Browsery account.' };
+      if (!/^\d{6,10}$/.test(cleanCode)) return { ok: false, message: 'Enter the 6-digit code from the reset email.' };
+      if (typeof password !== 'string' || password.length < 10 || password.length > 256) return { ok: false, message: 'Choose a new password with at least 10 characters.' };
+      try {
+        let verified = recovery && recovery.email === cleanEmail.toLowerCase() && recovery.code === cleanCode && recovery.until > Date.now() ? recovery.session : null;
+        if (!verified) {
+          recovery = null;
+          verified = await request(authUrl('verify'), { method: 'POST', headers: headers(), body: JSON.stringify({ type: 'recovery', email: cleanEmail, token: cleanCode }) });
+          if (typeof verified?.access_token !== 'string' || typeof verified?.refresh_token !== 'string' || !verified.user?.id) throw new Error('otp_expired: no session');
+          recovery = { email: cleanEmail.toLowerCase(), code: cleanCode, session: verified, until: Date.now() + Math.min(600, Number(verified.expires_in) || 600) * 1000 };
+        }
+        const user = await request(authUrl('user'), { method: 'PUT', headers: headers({ Authorization: `Bearer ${verified.access_token}` }), body: JSON.stringify({ password }) });
+        recovery = null;
+        if (!storeSession({ ...verified, user: user?.id ? user : verified.user })) return { ok: false, message: 'Your password was changed, but secure storage is unavailable, so Browsery cannot keep you signed in. Sign in with the new password.' };
+        return { ok: true, account: publicUser(session.user), message: 'Password updated. You are signed in.' };
+      } catch (error) {
+        const message = recoveryFailure(error, 'Could not reset the password. Check the code and try again.');
+        return { ok: false, message: recovery && !/code is invalid/.test(message) ? `${message} Your code is still valid for a few minutes.` : message };
+      }
+    },
+    supportCreate(ticket) {
+      return supportRequest({ action: 'support-create', category: String(ticket?.category || 'other').slice(0, 20), subject: String(ticket?.subject || '').slice(0, 200), body: String(ticket?.body || '').slice(0, 5000), appVersion: String(ticket?.appVersion || '').slice(0, 32), platform: String(ticket?.platform || '').slice(0, 40) });
+    },
+    supportList() { return supportRequest({ action: 'support-list' }); },
+    supportReply(ticketId, body) { return supportRequest({ action: 'support-reply', ticketId: String(ticketId || '').slice(0, 64), body: String(body || '').slice(0, 5000) }); },
+    supportClose(ticketId) { return supportRequest({ action: 'support-close', ticketId: String(ticketId || '').slice(0, 64) }); },
     async accountStatus() {
       if (!session) return { account: null, secureStorage: Boolean(safeStorage?.isEncryptionAvailable?.()) };
       if (!service) return { account: publicUser(session.user), secureStorage: Boolean(safeStorage?.isEncryptionAvailable?.()) };
@@ -225,6 +336,7 @@ function createGlobalControl({ app, safeStorage, config, requestCaptcha }) {
     async accountSignOut() {
       const accessToken = session?.access_token;
       session = null;
+      recovery = null;
       ownerAccount = { userId: '', owner: false, checkedAt: 0 };
       deleteStored('browsery-account.bin');
       if (service && accessToken) request(authUrl('logout'), { method: 'POST', headers: headers({ Authorization: `Bearer ${accessToken}` }) }).catch(() => {});

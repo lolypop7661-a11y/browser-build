@@ -4,6 +4,9 @@ import { useSpringPresence } from './motion.js';
 const desktop = () => window.browseryDesktop;
 const dateLabel = value => { try { return new Date(value).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }); } catch { return 'Recently'; } };
 const FEATURE_LABELS = { ai: 'AI analysis', extensions: 'Extensions', voice: 'Voice assistant', music: 'Music player', vpn: 'VPN panel' };
+const SUPPORT_FILTERS = [['open', 'Open'], ['answered', 'Answered'], ['closed', 'Closed'], ['all', 'All']];
+const SUPPORT_CATEGORY_LABELS = { bug: 'Bug', account: 'Account', feature: 'Feature request', question: 'Question', other: 'Other' };
+const PLATFORM_NAMES = { win32: 'Windows', darwin: 'macOS', linux: 'Linux' };
 
 export function LocalControlCenter({ open, onClose, state, onStateChange, onAdminReadyChange = () => {}, Icon, Button, CloseButton }) {
   const panelRef = useSpringPresence(open, { preset: 'fluid', offset: 90 });
@@ -19,6 +22,11 @@ export function LocalControlCenter({ open, onClose, state, onStateChange, onAdmi
   const [releaseNotes, setReleaseNotes] = useState('');
   const [windowStart, setWindowStart] = useState('');
   const [windowEnd, setWindowEnd] = useState('');
+  const [supportFilter, setSupportFilter] = useState('open');
+  const [supportTickets, setSupportTickets] = useState([]);
+  const [supportLoaded, setSupportLoaded] = useState(false);
+  const [supportExpanded, setSupportExpanded] = useState('');
+  const [supportReply, setSupportReply] = useState('');
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
   const mode = ['active', 'maintenance', 'shutdown'].includes(state?.mode) ? state.mode : 'active';
@@ -87,6 +95,25 @@ export function LocalControlCenter({ open, onClose, state, onStateChange, onAdmi
     if (result) setAuditEvents(Array.isArray(result.events) ? result.events : []);
   };
 
+  // Support inbox: tickets from Browsery users, answered from this panel.
+  const loadSupport = async (filter = supportFilter) => {
+    setSupportFilter(filter);
+    const result = await runAdmin({ action: 'support-admin-list', status: filter === 'all' ? '' : filter }, 'Support inbox refreshed.');
+    if (result) { setSupportTickets(Array.isArray(result.tickets) ? result.tickets : []); setSupportLoaded(true); }
+  };
+  const replaceTicket = ticket => { if (ticket?.id) setSupportTickets(current => current.map(entry => entry.id === ticket.id ? ticket : entry)); };
+  const answerTicket = async (event, ticket) => {
+    event.preventDefault();
+    const body = supportReply.trim();
+    if (!body) return;
+    const result = await runAdmin({ action: 'support-admin-reply', ticketId: ticket.id, body }, 'Reply sent. The user sees it in Help & Support.');
+    if (result) { replaceTicket(result.ticket); setSupportReply(''); }
+  };
+  const setTicketStatus = async (ticket, status) => {
+    const result = await runAdmin({ action: 'support-admin-set-status', ticketId: ticket.id, status }, `Ticket marked ${status}.`);
+    if (result) replaceTicket(result.ticket);
+  };
+
   const saveMaintenanceWindow = async event => {
     event.preventDefault();
     const result = await runAdmin({ action: 'set-maintenance-window', start: new Date(windowStart).toISOString(), end: new Date(windowEnd).toISOString() }, 'Scheduled maintenance window saved.');
@@ -141,7 +168,29 @@ export function LocalControlCenter({ open, onClose, state, onStateChange, onAdmi
           <div className="admin-feature-list">{Object.entries(FEATURE_LABELS).map(([key, label]) => <label key={key}><span>{label}</span><input type="checkbox" checked={policy.features?.[key] !== false} onChange={event => runAdmin({ action: 'set-feature', feature: key, enabled: event.target.checked }, `${label} ${event.target.checked ? 'enabled' : 'disabled'} for Browsery clients.`)} disabled={busy}/></label>)}</div>
         </section>
 
-        <section className="local-control-section"><div className="local-control-section-title"><div><span>07 · Audit history</span><h3>Owner actions</h3></div></div><Button type="button" onClick={loadAudit} disabled={busy}>Load recent admin activity</Button><div className="admin-audit-list">{auditEvents.map(event => <article key={event.id}><b>{event.action}</b><small>{dateLabel(event.created_at)} · {event.target || 'global'}</small></article>)}{!auditEvents.length && <p className="local-control-empty">Audit history is private to this owner console.</p>}</div></section>
+        <section className="local-control-section"><div className="local-control-section-title"><div><span>07 · Support inbox</span><h3>Help &amp; Support tickets</h3></div><em>{supportLoaded ? `${supportTickets.length} SHOWN` : 'USER TICKETS'}</em></div>
+          <p className="local-control-note">Tickets from signed-in Browsery users. A reply marks the ticket answered and appears in the user’s Help &amp; Support panel; a user reply reopens it.</p>
+          <div className="admin-support-filter" role="group" aria-label="Ticket status filter">{SUPPORT_FILTERS.map(([value, label]) => <Button key={value} type="button" className={supportLoaded && supportFilter === value ? 'active' : ''} aria-pressed={supportLoaded && supportFilter === value} onClick={() => loadSupport(value)} disabled={busy}>{label}</Button>)}</div>
+          <div className="admin-support-list">{supportTickets.map(ticket => {
+            const expandedTicket = supportExpanded === ticket.id;
+            return <article key={ticket.id}>
+              <button type="button" className="support-ticket-summary" aria-expanded={expandedTicket} onClick={() => { setSupportReply(''); setSupportExpanded(current => current === ticket.id ? '' : ticket.id); }}>
+                <span className="support-ticket-title"><b>{ticket.subject}</b></span>
+                <span className={`support-status status-${ticket.status}`}>{ticket.status}</span>
+                <small>{ticket.email || 'No email'} · {SUPPORT_CATEGORY_LABELS[ticket.category] || 'Other'} · {dateLabel(ticket.createdAt)} · {ticket.messages?.length || 0} repl{ticket.messages?.length === 1 ? 'y' : 'ies'}</small>
+              </button>
+              {expandedTicket && <div className="support-thread">
+                <code className="admin-support-meta">Browsery {ticket.appVersion || '?'} · {PLATFORM_NAMES[String(ticket.platform || '').split(' ')[0]] || ticket.platform || 'unknown'} {String(ticket.platform || '').split(' ')[1] || ''} · user {ticket.userId}</code>
+                <div className="support-message from-user"><span>{ticket.email || 'User'} · {dateLabel(ticket.createdAt)}</span><p>{ticket.body}</p></div>
+                {(ticket.messages || []).map(item => <div key={item.id} className={`support-message from-${item.author}`}><span>{item.author === 'owner' ? 'You (Browsery team)' : ticket.email || 'User'} · {dateLabel(item.createdAt)}</span><p>{item.body}</p></div>)}
+                <form className="local-control-form" onSubmit={event => answerTicket(event, ticket)}><label>Reply to user<textarea value={supportReply} onChange={event => setSupportReply(event.target.value)} maxLength={4000} placeholder="Your answer appears in the user’s Help & Support panel." disabled={busy}/></label><Button type="submit" disabled={busy || !supportReply.trim()}>Send reply</Button></form>
+                <div className="admin-support-actions">{['open', 'answered', 'closed'].filter(status => status !== ticket.status).map(status => <Button key={status} type="button" onClick={() => setTicketStatus(ticket, status)} disabled={busy}>Mark {status}</Button>)}</div>
+              </div>}
+            </article>;
+          })}{!supportTickets.length && <p className="local-control-empty">{supportLoaded ? 'No tickets with this status.' : 'Choose a filter to load support tickets.'}</p>}</div>
+        </section>
+
+        <section className="local-control-section"><div className="local-control-section-title"><div><span>08 · Audit history</span><h3>Owner actions</h3></div></div><Button type="button" onClick={loadAudit} disabled={busy}>Load recent admin activity</Button><div className="admin-audit-list">{auditEvents.map(event => <article key={event.id}><b>{event.action}</b><small>{dateLabel(event.created_at)} · {event.target || 'global'}</small></article>)}{!auditEvents.length && <p className="local-control-empty">Audit history is private to this owner console.</p>}</div></section>
       </>}
       {message && <p className="local-control-message" role="status">{message}</p>}
       <p className="local-control-footnote">Owner access comes from a server-verified owner account or an encrypted key paired to one device. No admin secret is embedded in the public installer.</p>

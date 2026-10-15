@@ -21,7 +21,7 @@ Row 2, the toolbar, left to right: Back, Forward, Reload (becomes Stop while loa
 Group 1: Save bookmark (ribbon icon, Ctrl+D, saves or removes the current page in the Favorites folder), Bookmarks (grid icon, opens the Bookmarks panel), Extensions (puzzle-piece icon), History (clock icon, Ctrl+H), Find in page (magnifier, Ctrl+F).
 Group 2: Cookies & site data (cookie icon), Privacy shield (shield icon).
 Group 3: Ad-free local music (music icon), the "Hey Groq" button, the "Analyze with Groq" button.
-Group 4: Downloads (arrow icon, Ctrl+J), Settings (gear), Proton VPN (padlock icon), the Update button (text: Update, Checking..., a percentage, or Restart), an "Owner" button that appears only on a device with owner controls set up, the round "MK" avatar button (switches Browsery's own interface between dark and light theme), and "Guide" (question mark) at the far right, which replays the owner guide tour.
+Group 4: Downloads (arrow icon, Ctrl+J), Settings (gear), Proton VPN (padlock icon), the Update button (text: Update, Checking..., a percentage, or Restart), an "Owner" button that appears only on a device with owner controls set up, the round "MK" avatar button (switches Browsery's own interface between dark and light theme), the Help & Support button (speech-bubble icon; a small white dot means the Browsery team replied), and "Guide" (question mark) at the far right, which replays the owner guide tour.
 Panels open as drawers on the right side; click the same button again, the X, or press Esc to close. The owner can switch off Extensions, Music, Hey Groq, Analyze with Groq or VPN for everyone; a switched-off feature's button is hidden.
 
 NEW TAB PAGE ("New Space")
@@ -56,6 +56,8 @@ Private session mode (Settings, Privacy): tabs use a temporary profile; history,
 SAVED LOGINS, ACCOUNT, UPDATES (Personal browser panel)
 Open it from Settings, Browser, "Personal browser", Manage. Sections: Browsery account (shows your email, Sign out); Saved logins (add Website, Username and Password manually, then "Save login"; each entry has "Fill this site" for the matching open page, "Copy user", "Copy password", and a trash button; stored with operating-system encryption; Browsery never captures or auto-saves passwords from websites and cannot import them); Website permissions; Default-browser setup (opens your system's default-browser settings; Browsery never makes itself default automatically); Updates ("Check now", then "Download", then "Restart & update", plus "Open GitHub Releases").
 Account: a Browsery account (email and password, at least 10 characters for new accounts) is required to use the browser; sign-in shows a quick Cloudflare human check in a small window. Your browsing data stays on your computer.
+Forgot password: on the sign-in screen click "Forgot password?" under the password field, enter your account email and click "Email me a reset code" (a human check opens), then enter the 6-digit code from the email with a new password (at least 10 characters) twice and click "Reset password and sign in". There is no link to click. If the code expired, click "Send a new code" (available after 60 seconds). For safety Browsery says a code was sent even if no account uses that email.
+Setup wizard: after creating an account (or the first sign-in on a computer) a short setup appears: Welcome, Make Browsery your default browser (opens Windows default-apps settings or macOS System Settings), Add your Groq API key (optional), Take the quick tour, Done. Every step can be skipped, Esc skips a step, and "Skip setup" closes it. Run it again any time from Settings, Browser, Setup wizard, "Run setup again", or from Help & Support.
 Updates: Browsery checks quietly about 10 seconds after launch but never downloads on its own. Click the toolbar Update button to download (it shows a percentage), then click Restart to install. If the owner requires a minimum version, an "Update required" screen appears.
 
 EXTENSIONS (20 built in, nothing is downloaded from the web)
@@ -86,7 +88,10 @@ AI Overview: on Browsery's own search results page, a short answer with sources 
 OTHER FEATURES
 Music: the music icon or the new-tab player plays audio files you choose from your computer; no account, streaming or ads.
 Proton VPN (padlock icon): on Windows it detects the Proton VPN app and offers Connect Proton, Open Proton, or "Get Proton VPN for Windows" if it is missing, plus "Other manual VPN configurations" to open Windows VPN Settings. On macOS you connect in Proton's own app. It is a system-wide VPN, not a Browsery-only tunnel, and Browsery does not verify the tunnel.
-Owner controls exist only on the owner's device (maintenance mode, announcements shown as a dismissible banner, account bans, required version, feature switches).
+Owner controls exist only on the owner's device (maintenance mode, announcements shown as a dismissible banner, account bans, required version, feature switches, and the Support inbox where the owner answers Help & Support tickets).
+
+HELP & SUPPORT
+Click the Help & Support button (speech bubble, just left of Guide in the toolbar). It has "Ask Hey Groq first" for instant answers, "Run setup again", "My tickets" and "New ticket". A new ticket needs a topic (Something is broken, Account or sign-in, Feature request, Question, Other), a subject (up to 120 characters) and a message (up to 4,000); your Browsery version, system and account email are attached automatically. Replies from the Browsery team appear in the ticket thread; you can reply or click "Close ticket". Limits: 5 new tickets a day and 30 replies an hour. Never put passwords or API keys in a ticket.
 
 TROUBLESHOOTING
 Groq says the key is missing, invalid or unreadable: Settings, AI Overview, paste or replace the key. "Usage limit": wait or check your Groq plan.

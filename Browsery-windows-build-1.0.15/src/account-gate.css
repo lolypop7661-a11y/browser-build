@@ -24,6 +24,13 @@
 .account-gate-divider { height: 1px; margin: 22px 0 13px; background: #272c33; }
 .account-gate-privacy { display: flex; align-items: flex-start; gap: 8px; margin: 0; color: #929ba5; font-size: 9px; line-height: 1.55; }
 .account-gate-privacy svg { flex: 0 0 auto; color: #d4d9de; }
+.account-gate-forgot { justify-self: end; margin: -6px 0 -2px; padding: 2px 0; border: 0; background: transparent; color: #aeb6bf; font-size: 10px; cursor: pointer; }
+.account-gate-forgot:hover, .account-gate-forgot:focus-visible, .account-gate-inline:hover, .account-gate-inline:focus-visible { color: #fff; text-decoration: underline; }
+.account-gate-inline { display: inline; padding: 0; border: 0; background: transparent; color: #dfe4e9; font: inherit; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
+.account-gate-inline:disabled { color: #7d8691; text-decoration: none; cursor: default; }
+.account-gate-form input.account-gate-code { font-size: 18px; font-variant-numeric: tabular-nums; letter-spacing: .32em; }
+.account-gate-form input.account-gate-code::placeholder { letter-spacing: .32em; color: #3f4650; }
+.account-gate-forgot:focus-visible, .account-gate-switch:focus-visible, .account-gate-inline:focus-visible, .account-gate-submit:focus-visible { outline: 2px solid #dfe4e9; outline-offset: 3px; }
 @keyframes account-gate-appear { from { opacity: 0; transform: scale(1.012); } to { opacity: 1; transform: scale(1); } }
 @media (max-width: 760px) { .account-gate { display: flex; justify-content: center; padding: 20px; } .account-gate-orbit { width: 125vw; left: -40vw; } .account-gate-orbit-two { width: 110vw; left: -32vw; } .account-gate-card { max-width: 440px; padding: 25px 22px; } .account-gate-brand { margin-bottom: 34px; } }
 @media (prefers-reduced-motion: reduce) { .account-gate, .account-gate-submit { animation: none; transition: none; } }

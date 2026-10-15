@@ -63,6 +63,36 @@ If `captchaSiteKey` is empty, Browsery skips the check window. Supabase will the
 
 Accounts created earlier that never confirmed their email may still be refused. Confirm them under **Authentication → Users**, or delete them so the person can sign up again.
 
+## Password recovery (6-digit code, no redirect links)
+
+The sign-in screen has **Forgot password?**. Browsery calls Supabase `POST /auth/v1/recover` (with the Turnstile token), the user types the emailed code, and Browsery calls `POST /auth/v1/verify` (`type: recovery`) followed by `PUT /auth/v1/user` with the new password. The user is signed in afterwards. No redirect URL is involved, so nothing has to be added under **URL Configuration**. Browsery always answers "If an account exists for that email, we sent a 6-digit code", so the form cannot be used to find out which emails have accounts.
+
+1. In Supabase, open **Authentication → Emails → Templates → Reset password** and make the template include the code, for example:
+
+   ```html
+   <h2>Reset your Browsery password</h2>
+   <p>Your Browsery reset code: <b>{{ .Token }}</b></p>
+   <p>Enter it in Browsery within a few minutes. If you did not ask for this, ignore this email.</p>
+   ```
+
+   Remove `{{ .ConfirmationURL }}` if you do not want a link in the email; the desktop flow only uses `{{ .Token }}`.
+2. Keep **Authentication → Sign In / Providers → Email → Email OTP Length** at 6 (Browsery accepts 6 to 10 digits, but its text says 6). The OTP expiry setting on the same page controls how long a code works.
+3. Supabase's built-in email sender is only for testing: it sends very few emails per hour and may only deliver to your project's team members. Set up **custom SMTP** under **Authentication → Emails → SMTP Settings** (for example Resend, Postmark, Amazon SES or another provider) before relying on password recovery, then raise the email rate limit under **Authentication → Rate Limits**.
+
+## Help & Support tickets
+
+Users open the **Help & Support** button (speech bubble next to Guide) to send tickets; the owner answers them in **Owner → 07 · Support inbox**.
+
+1. Apply the new migration `supabase/migrations/202610150001_browsery_support.sql` (`npx supabase db push`). It creates `browsery_support_tickets` and `browsery_support_messages` with RLS on and no client policies; only the Edge Function's service role touches them. Deleting a user in Supabase Auth deletes that user's tickets.
+2. Redeploy the function: `npx supabase functions deploy browsery-global-control`.
+
+How it is protected:
+
+- `support-create`, `support-list`, `support-reply` and `support-close` are checked against the caller's own session token (`x-browsery-user`, verified with Supabase Auth); banned accounts are refused. A user can only see, reply to or close their own tickets. These actions are routed before the owner check, and every other POST action is still owner/admin-only.
+- Limits: subject up to 120 characters, message up to 4,000; control characters are stripped. Each account can open 5 tickets per 24 hours and send 30 replies per hour.
+- Owner actions `support-admin-list`, `support-admin-reply` and `support-admin-set-status` require an owner account or the paired admin key and are written to `browsery_admin_audit` (message text is not copied into the audit log).
+- The app version and operating system on a ticket are attached by the Browsery main process, not typed by the user.
+
 ## Security references
 
 - [Supabase Edge Function secrets](https://supabase.com/docs/guides/functions/secrets)

@@ -52,6 +52,12 @@ consistent Developer ID signature is needed for reliable app identity across
 updates; unsigned or changing signatures can cause additional Keychain prompts.
 Browsery does not fall back to plaintext storage when secure storage fails.
 
+## Accounts, first-run setup and support
+
+- **First-run setup.** After creating an account (or the first sign-in on a computer) a short wizard offers: default browser, an optional Groq key (stored encrypted, like Settings → AI Overview), and the guided tour. It is stored as done per account (`browsery:onboarding-v1:<userId>` in local storage). Run it again from Settings → Browser → **Setup wizard**, or from Help & Support. Code: `src/setup-wizard.jsx`.
+- **Forgot password.** The sign-in screen emails a 6-digit code (Supabase `recover` → `verify` → update user); no links or redirect URLs. The Supabase "Reset password" email template must contain `{{ .Token }}`; see `SUPABASE-GLOBAL-CONTROLS.md`.
+- **Help & Support.** The speech-bubble button next to Guide opens a drawer with "Ask Hey Groq first", new tickets and threaded replies; a dot marks a new reply. The owner answers in Owner → Support inbox. Tickets live in Supabase (`supabase/migrations/202610150001_browsery_support.sql`) and go through the `browsery-global-control` function. Code: `src/support.jsx`.
+
 ## Hey Groq knows Browsery
 
 Hey Groq is Browsery's built-in assistant. Besides general questions, it can

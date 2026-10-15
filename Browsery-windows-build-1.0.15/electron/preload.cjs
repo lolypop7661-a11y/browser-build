@@ -12,6 +12,12 @@ contextBridge.exposeInMainWorld('browseryDesktop', {
   browseryAccountSignIn: credentials => ipcRenderer.invoke('global-control:account:signin', credentials),
   browseryAccountStatus: () => ipcRenderer.invoke('global-control:account:status'),
   browseryAccountSignOut: () => ipcRenderer.invoke('global-control:account:signout'),
+  browseryAccountRecover: email => ipcRenderer.invoke('global-control:account:recover', email),
+  browseryAccountResetPassword: request => ipcRenderer.invoke('global-control:account:reset-password', request),
+  supportCreate: ticket => ipcRenderer.invoke('support:create', ticket),
+  supportList: () => ipcRenderer.invoke('support:list'),
+  supportReply: request => ipcRenderer.invoke('support:reply', request),
+  supportClose: ticketId => ipcRenderer.invoke('support:close', ticketId),
   onGlobalControlState: callback => {
     if (typeof callback !== 'function') return () => {};
     const listener = (_event, state) => callback(state);

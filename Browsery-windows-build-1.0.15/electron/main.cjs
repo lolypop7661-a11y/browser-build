@@ -1482,6 +1482,15 @@ if (primaryInstance) app.whenReady().then(async () => {
   ipcMain.handle('global-control:account:signin', (event, credentials) => trustedShell(event) ? globalControl.accountSignIn(credentials?.email, credentials?.password) : { ok: false, message: 'Accounts are only available inside Browsery.' });
   ipcMain.handle('global-control:account:status', event => trustedShell(event) ? globalControl.accountStatus() : { account: null });
   ipcMain.handle('global-control:account:signout', event => trustedShell(event) ? globalControl.accountSignOut() : { ok: false });
+  ipcMain.handle('global-control:account:recover', (event, email) => trustedShell(event) ? globalControl.accountRecover(email) : { ok: false, message: 'Accounts are only available inside Browsery.' });
+  ipcMain.handle('global-control:account:reset-password', (event, request) => trustedShell(event) ? globalControl.accountResetPassword(request?.email, request?.code, request?.password) : { ok: false, message: 'Accounts are only available inside Browsery.' });
+  // Help & Support: tickets belong to the signed-in account. The app version and
+  // platform are attached here, not taken from the renderer.
+  const supportDenied = { ok: false, message: 'Support is only available inside Browsery.' };
+  ipcMain.handle('support:create', (event, ticket) => trustedShell(event) ? globalControl.supportCreate({ category: ticket?.category, subject: ticket?.subject, body: ticket?.body, appVersion: app.getVersion(), platform: `${process.platform} ${process.arch}` }) : supportDenied);
+  ipcMain.handle('support:list', event => trustedShell(event) ? globalControl.supportList() : supportDenied);
+  ipcMain.handle('support:reply', (event, request) => trustedShell(event) ? globalControl.supportReply(request?.ticketId, request?.body) : supportDenied);
+  ipcMain.handle('support:close', (event, ticketId) => trustedShell(event) ? globalControl.supportClose(ticketId) : supportDenied);
   const { createProtonController } = require('./proton-vpn.cjs');
   const proton = createProtonController({ helperPath: path.join(__dirname, 'native', 'Browsery.ProtonConnect.exe').replace(`app.asar${path.sep}`, `app.asar.unpacked${path.sep}`) });
   const deniedProtonAction = { ok: false, status: 'unavailable', message: 'Control Proton from Browsery’s VPN panel, not from a webpage.' };

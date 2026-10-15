@@ -80,6 +80,124 @@ function safeUser(user: any) {
   return { id: String(user.id), email: String(user.email || ''), createdAt: user.created_at || null, bannedUntil: user.banned_until || null, confirmed: Boolean(user.email_confirmed_at) };
 }
 
+// ---------------------------------------------------------------------------
+// Help & Support. Tickets are read and written only here with the service
+// role; the tables have RLS on and no anon/authenticated access.
+// ---------------------------------------------------------------------------
+const SUPPORT_CATEGORIES = ['bug', 'account', 'feature', 'question', 'other'];
+const SUPPORT_STATUSES = ['open', 'answered', 'closed'];
+const TICKETS_PER_DAY = 5;
+const MESSAGES_PER_HOUR = 30;
+const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const ticketColumns = 'id,user_id,email,category,subject,body,app_version,platform,status,created_at,updated_at,browsery_support_messages(id,author,body,created_at)';
+
+// Removes control and bidi-override characters. Single-line fields also fold whitespace.
+function supportText(value: unknown, singleLine = false) {
+  if (typeof value !== 'string') return '';
+  const cleaned = value.replace(/\r\n?/g, '\n').replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F‪-‮⁦-⁩]/g, '');
+  return (singleLine ? cleaned.replace(/\s+/g, ' ') : cleaned.replace(/\n{4,}/g, '\n\n\n')).trim();
+}
+
+type SupportUser = { id: string; email: string; banned: boolean };
+
+// Verifies the caller's own Browsery session token (header x-browsery-user).
+async function supportUser(request: Request): Promise<SupportUser | null> {
+  const token = request.headers.get('x-browsery-user') || '';
+  if (!database || token.length < 20 || token.length > 4096) return null;
+  const { data, error } = await database.auth.getUser(token);
+  if (error || !data?.user?.id) return null;
+  const bannedUntil = Date.parse(String(data.user.banned_until || ''));
+  return { id: data.user.id.toLowerCase(), email: String(data.user.email || '').slice(0, 254), banned: Number.isFinite(bannedUntil) && bannedUntil > Date.now() };
+}
+
+function shapeTicket(row: any, includeOwnerFields = false) {
+  const messages = Array.isArray(row.browsery_support_messages) ? [...row.browsery_support_messages] : [];
+  messages.sort((left, right) => Date.parse(left.created_at) - Date.parse(right.created_at));
+  return {
+    id: row.id, category: row.category, subject: row.subject, body: row.body, status: row.status,
+    appVersion: row.app_version || '', platform: row.platform || '', createdAt: row.created_at, updatedAt: row.updated_at,
+    ...(includeOwnerFields ? { email: row.email || '', userId: row.user_id } : {}),
+    messages: messages.map(message => ({ id: message.id, author: message.author, body: message.body, createdAt: message.created_at })),
+  };
+}
+
+async function listUserTickets(userId: string) {
+  const { data, error } = await database!.from('browsery_support_tickets').select(ticketColumns).eq('user_id', userId).order('created_at', { ascending: false }).limit(50);
+  if (error) throw error;
+  return (data || []).map(row => shapeTicket(row));
+}
+
+async function ownTicket(userId: string, ticketId: unknown) {
+  if (typeof ticketId !== 'string' || !uuidPattern.test(ticketId)) return null;
+  const { data, error } = await database!.from('browsery_support_tickets').select('id,status').eq('id', ticketId).eq('user_id', userId).maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
+async function userMessagesLastHour(userId: string) {
+  const since = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+  const { count, error } = await database!.from('browsery_support_messages')
+    .select('id,browsery_support_tickets!inner(user_id)', { count: 'exact', head: true })
+    .eq('author', 'user').eq('browsery_support_tickets.user_id', userId).gte('created_at', since);
+  if (error) throw error;
+  return count || 0;
+}
+
+// Normal Browsery users: create, list, reply to and close their own tickets.
+async function handleSupportUser(request: Request, payload: Record<string, unknown>, action: string) {
+  const user = await supportUser(request);
+  if (!user) return json({ error: 'user_not_authenticated' }, 401);
+  if (user.banned) return json({ error: 'user_banned' }, 403);
+
+  if (action === 'support-list') return json({ ok: true, tickets: await listUserTickets(user.id) });
+
+  if (action === 'support-create') {
+    const subject = supportText(payload.subject, true);
+    const body = supportText(payload.body);
+    const category = SUPPORT_CATEGORIES.includes(String(payload.category)) ? String(payload.category) : 'other';
+    if (!subject) return json({ error: 'subject_required' }, 400);
+    if (subject.length > 120) return json({ error: 'subject_too_long' }, 400);
+    if (!body) return json({ error: 'body_required' }, 400);
+    if (body.length > 4000) return json({ error: 'body_too_long' }, 400);
+    const appVersion = typeof payload.appVersion === 'string' && /^\d+\.\d+\.\d+$/.test(payload.appVersion) ? payload.appVersion : '';
+    const platform = typeof payload.platform === 'string' ? supportText(payload.platform, true).replace(/[^\w .-]/g, '').slice(0, 40) : '';
+    const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    const { count, error: countError } = await database!.from('browsery_support_tickets').select('id', { count: 'exact', head: true }).eq('user_id', user.id).gte('created_at', since);
+    if (countError) throw countError;
+    if ((count || 0) >= TICKETS_PER_DAY) return json({ error: 'support_ticket_limit' }, 429);
+    const { data, error } = await database!.from('browsery_support_tickets').insert({ user_id: user.id, email: user.email, category, subject, body, app_version: appVersion, platform }).select('id').single();
+    if (error) throw error;
+    return json({ ok: true, ticketId: data.id, tickets: await listUserTickets(user.id) });
+  }
+
+  if (action === 'support-reply') {
+    const ticket = await ownTicket(user.id, payload.ticketId);
+    if (!ticket) return json({ error: 'ticket_not_found' }, 404);
+    if (ticket.status === 'closed') return json({ error: 'ticket_closed' }, 409);
+    const body = supportText(payload.body);
+    if (!body) return json({ error: 'body_required' }, 400);
+    if (body.length > 4000) return json({ error: 'body_too_long' }, 400);
+    if (await userMessagesLastHour(user.id) >= MESSAGES_PER_HOUR) return json({ error: 'support_message_limit' }, 429);
+    const { error } = await database!.from('browsery_support_messages').insert({ ticket_id: ticket.id, author: 'user', body });
+    if (error) throw error;
+    // A user reply on an answered ticket puts it back in the owner's open queue.
+    const { error: updateError } = await database!.from('browsery_support_tickets').update({ status: 'open', updated_at: new Date().toISOString() }).eq('id', ticket.id);
+    if (updateError) throw updateError;
+    return json({ ok: true, tickets: await listUserTickets(user.id) });
+  }
+
+  if (action === 'support-close') {
+    const ticket = await ownTicket(user.id, payload.ticketId);
+    if (!ticket) return json({ error: 'ticket_not_found' }, 404);
+    const { error } = await database!.from('browsery_support_tickets').update({ status: 'closed', updated_at: new Date().toISOString() }).eq('id', ticket.id);
+    if (error) throw error;
+    return json({ ok: true, tickets: await listUserTickets(user.id) });
+  }
+  return json({ error: 'unknown_action' }, 400);
+}
+
+const USER_SUPPORT_ACTIONS = ['support-create', 'support-list', 'support-reply', 'support-close'];
+
 Deno.serve(async request => {
   if (request.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   if (!database) return json({ error: 'service_unconfigured' }, 503);
@@ -94,12 +212,15 @@ Deno.serve(async request => {
       return json(await readPublicState());
     }
     if (request.method !== 'POST') return json({ error: 'method_not_allowed' }, 405);
+    const payload = await request.json().catch(() => null);
+    if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return json({ error: 'invalid_request' }, 400);
+    const action = String(payload.action || '');
+    // Support actions for ordinary signed-in users are routed before the owner
+    // check; every other POST action stays owner/admin-only.
+    if (USER_SUPPORT_ACTIONS.includes(action)) return await handleSupportUser(request, payload, action);
     if (!await authorizeAdmin(request)) return json({ error: 'admin_not_authorized' }, 403);
     const deviceId = request.headers.get('x-browsery-device') || '';
-    const payload = await request.json().catch(() => null);
-    if (!payload || typeof payload !== 'object') return json({ error: 'invalid_request' }, 400);
     let result: Record<string, unknown> = {};
-    const action = String(payload.action || '');
 
     if (action === 'set-mode') {
       if (!['active', 'maintenance', 'shutdown'].includes(payload.mode)) return json({ error: 'invalid_mode' }, 400);
@@ -192,10 +313,37 @@ Deno.serve(async request => {
     } else if (action === 'list-audit') {
       const { data, error } = await database.from('browsery_admin_audit').select('id,action,target,details,created_at').order('created_at', { ascending: false }).limit(100);
       if (error) throw error; result = { events: data || [] };
+    } else if (action === 'support-admin-list') {
+      const status = SUPPORT_STATUSES.includes(String(payload.status)) ? String(payload.status) : '';
+      let query = database.from('browsery_support_tickets').select(ticketColumns);
+      if (status) query = query.eq('status', status);
+      const { data, error } = await query.order('created_at', { ascending: false }).limit(100);
+      if (error) throw error;
+      result = { tickets: (data || []).map(row => shapeTicket(row, true)) };
+    } else if (action === 'support-admin-reply') {
+      const ticketId = typeof payload.ticketId === 'string' && uuidPattern.test(payload.ticketId) ? payload.ticketId : '';
+      const body = supportText(payload.body);
+      if (!ticketId) return json({ error: 'invalid_ticket_id' }, 400);
+      if (!body || body.length > 4000) return json({ error: 'invalid_reply' }, 400);
+      const { data: ticket, error: readError } = await database.from('browsery_support_tickets').select('id').eq('id', ticketId).maybeSingle();
+      if (readError) throw readError;
+      if (!ticket) return json({ error: 'ticket_not_found' }, 404);
+      const { error } = await database.from('browsery_support_messages').insert({ ticket_id: ticketId, author: 'owner', body });
+      if (error) throw error;
+      const { data: updated, error: updateError } = await database.from('browsery_support_tickets').update({ status: 'answered', updated_at: new Date().toISOString() }).eq('id', ticketId).select(ticketColumns).single();
+      if (updateError) throw updateError;
+      result = { ticket: shapeTicket(updated, true) };
+    } else if (action === 'support-admin-set-status') {
+      const ticketId = typeof payload.ticketId === 'string' && uuidPattern.test(payload.ticketId) ? payload.ticketId : '';
+      if (!ticketId || !SUPPORT_STATUSES.includes(String(payload.status))) return json({ error: 'invalid_ticket_status' }, 400);
+      const { data: updated, error } = await database.from('browsery_support_tickets').update({ status: String(payload.status), updated_at: new Date().toISOString() }).eq('id', ticketId).select(ticketColumns).maybeSingle();
+      if (error) throw error;
+      if (!updated) return json({ error: 'ticket_not_found' }, 404);
+      result = { ticket: shapeTicket(updated, true) };
     } else return json({ error: 'unknown_action' }, 400);
 
     if (!['list-users', 'list-audit'].includes(action)) {
-      const target = typeof payload.id === 'string' ? payload.id.slice(0, 254) : typeof payload.email === 'string' ? payload.email.slice(0, 254) : '';
+      const target = typeof payload.id === 'string' ? payload.id.slice(0, 254) : typeof payload.ticketId === 'string' ? payload.ticketId.slice(0, 254) : typeof payload.email === 'string' ? payload.email.slice(0, 254) : '';
       const details = Object.fromEntries(Object.entries(payload).filter(([key]) => !['password', 'secret', 'id', 'email', 'body'].includes(key)));
       const { error: auditError } = await database.from('browsery_admin_audit').insert({ action, target, device_id: deviceId, details });
       if (auditError) console.warn('Admin audit insert failed:', auditError.message);
