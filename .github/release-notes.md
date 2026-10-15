@@ -1,6 +1,4 @@
-## Browsery 1.1.0
-
-**A new look.** Browsery has a new Planetarium design: night-sky blue instead of flat black, Saturn-gold buttons, a geometric space-age display font, and a calmer new tab page with a big clock and one wide search bar. Light mode got the same treatment.
+## Browsery 1.0.19
 
 **Setup and accounts**
 - A short setup after you sign in: make Browsery your default browser, add your Groq key, take the tour.
