@@ -50,7 +50,7 @@ body.chill-mode, .app.chill-mode { background: var(--c-frame) !important; }
   backdrop-filter: none !important;
 }
 .app.chill-mode .spring-interactive { transform: none !important; scale: none !important; translate: none !important; }
-.app.chill-mode :is(.cursor-canvas, .cursor-dot, .cursor-ring, .sound-visualizer, .aurora, .webgl, .spatial-grid, .browser-shell::before) { display: none !important; }
+.app.chill-mode :is(.cursor-canvas, .cursor-dot, .cursor-ring, .sound-visualizer, .aurora, .webgl, .spatial-grid) { display: none !important; }
 body.chill-mode { cursor: auto !important; }
 body.chill-mode * { cursor: revert; }
 
