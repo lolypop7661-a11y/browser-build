@@ -1,12 +1,17 @@
 import React, { useEffect, useState } from 'react';
 
 const RESEND_SECONDS = 60;
+// The last account used on this computer, so Browsery opens on "Sign in"
+// with the email filled in instead of asking to create the account again.
+const KNOWN_ACCOUNT_KEY = 'browsery:known-account-email';
+const readKnownEmail = () => { try { return localStorage.getItem(KNOWN_ACCOUNT_KEY) || ''; } catch { return ''; } };
+const rememberEmail = value => { try { if (value) localStorage.setItem(KNOWN_ACCOUNT_KEY, String(value).trim().toLowerCase()); } catch {} };
 
 /** Full-window account gate shown directly after Browsery's launch sequence. */
 export function AccountGate({ desktop, onAuthenticated, Icon, checking = false, initialMessage = '' }) {
   // signup · signin · recover-email · recover-code
-  const [mode, setMode] = useState('signup');
-  const [email, setEmail] = useState('');
+  const [mode, setMode] = useState(() => readKnownEmail() ? 'signin' : 'signup');
+  const [email, setEmail] = useState(readKnownEmail);
   const [password, setPassword] = useState('');
   const [code, setCode] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -39,9 +44,11 @@ export function AccountGate({ desktop, onAuthenticated, Icon, checking = false, 
       }
       const result = await request({ email: email.trim(), password });
       if (!result?.ok) {
+        if (result?.existingAccount) { rememberEmail(email); setMode('signin'); setPassword(''); }
         setMessage(result?.message || 'Could not complete the account request. Try again.');
         return;
       }
+      rememberEmail(result.account?.email || email);
       if (result.confirmationRequired) {
         setMode('signin');
         setPassword('');
@@ -93,6 +100,7 @@ export function AccountGate({ desktop, onAuthenticated, Icon, checking = false, 
     try {
       const result = await desktop.browseryAccountResetPassword({ email: email.trim(), code: cleanCode, password: newPassword });
       if (!result?.ok) { setMessage(result?.message || 'Could not reset the password. Try again.'); return; }
+      rememberEmail(result.account?.email || email);
       if (!result.account) { switchMode('signin'); setMessage(result.message || 'Password updated. Sign in with your new password.'); return; }
       onAuthenticated(result.account, { isNew: false });
     } catch {
@@ -120,8 +128,8 @@ export function AccountGate({ desktop, onAuthenticated, Icon, checking = false, 
       <h1 id="account-gate-title">{title}</h1>
       <p className="account-gate-description">{description}</p>
       {!checking && !recovering && <form className="account-gate-form" onSubmit={submit}>
-        <label>Email address<input type="email" autoComplete="email" value={email} onChange={event => setEmail(event.target.value)} placeholder="you@example.com" required maxLength={254} disabled={busy} autoFocus/></label>
-        <label>Password<input type="password" autoComplete={mode === 'signup' ? 'new-password' : 'current-password'} value={password} onChange={event => setPassword(event.target.value)} placeholder={mode === 'signup' ? 'At least 10 characters' : 'Your password'} required minLength={mode === 'signup' ? 10 : 1} maxLength={256} disabled={busy}/></label>
+        <label>Email address<input type="email" autoComplete="email" value={email} onChange={event => setEmail(event.target.value)} placeholder="you@example.com" required maxLength={254} disabled={busy} autoFocus={!email}/></label>
+        <label>Password<input type="password" autoComplete={mode === 'signup' ? 'new-password' : 'current-password'} value={password} onChange={event => setPassword(event.target.value)} placeholder={mode === 'signup' ? 'At least 10 characters' : 'Your password'} required minLength={mode === 'signup' ? 10 : 1} maxLength={256} disabled={busy} autoFocus={Boolean(email) && mode === 'signin'}/></label>
         {mode === 'signin' && <button className="account-gate-forgot" type="button" onClick={() => switchMode('recover-email')} disabled={busy}>Forgot password?</button>}
         <button className="account-gate-submit" type="submit" disabled={busy}>{busy ? 'Waiting for the human check…' : mode === 'signup' ? 'Create account and continue' : 'Sign in and continue'}<Icon name="forward" size={16}/></button>
         <p className="account-gate-privacy">A quick human check opens in a small window when you continue.</p>

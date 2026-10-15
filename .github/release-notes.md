@@ -1,4 +1,12 @@
-## Browsery 1.0.20
+## Browsery 1.0.21
+
+**Signing in works again.** Browsery no longer forgets your account when it starts while your connection is slow or offline. Before, two checks at startup could cancel your saved sign-in, and you had to sign in again. Emails are now matched without caring about capital letters.
+
+**It remembers your account.** Browsery opens on "Welcome back" with your email filled in, instead of asking you to create an account again. If you try to create an account with an email that already has one, Browsery tells you and switches to Sign in. Before, it said the account was created even though the old password was still the one that worked. A wrong password now points you to "Forgot password?", which emails you a code to set a new one.
+
+**Chill mode, redesigned.** Warmer colours, softer shadows and rounder corners from the Marea design system, in light and dark, including the sign-in screen. The layout, search bar and every feature are unchanged.
+
+## Earlier: Browsery 1.0.20
 
 **Chill mode.** Want Browsery to be just a normal browser? Turn on Chill mode at the top of Settings, from Ctrl+K, or when you first set up Browsery. It starts instantly with no launch video, shows a simple new tab with your shortcuts, keeps the toolbar to the basics with everything else in one ⋯ menu, and switches off 3D, sounds, the cursor trail and animations. Pages show while they load instead of behind a cover. Your effect settings are kept and come back when you turn it off.
 

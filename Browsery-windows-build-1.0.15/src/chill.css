@@ -321,3 +321,38 @@ body.chill-mode * { cursor: revert; }
 .app.chill-mode .settings-drawer input[type="range"] { accent-color: var(--p-accent); }
 .app.chill-mode .settings-drawer .settings-section-head h3 { color: var(--p-text) !important; font-weight: 600 !important; letter-spacing: -.01em !important; }
 .app.chill-mode .settings-drawer .settings-section-head span { color: var(--p-muted) !important; }
+
+/* ---------- sign-in screen in Chill mode (Marea) ---------- */
+.app.chill-mode .account-gate { background: var(--c-page) !important; color: var(--c-text) !important; border: 0 !important; font-family: var(--c-font); }
+.app.chill-mode :is(.account-gate-stars, .account-gate-orbit) { display: none !important; }
+.app.chill-mode .account-gate-card {
+  border: 1px solid var(--c-line) !important; border-radius: 1.5rem !important; background: var(--m-surface) !important;
+  box-shadow: var(--m-shadow-overlay), 0 0 0 1px rgba(0, 0, 0, .04) !important;
+}
+.app.chill-mode .account-gate-brand { color: var(--c-text) !important; }
+.app.chill-mode .account-gate-kicker { color: var(--c-muted) !important; font-size: 12px !important; font-weight: 600 !important; letter-spacing: .08em !important; }
+.app.chill-mode .account-gate-card h1 { color: var(--c-text) !important; font-family: var(--c-display) !important; font-weight: 400 !important; letter-spacing: -.035em !important; font-size: clamp(2.25rem, 1.6rem + 2vw, 3rem) !important; line-height: 1.05 !important; }
+.app.chill-mode .account-gate-description { color: var(--c-muted) !important; font-size: 16px !important; line-height: 1.5 !important; max-width: 40ch !important; }
+.app.chill-mode .account-gate-form { gap: 20px !important; }
+.app.chill-mode .account-gate-form label { color: var(--c-text) !important; font-size: 14px !important; font-weight: 600 !important; gap: 8px !important; }
+.app.chill-mode .account-gate-form input {
+  height: 44px !important; padding: 0 14px !important; border: 1px solid var(--c-line-strong) !important; border-radius: .875rem !important;
+  background: var(--c-field) !important; color: var(--c-text) !important; font-size: 16px !important;
+}
+.app.chill-mode .account-gate-form input:focus { background: var(--c-field-focus) !important; outline: 2px solid var(--c-focus) !important; outline-offset: 2px !important; }
+.app.chill-mode .account-gate-form input::placeholder { color: var(--c-muted) !important; opacity: .8; }
+.app.chill-mode .account-gate-submit {
+  min-height: 44px !important; padding: 0 16px !important; border: 0 !important; border-radius: .875rem !important;
+  background: var(--m-accent) !important; color: var(--m-on-accent) !important; font-size: 16px !important; font-weight: 600 !important; box-shadow: var(--m-shadow-sm) !important; transform: none !important;
+}
+.app.chill-mode .account-gate-submit:hover:not(:disabled) { background: var(--m-accent-hover) !important; }
+.app.chill-mode .account-gate-message { border: 1px solid transparent !important; border-radius: .875rem !important; background: var(--m-surface-muted) !important; color: var(--c-text) !important; font-size: 14px !important; line-height: 1.5 !important; padding: 12px 14px !important; }
+.app.chill-mode :is(.account-gate-forgot, .account-gate-switch, .account-gate-inline) { color: var(--m-secondary-ink) !important; font-size: 14px !important; }
+.app.chill-mode :is(.account-gate-forgot, .account-gate-switch, .account-gate-inline):hover { color: var(--m-secondary-ink) !important; text-decoration: underline !important; }
+.app.chill-mode .account-gate-divider { background: var(--c-line) !important; }
+.app.chill-mode .account-gate-privacy { color: var(--c-muted) !important; font-size: 14px !important; line-height: 1.5 !important; }
+.app.chill-mode .account-gate-privacy svg { color: var(--m-secondary) !important; }
+.app.chill-mode .account-gate :is(button, input, a):focus-visible { outline: 2px solid var(--c-focus) !important; outline-offset: 2px !important; }
+.app.chill-mode .account-gate { overflow-y: auto !important; align-items: safe center !important; }
+.app.chill-mode .account-gate-brand { margin-bottom: 28px !important; }
+.app.chill-mode .account-gate-form { margin-top: 20px !important; }

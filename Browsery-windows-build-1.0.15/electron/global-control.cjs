@@ -103,8 +103,10 @@ function createGlobalControl({ app, safeStorage, config, requestCaptcha }) {
     if (details.includes('email_address_invalid') || details.includes('validation_failed')) return 'Enter a valid email address.';
     if (details.includes('email_not_confirmed')) return 'This older account was never confirmed. Ask the Browsery owner to confirm it, or create a new account.';
     if (details.includes('rate_limit') || details.includes('http-429')) return 'Too many attempts. Wait a minute and try again.';
-    if (error?.name === 'AbortError' || details.includes('fetch failed')) return 'Could not reach Browsery accounts. Check your connection and try again.';
-    return fallback;
+    if (error?.name === 'AbortError' || details.includes('fetch failed') || details.includes('net::')) return 'Could not reach Browsery accounts. Check your connection and try again.';
+    if (details.includes('invalid_credentials') || details.includes('invalid login credentials') || details.includes('invalid_grant')) return 'Email or password was not accepted. If you are sure the email is right, use “Forgot password?” to set a new password with a code from your inbox.';
+    const code = (details.match(/^[a-z0-9_-]{3,40}/) || [''])[0];
+    return code && code !== 'http-400' ? `${fallback} (${code})` : fallback;
   }
 
   // Password-recovery errors. The reset code is a one-time token from the
@@ -174,20 +176,43 @@ function createGlobalControl({ app, safeStorage, config, requestCaptcha }) {
     return user && typeof user.id === 'string' ? { id: user.id, email: typeof user.email === 'string' ? user.email : '', createdAt: user.created_at || null } : null;
   }
 
-  async function refreshSession() {
-    if (!service || !session?.refresh_token) return null;
-    try {
-      const refreshed = await request(authUrl('token?grant_type=refresh_token'), { method: 'POST', headers: headers(), body: JSON.stringify({ refresh_token: session.refresh_token }) });
-      session = { ...refreshed, expires_at: Date.now() + (Number(refreshed.expires_in) || 3600) * 1000 };
-      if (!writeEncrypted('browsery-account.bin', session)) { session = null; deleteStored('browsery-account.bin'); return null; }
-      return session;
-    } catch { session = null; deleteStored('browsery-account.bin'); return null; }
+  // Supabase rotates refresh tokens, so two refreshes at once (startup asks for
+  // the account status and the owner check together) used to spend the same
+  // token twice; the loser then deleted the saved account. Refreshes now share
+  // one request, and the account is only forgotten when Supabase rejects it,
+  // never because the network was slow or offline.
+  let refreshing = null;
+  const rejectedRefresh = error => {
+    const details = String(error?.message || '').toLowerCase();
+    if (error?.name === 'AbortError' || details.includes('fetch failed') || details.includes('net::') || details.includes('invalid-response') || /http-(5\d\d|429)/.test(details) || details.includes('rate_limit')) return false;
+    return /refresh.token|invalid_grant|session.not.found|user.not.found|user_banned|http-40[013]/.test(details);
+  };
+  function refreshSession() {
+    if (!service || !session?.refresh_token) return Promise.resolve(null);
+    if (refreshing) return refreshing;
+    const used = session.refresh_token;
+    refreshing = (async () => {
+      try {
+        const refreshed = await request(authUrl('token?grant_type=refresh_token'), { method: 'POST', headers: headers(), body: JSON.stringify({ refresh_token: used }) });
+        if (typeof refreshed?.refresh_token !== 'string' || !refreshed.user?.id) throw new Error('invalid-response');
+        session = { ...refreshed, expires_at: Date.now() + (Number(refreshed.expires_in) || 3600) * 1000 };
+        if (!writeEncrypted('browsery-account.bin', session)) return session;
+        return session;
+      } catch (error) {
+        // Another sign-in may have replaced the session while this was running.
+        if (session?.refresh_token !== used) return session;
+        if (rejectedRefresh(error)) { session = null; deleteStored('browsery-account.bin'); return null; }
+        return session; // offline or slow: stay signed in and try again later
+      } finally { refreshing = null; }
+    })();
+    return refreshing;
   }
 
   async function freshAccessToken() {
     if (!service || !session) return '';
     if ((Number(session.expires_at) || 0) < Date.now() + 60_000) await refreshSession();
-    return typeof session?.access_token === 'string' ? session.access_token : '';
+    if (!session || (Number(session.expires_at) || 0) < Date.now()) return '';
+    return typeof session.access_token === 'string' ? session.access_token : '';
   }
 
   // Asks the server whether the signed-in account is a Browsery owner. Cached for
@@ -253,23 +278,27 @@ function createGlobalControl({ app, safeStorage, config, requestCaptcha }) {
     },
     async accountSignUp(email, password) {
       if (!service) return { ok: false, message: 'Accounts are not available until the shared service is configured.' };
-      const cleanEmail = String(email || '').trim().slice(0, 254);
+      const cleanEmail = String(email || '').trim().toLowerCase().slice(0, 254);
       if (!cleanEmail || typeof password !== 'string' || password.length < 10 || password.length > 256) return { ok: false, message: 'Enter a valid email and a password with at least 10 characters.' };
       try {
         const policy = await request(`${functionUrl}?action=signup-policy`, { headers: headers({ Accept: 'application/json' }) });
         if (policy.signupsEnabled === false) return { ok: false, message: 'New Browsery accounts are temporarily paused.' };
         const security = await captchaSecurity();
         const result = await request(authUrl('signup'), { method: 'POST', headers: headers(), body: JSON.stringify({ email: cleanEmail, password, ...security }) });
+        const signedUpUser = result.user || (typeof result.id === 'string' ? result : null);
+        if (!result.access_token && Array.isArray(signedUpUser?.identities) && signedUpUser.identities.length === 0) {
+          return { ok: false, existingAccount: true, message: 'An account with this email already exists. Sign in with the password you used when you created it, or use “Forgot password?”.' };
+        }
         if (result.access_token && result.refresh_token && result.user) {
           session = { ...result, expires_at: Date.now() + (Number(result.expires_in) || 3600) * 1000 };
           if (!writeEncrypted('browsery-account.bin', session)) { session = null; return { ok: false, message: 'Windows secure storage is unavailable, so Browsery will not keep this account signed in.' }; }
         }
-        return { ok: true, account: publicUser(result.user), confirmationRequired: !result.access_token, message: result.access_token ? 'Browsery account created and signed in.' : 'Account created. Check your email to confirm it before signing in.' };
+        return { ok: true, account: publicUser(signedUpUser), confirmationRequired: !result.access_token, message: result.access_token ? 'Browsery account created and signed in.' : 'Account created. Check your email to confirm it before signing in.' };
       } catch (error) { return { ok: false, message: accountFailure(error, 'Could not create the account. Check the email and password, then try again.') }; }
     },
     async accountSignIn(email, password) {
       if (!service) return { ok: false, message: 'Accounts are not available until the shared service is configured.' };
-      const cleanEmail = String(email || '').trim().slice(0, 254);
+      const cleanEmail = String(email || '').trim().toLowerCase().slice(0, 254);
       if (!cleanEmail || typeof password !== 'string' || password.length < 1 || password.length > 256) return { ok: false, message: 'Enter your email and password.' };
       try {
         const security = await captchaSecurity();
@@ -283,7 +312,7 @@ function createGlobalControl({ app, safeStorage, config, requestCaptcha }) {
     // the same whether or not the account exists, so emails cannot be probed.
     async accountRecover(email) {
       if (!service) return { ok: false, message: 'Accounts are not available until the shared service is configured.' };
-      const cleanEmail = String(email || '').trim().slice(0, 254);
+      const cleanEmail = String(email || '').trim().toLowerCase().slice(0, 254);
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) return { ok: false, message: 'Enter the email address of your Browsery account.' };
       try {
         const security = await captchaSecurity();
@@ -299,7 +328,7 @@ function createGlobalControl({ app, safeStorage, config, requestCaptcha }) {
     // then keep the session so the person is signed in afterwards.
     async accountResetPassword(email, code, password) {
       if (!service) return { ok: false, message: 'Accounts are not available until the shared service is configured.' };
-      const cleanEmail = String(email || '').trim().slice(0, 254);
+      const cleanEmail = String(email || '').trim().toLowerCase().slice(0, 254);
       const cleanCode = String(code || '').replace(/\s+/g, '');
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) return { ok: false, message: 'Enter the email address of your Browsery account.' };
       if (!/^\d{6,10}$/.test(cleanCode)) return { ok: false, message: 'Enter the 6-digit code from the reset email.' };
