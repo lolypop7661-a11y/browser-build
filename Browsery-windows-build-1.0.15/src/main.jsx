@@ -11,9 +11,11 @@ import { AccountGate } from './account-gate.jsx';
 import { LocalControlCenter } from './local-control.jsx';
 import { SetupWizard, onboardingComplete, markOnboardingComplete } from './setup-wizard.jsx';
 import { SupportDrawer } from './support.jsx';
+import { CommandPalette } from './command-palette.jsx';
 import './styles.css';
 import './motion.css';
 import './sound.css';
+import './command-palette.css';
 import './cockpit.css';
 import './monochrome.css';
 import './daily-ui.css';
@@ -255,9 +257,15 @@ function resolveAddress(input, engine='Browsery') {
   if(/^[a-zA-Z][a-zA-Z\d+.-]*:\/\//.test(value))return value;
   if(/^localhost(?::\d+)?(?:\/.*)?$/.test(value))return `http://${value}`;
   if(!value.includes(' ') && value.includes('.'))return `https://${value}`;
+  return searchAddress(value,engine);
+}
+
+const SEARCH_ENDPOINTS={Browsery:'https://www.mojeek.com/search?q=',Mojeek:'https://www.mojeek.com/search?q=',DuckDuckGo:'https://duckduckgo.com/?q=',Bing:'https://www.bing.com/search?q='};
+function searchAddress(input, engine='Browsery') {
+  const value=String(input||'').trim();
+  if(!value)return null;
   if(engine==='Browsery' && window.browseryDesktop?.isDesktop)return `browsery://search/?q=${encodeURIComponent(value)}`;
-  const endpoints={Browsery:'https://www.mojeek.com/search?q=',Mojeek:'https://www.mojeek.com/search?q=',DuckDuckGo:'https://duckduckgo.com/?q=',Bing:'https://www.bing.com/search?q='};
-  return `${endpoints[engine]||endpoints.Browsery}${encodeURIComponent(value)}`;
+  return `${SEARCH_ENDPOINTS[engine]||SEARCH_ENDPOINTS.Browsery}${encodeURIComponent(value)}`;
 }
 
 // This is deliberately a local URL check, not a pretend virus scanner. It
@@ -959,10 +967,11 @@ function PermissionPrompt({request,onDecision}) {
   </div>;
 }
 
-function FindBar({open,onClose,onFind,count=0,active=0}) {
+function FindBar({open,onClose,onFind,count=0,active=0,seed}) {
   const [query,setQuery]=useState('');
   const input=useRef(null);
   useEffect(()=>{if(open){input.current?.focus();input.current?.select()}else{setQuery('');onFind('')}},[open]);
+  useEffect(()=>{if(open&&seed?.text){setQuery(seed.text);onFind(seed.text)}},[open,seed?.id]);
   if(!open)return null;
   return <div className="find-bar" role="search"><Icon name="find" size={16}/><input ref={input} value={query} onChange={event=>{setQuery(event.target.value);onFind(event.target.value)}} onKeyDown={event=>{if(event.key==='Escape')onClose();if(event.key==='Enter')onFind(query,true)}} placeholder="Find in page" aria-label="Find in page"/><span className="find-count">{query?`${active||0} / ${count||0}`:'Enter text'}</span><GlassButton icon="close" label="Close find" onClick={onClose}/></div>;
 }
@@ -1314,6 +1323,7 @@ function App() {
   const [bookmarkFolders,setBookmarkFolders]=useState(()=>Array.from(new Set(['Favorites',...readNamedList('browsery:bookmark-folders')])));
   const [shortcuts,setShortcuts]=useState(readShortcuts);
   const [findOpen,setFindOpen]=useState(false),[findCounts,setFindCounts]=useState({matches:0,active:0}),[zoomPercent,setZoomPercent]=useState(100);
+  const [paletteOpen,setPaletteOpen]=useState(false),[findSeed,setFindSeed]=useState(null),[voicePending,setVoicePending]=useState(null);
   const [screenAnalysis,setScreenAnalysis]=useState({status:'idle'});
   const [permissionRequest,setPermissionRequest]=useState(null);
   const [localControlState,setLocalControlState]=useState({online:false,mode:'active',message:'',announcements:[]});
@@ -1630,6 +1640,107 @@ function App() {
       hiddenFeatures:Object.entries(remoteFeatures).filter(([,enabled])=>enabled===false).map(([feature])=>feature),
     };
   },[settings,extensionHost,activeTab?.url,activeTab?.title,tabs,unloadedTabs,closedTabs.length,theme,appUpdate.status,remoteFeatures]);
+  /* ---------- shared by the command palette, Hey Groq actions and the page right-click menu ---------- */
+  const openInNewTab=useCallback(address=>{
+    if(!address)return false;
+    const blocked=extensionHost.checkNavigation(address);
+    if(blocked){notify(blocked);return false}
+    openTab(address);return true;
+  },[extensionHost,notify,openTab]);
+  const searchInNewTab=useCallback(query=>openInNewTab(searchAddress(query,settings.engine)),[openInNewTab,settings.engine]);
+  const askHeyGroq=useCallback(question=>{
+    if(remoteFeatures.voice===false){notify('Hey Groq is temporarily unavailable');return}
+    const text=String(question||'').replace(/\s+/g,' ').trim().slice(0,600);
+    setPanel('voice');
+    if(text)setVoicePending({id:Date.now()+Math.random(),text});
+  },[remoteFeatures.voice,notify]);
+  const findOnPage=useCallback(text=>{
+    const words=String(text||'').trim().slice(0,120);
+    if(!words)return;
+    setPanel(null);setFindOpen(true);setFindSeed({id:Date.now()+Math.random(),text:words});
+  },[]);
+  // Tab names never leave the device: Groq only hands back the words the person
+  // said, and the match happens here.
+  const switchToTabMatching=useCallback(query=>{
+    const words=String(query||'').toLowerCase().split(/\s+/).filter(word=>word.length>1);
+    if(!words.length)return null;
+    let best=null,bestScore=0;
+    for(const tab of tabs){
+      const haystack=`${tab.title||''} ${tab.url?addressHost(tab.url):''}`.toLowerCase();
+      let score=0;
+      for(const word of words){if(haystack.startsWith(word))score+=3;else if(haystack.includes(word))score+=2}
+      if(score>bestScore){best=tab;bestScore=score}
+    }
+    if(!best)return null;
+    setActive(best.id);setPanel(null);return best;
+  },[tabs]);
+  const runAssistantAction=useCallback(action=>{
+    if(!action||typeof action!=='object')return null;
+    const type=String(action.type||''),arg=typeof action.arg==='string'?action.arg.replace(/\s+/g,' ').trim().slice(0,300):'';
+    if(type==='open_url'){
+      let address;
+      try{const parsed=new URL(arg);if(!['http:','https:'].includes(parsed.protocol)||parsed.username||parsed.password)return null;address=parsed.toString()}catch{return null}
+      return openInNewTab(address)?`Opened ${addressHost(address)} in a new tab`:null;
+    }
+    if(type==='web_search')return arg&&searchInNewTab(arg)?`Searched for “${arg}” in a new tab`:null;
+    if(type==='find_in_page'){if(!arg||!activeTab?.url)return null;findOnPage(arg);return `Looking for “${arg}” on this page`}
+    if(type==='switch_tab'){const tab=switchToTabMatching(arg);return tab?`Switched to ${tab.title||addressHost(tab.url||'')||'that tab'}`:null}
+    if(type==='open_panel'){
+      const panels={bookmarks:'bookmarks',history:'history',downloads:'downloads',settings:'settings',extensions:'extensions',shield:'protection',cookies:'data',support:'support',vpn:'vpn',music:'music'};
+      const target=panels[arg];if(!target)return null;
+      const feature={extensions:'extensions',vpn:'vpn',music:'music'}[target];
+      if(feature&&remoteFeatures[feature]===false)return null;
+      setPanel(target);return `Opened ${arg==='shield'?'the Privacy shield':arg==='cookies'?'Cookies and site data':arg}`;
+    }
+    if(type==='new_tab'){openTab();return 'Opened a new tab'}
+    if(type==='reopen_tab'){if(!closedTabs.length)return null;reopenClosedTab();return 'Reopened your last closed tab'}
+    if(type==='zoom'){
+      if(!activeTab?.url)return null;
+      if(arg==='in')zoom(.1);else if(arg==='out')zoom(-.1);else if(arg==='reset')zoom(0);else return null;
+      return arg==='reset'?'Reset the zoom':`Zoomed ${arg}`;
+    }
+    return null;
+  },[openInNewTab,searchInNewTab,findOnPage,switchToTabMatching,activeTab?.url,remoteFeatures,openTab,closedTabs.length,reopenClosedTab,zoom]);
+  const onAssistantAction=useCallback(action=>{const done=runAssistantAction(action);if(done)notify(done);return done},[runAssistantAction,notify]);
+  const paletteCommands=useMemo(()=>{
+    const onPage=Boolean(activeTab?.url),bookmarked=onPage&&bookmarks.some(item=>item.url===activeTab.url);
+    return [
+      {id:'new-tab',icon:'plus',title:'New tab',shortcut:'Ctrl+T',keywords:'open blank space',run:()=>openTab()},
+      closedTabs.length>0&&{id:'reopen',icon:'reopen',title:'Reopen closed tab',shortcut:'Ctrl+Shift+T',keywords:'restore undo',run:()=>reopenClosedTab()},
+      {id:'close-tab',icon:'close',title:'Close tab',shortcut:'Ctrl+W',run:()=>closeTab(active)},
+      tabs.length>1&&{id:'close-others',icon:'windowClose',title:'Close other tabs',keywords:'tidy clean unpinned',run:()=>closeOtherTabs(active)},
+      activeTab&&{id:'pin',icon:'pin',title:activeTab.pinned?'Unpin this tab':'Pin this tab',run:()=>setTabs(current=>current.map(tab=>tab.id===active?{...tab,pinned:!tab.pinned}:tab))},
+      onPage&&{id:'reload',icon:'reload',title:'Reload page',shortcut:'Ctrl+R',keywords:'refresh',run:()=>browserRef.current?.reload()},
+      onPage&&{id:'find',icon:'find',title:'Find in page',shortcut:'Ctrl+F',keywords:'search text words',run:()=>{setPanel(null);setFindOpen(true)}},
+      onPage&&{id:'bookmark',icon:'bookmark',title:bookmarked?'Remove bookmark':'Bookmark this page',shortcut:'Ctrl+D',keywords:'save favorite',run:()=>toggleBookmark()},
+      {id:'bookmarks',icon:'grid',title:'Bookmarks',shortcut:'Ctrl+Shift+B',keywords:'favorites saved folders',run:()=>setPanel('bookmarks')},
+      {id:'history',icon:'history',title:'History',shortcut:'Ctrl+H',keywords:'visited past pages',run:()=>setPanel('history')},
+      {id:'downloads',icon:'download',title:'Downloads',shortcut:'Ctrl+J',keywords:'files',run:()=>setPanel('downloads')},
+      remoteFeatures.voice!==false&&{id:'groq',icon:'spark',title:'Hey Groq',keywords:'ai assistant voice ask question',run:()=>setPanel('voice')},
+      remoteFeatures.ai!==false&&onPage&&{id:'analyze',icon:'target',title:'Analyze this page with Groq',keywords:'ai screenshot layout check',run:()=>openAnalysis()},
+      remoteFeatures.extensions!==false&&{id:'extensions',icon:'extension',title:'Extensions',keywords:'add-ons store reader night shift',run:()=>setPanel('extensions')},
+      {id:'shield',icon:'shield',title:'Privacy shield',keywords:'ads trackers block protection allow site',run:()=>setPanel('protection')},
+      {id:'cookies',icon:'cookie',title:'Cookies and site data',keywords:'clear storage cache',run:()=>setPanel('data')},
+      {id:'settings',icon:'settings',title:'Settings',keywords:'preferences options',run:()=>setPanel('settings')},
+      onPage&&{id:'zoom-in',icon:'zoomIn',title:'Zoom in',shortcut:'Ctrl+=',keywords:'bigger larger text',run:()=>zoom(.1)},
+      onPage&&{id:'zoom-out',icon:'zoomOut',title:'Zoom out',shortcut:'Ctrl+-',keywords:'smaller',run:()=>zoom(-.1)},
+      onPage&&zoomPercent!==100&&{id:'zoom-reset',icon:'search',title:`Reset zoom (now ${zoomPercent}%)`,shortcut:'Ctrl+0',run:()=>zoom(0)},
+      {id:'theme',icon:'moon',title:theme==='dark'?'Switch to light theme':'Switch to dark theme',keywords:'appearance mode dark light',run:()=>setTheme(current=>current==='dark'?'light':'dark')},
+      remoteFeatures.vpn!==false&&{id:'vpn',icon:'vpn',title:'Proton VPN',keywords:'privacy network',run:()=>setPanel('vpn')},
+      remoteFeatures.music!==false&&{id:'music',icon:'music',title:'Music',keywords:'audio player songs',run:()=>setPanel('music')},
+      {id:'support',icon:'support',title:'Help and support',keywords:'ticket problem bug contact',run:()=>setPanel('support')},
+    ].filter(Boolean);
+  },[activeTab,bookmarks,closedTabs.length,tabs.length,active,remoteFeatures,zoomPercent,theme,openTab,reopenClosedTab,closeTab,closeOtherTabs,toggleBookmark,openAnalysis,zoom]);
+  const paletteResolveUrl=useCallback(value=>resolveAddress(value,settings.engine),[settings.engine]);
+  const paletteSwitchTab=useCallback(id=>{setActive(id);setPanel(null)},[]);
+  // Right-click inside a page: the main process builds the menu, the shell runs the result.
+  useEffect(()=>window.browseryDesktop?.onContextAction?.(action=>{
+    if(!action||typeof action!=='object'||!accountStatus.account)return;
+    const text=typeof action.text==='string'?action.text.replace(/\s+/g,' ').trim():'';
+    if(action.type==='ask'&&text){askHeyGroq(`Explain this in plain words: “${text.slice(0,500)}”`);return}
+    if(action.type==='search'&&text){searchInNewTab(text.slice(0,300));return}
+    if(action.type==='analyze'){openAnalysis();return}
+  }),[askHeyGroq,searchInNewTab,openAnalysis,accountStatus.account]);
   const handleShortcut=useCallback(shortcut=>{
     if(!accountStatus.account)return;
     if(shortcut==='focus'){const input=document.querySelector('.omnibox input');input?.focus();input?.select();setPanel(null);return}
@@ -1647,12 +1758,14 @@ function App() {
     if(shortcut==='zoom-in'){zoom(.1);return}
     if(shortcut==='zoom-out'){zoom(-.1);return}
     if(shortcut==='zoom-reset'){zoom(0);return}
-    if(shortcut==='escape'){if(findOpen)setFindOpen(false);else setPanel(null)}
-  },[openTab,closeTab,reopenClosedTab,active,toggleBookmark,zoom,findOpen,accountStatus.account]);
+    if(shortcut==='palette'){setPaletteOpen(open=>!open);return}
+    if(shortcut==='escape'){if(paletteOpen){setPaletteOpen(false);return}if(findOpen)setFindOpen(false);else setPanel(null)}
+  },[openTab,closeTab,reopenClosedTab,active,toggleBookmark,zoom,findOpen,paletteOpen,accountStatus.account]);
   useEffect(()=>{
     const onKeyDown=event=>{
       const key=event.key.toLowerCase(),mod=event.ctrlKey||event.metaKey;
-      if(mod&&key==='l'){event.preventDefault();handleShortcut('focus')}
+      if(mod&&!event.shiftKey&&key==='k'){if(!event.defaultPrevented){event.preventDefault();handleShortcut('palette')}}
+      else if(mod&&key==='l'){event.preventDefault();handleShortcut('focus')}
       else if(mod&&event.shiftKey&&key==='t'){event.preventDefault();handleShortcut('reopen-tab')}
       else if(mod&&key==='t'){event.preventDefault();handleShortcut('new-tab')}
       else if(mod&&key==='w'){event.preventDefault();handleShortcut('close-tab')}
@@ -1691,8 +1804,8 @@ function App() {
         <div className="toolbar-cluster" data-tour="system-tools"><GlassButton tour="downloads" icon="download" label="Downloads · Ctrl+J" active={panel==='downloads'} onClick={()=>togglePanel('downloads')}/><GlassButton tour="settings" icon="settings" label="Settings" active={panel==='settings'} onClick={()=>togglePanel('settings')}/>{remoteFeatures.vpn!==false&&<GlassButton tour="vpn" icon="vpn" label="Proton VPN" active={panel==='vpn'} onClick={()=>togglePanel('vpn')}/>}<SpringButton className={`update-toolbar ${appUpdate.available?'is-ready':''} ${updateToolbarBusy?'is-busy':''}`} onClick={updateBrowsery} disabled={updateToolbarBusy} aria-label={appUpdate.status==='downloaded'?'Restart Browsery to install update':appUpdate.status==='available'?'Download Browsery update':appUpdate.status==='downloading'?`Downloading Browsery update ${Math.round(Number(appUpdate.progress)||0)} percent`:'Check Browsery updates'}><Icon name={updateToolbarIcon} size={15}/><span>{updateToolbarLabel}</span></SpringButton>{ownerControlReady&&<SpringButton className={`local-control-toolbar ${panel==='local-control'?'active':''}`} onClick={()=>togglePanel('local-control')} aria-label="Open owner controls on this device"><Icon name="shield" size={15}/><span>Owner</span></SpringButton>}<SpringButton data-tour="theme" className="profile" onClick={()=>{setTheme(current=>current==='dark'?'light':'dark');notify('Theme shifted')}} aria-label="Toggle theme">MK</SpringButton><SpringButton data-tour="support" className={`icon-button magnetic support-toolbar ${panel==='support'?'active':''}`} onClick={()=>togglePanel('support')} aria-label={supportUnread?`Help & Support · ${supportUnread} new repl${supportUnread===1?'y':'ies'}`:'Help & Support'} title="Help & Support"><Icon name="support"/>{supportUnread>0&&<i className="support-badge" aria-hidden="true"/>}</SpringButton><SpringButton data-tour="tour" className={`owner-guide-button ${tourOpen?'active':''}`} onClick={startTour} aria-label="Open owner guide"><Icon name="help" size={16}/><span>Guide</span></SpringButton></div>
       </div>
     </div>
-    <div className="loading-line"/>{remoteFeatures.announcements!==false&&localControlState.announcements?.length>0&&dismissedAnnouncement!==localControlState.announcements[0].id&&<div className="local-announcement-banner" role="status"><Icon name="alert" size={16}/><div><b>{localControlState.announcements[0].title}</b><span>{localControlState.announcements[0].body}</span><small>Browsery announcement · {localControlState.online?'global':'last known'}</small></div><GlassButton icon="close" label="Dismiss announcement" onClick={()=>setDismissedAnnouncement(localControlState.announcements[0].id)}/></div>}<div className="viewport"><FindBar open={findOpen} onClose={()=>setFindOpen(false)} onFind={find} count={findCounts.matches} active={findCounts.active}/><BrowserViewport ref={browserRef} tabs={tabs} active={active} onSearch={go} onOpenMusic={()=>remoteFeatures.music!==false&&togglePanel('music')} onPageUpdate={pageUpdate} onFindUpdate={onFindUpdate} settings={settings} pointer={pointer} shortcuts={shortcuts} onUpdateShortcuts={setShortcuts} extensionHost={extensionHost} unloadedTabs={unloadedTabs} onBlocked={notify}/></div>
-     <AnalyzeDrawer open={panel==='analyze'} onClose={()=>setPanel(null)} tab={activeTab} result={screenAnalysis} onAnalyze={analyzeVisiblePage}/><VoiceAssistantDrawer open={panel==='voice'} onClose={()=>setPanel(null)} model={settings.aiModel} getContext={assistantContext} Icon={Icon} Button={SpringButton} CloseButton={GlassButton}/><ExtensionsDrawer open={panel==='extensions'} onClose={()=>setPanel(null)} host={extensionHost} activeTab={activeTab} onNotice={notify} onOpenTab={openTab} Icon={Icon} Button={SpringButton} CloseButton={GlassButton}/><SettingsDrawer open={panel==='settings'||panel==='privacy'} initialSection={panel==='privacy'?'privacy':'graphics'} focusSection={tourSection} onClose={()=>setPanel(null)} onManageData={()=>setPanel('data')} onManageProtection={()=>setPanel('protection')} onManagePersonal={()=>setPanel('personal')} onRunSetup={runSetupAgain} values={settings} setValues={setSettings} audioEngine={audioEngine} audioReady={audioReady}/><PersonalCenter open={panel==='personal'} onClose={()=>setPanel(null)} onAccountChange={acceptBrowseryAccount} activeUrl={activeTab?.url} webContentsId={browserRef.current?.getWebContentsId?.()} Icon={Icon} Button={SpringButton} CloseButton={GlassButton}/><SupportDrawer open={panel==='support'} onClose={()=>setPanel(null)} account={accountStatus.account} appVersion={appUpdate.currentVersion||''} platform={window.browseryDesktop?.platform||''} voiceAvailable={remoteFeatures.voice!==false} onAskGroq={()=>setPanel('voice')} onRunSetup={runSetupAgain} onUnreadChange={setSupportUnread} Icon={Icon} Button={SpringButton} CloseButton={GlassButton}/><LocalControlCenter open={panel==='local-control'&&ownerControlReady} onClose={()=>setPanel(null)} state={localControlState} onStateChange={setLocalControlState} onAdminReadyChange={setOwnerControlReady} Icon={Icon} Button={SpringButton} CloseButton={GlassButton}/><ProtectionDrawer open={panel==='protection'} onClose={()=>setPanel(null)} tab={activeTab} onOpenSettings={()=>setPanel('privacy')}/><MusicDrawer open={panel==='music'} onClose={()=>setPanel(null)}/><BrowserDataDrawer open={panel==='data'} onClose={()=>setPanel(null)} history={settings.private?[]:history} onClearHistory={()=>setHistory([])}/><DownloadDrawer open={panel==='downloads'} onClose={()=>setPanel(null)} audioEngine={audioEngine}/><VpnPanel open={panel==='vpn'} onClose={()=>setPanel(null)} onOpenGuide={()=>go(window.browseryDesktop?.platform==='darwin'?'https://protonvpn.com/download-macos':'https://protonvpn.com/download-windows')}/>
+    <div className="loading-line"/>{remoteFeatures.announcements!==false&&localControlState.announcements?.length>0&&dismissedAnnouncement!==localControlState.announcements[0].id&&<div className="local-announcement-banner" role="status"><Icon name="alert" size={16}/><div><b>{localControlState.announcements[0].title}</b><span>{localControlState.announcements[0].body}</span><small>Browsery announcement · {localControlState.online?'global':'last known'}</small></div><GlassButton icon="close" label="Dismiss announcement" onClick={()=>setDismissedAnnouncement(localControlState.announcements[0].id)}/></div>}<div className="viewport"><FindBar open={findOpen} onClose={()=>setFindOpen(false)} onFind={find} count={findCounts.matches} active={findCounts.active} seed={findSeed}/><BrowserViewport ref={browserRef} tabs={tabs} active={active} onSearch={go} onOpenMusic={()=>remoteFeatures.music!==false&&togglePanel('music')} onPageUpdate={pageUpdate} onFindUpdate={onFindUpdate} settings={settings} pointer={pointer} shortcuts={shortcuts} onUpdateShortcuts={setShortcuts} extensionHost={extensionHost} unloadedTabs={unloadedTabs} onBlocked={notify}/></div>
+     <AnalyzeDrawer open={panel==='analyze'} onClose={()=>setPanel(null)} tab={activeTab} result={screenAnalysis} onAnalyze={analyzeVisiblePage}/><VoiceAssistantDrawer open={panel==='voice'} onClose={()=>setPanel(null)} model={settings.aiModel} getContext={assistantContext} pendingQuestion={voicePending} onAction={onAssistantAction} Icon={Icon} Button={SpringButton} CloseButton={GlassButton}/>{accountStatus.account&&<CommandPalette open={paletteOpen} onClose={()=>setPaletteOpen(false)} tabs={tabs} activeTabId={active} bookmarks={bookmarks} history={settings.private?[]:history} commands={paletteCommands} onSwitchTab={paletteSwitchTab} onOpenUrl={openInNewTab} onSearch={searchInNewTab} onAskGroq={askHeyGroq} canAskGroq={remoteFeatures.voice!==false} resolveUrl={paletteResolveUrl} Icon={Icon}/>}<ExtensionsDrawer open={panel==='extensions'} onClose={()=>setPanel(null)} host={extensionHost} activeTab={activeTab} onNotice={notify} onOpenTab={openTab} Icon={Icon} Button={SpringButton} CloseButton={GlassButton}/><SettingsDrawer open={panel==='settings'||panel==='privacy'} initialSection={panel==='privacy'?'privacy':'graphics'} focusSection={tourSection} onClose={()=>setPanel(null)} onManageData={()=>setPanel('data')} onManageProtection={()=>setPanel('protection')} onManagePersonal={()=>setPanel('personal')} onRunSetup={runSetupAgain} values={settings} setValues={setSettings} audioEngine={audioEngine} audioReady={audioReady}/><PersonalCenter open={panel==='personal'} onClose={()=>setPanel(null)} onAccountChange={acceptBrowseryAccount} activeUrl={activeTab?.url} webContentsId={browserRef.current?.getWebContentsId?.()} Icon={Icon} Button={SpringButton} CloseButton={GlassButton}/><SupportDrawer open={panel==='support'} onClose={()=>setPanel(null)} account={accountStatus.account} appVersion={appUpdate.currentVersion||''} platform={window.browseryDesktop?.platform||''} voiceAvailable={remoteFeatures.voice!==false} onAskGroq={()=>setPanel('voice')} onRunSetup={runSetupAgain} onUnreadChange={setSupportUnread} Icon={Icon} Button={SpringButton} CloseButton={GlassButton}/><LocalControlCenter open={panel==='local-control'&&ownerControlReady} onClose={()=>setPanel(null)} state={localControlState} onStateChange={setLocalControlState} onAdminReadyChange={setOwnerControlReady} Icon={Icon} Button={SpringButton} CloseButton={GlassButton}/><ProtectionDrawer open={panel==='protection'} onClose={()=>setPanel(null)} tab={activeTab} onOpenSettings={()=>setPanel('privacy')}/><MusicDrawer open={panel==='music'} onClose={()=>setPanel(null)}/><BrowserDataDrawer open={panel==='data'} onClose={()=>setPanel(null)} history={settings.private?[]:history} onClearHistory={()=>setHistory([])}/><DownloadDrawer open={panel==='downloads'} onClose={()=>setPanel(null)} audioEngine={audioEngine}/><VpnPanel open={panel==='vpn'} onClose={()=>setPanel(null)} onOpenGuide={()=>go(window.browseryDesktop?.platform==='darwin'?'https://protonvpn.com/download-macos':'https://protonvpn.com/download-windows')}/>
     <LibraryDrawer open={panel==='history'} onClose={()=>setPanel(null)} title="History" historyMode items={settings.private?[]:history} onSelect={go} onRemove={address=>setHistory(current=>current.filter(item=>item.url!==address))} onClear={()=>setHistory([])}/>
     <BookmarkDrawer open={panel==='bookmarks'} onClose={()=>setPanel(null)} items={bookmarks} folders={bookmarkFolders} onOpen={go} onRemove={address=>setBookmarks(current=>current.filter(item=>item.url!==address))} onMove={moveBookmark} onCreateFolder={createBookmarkFolder} onImport={importBookmarks}/>
     {['maintenance','shutdown'].includes(localControlState.mode)&&<div className="maintenance-lock" role="alertdialog" aria-modal="true" aria-labelledby="maintenance-lock-title"><div className="maintenance-lock-card"><span className="maintenance-lock-kicker">GLOBAL · {localControlState.mode==='shutdown'?'SHUTDOWN':'MAINTENANCE'}</span><h2 id="maintenance-lock-title">{localControlState.mode==='shutdown'?'Browsery is temporarily shut down':'Browsery is under maintenance'}</h2><p>{localControlState.message||'The Browsery team has temporarily paused browsing.'}</p><small>Browsery will resume when the owner changes the global status. Offline devices update after reconnecting.</small>{ownerControlReady&&<SpringButton type="button" onClick={()=>setPanel('local-control')}>Open owner controls</SpringButton>}</div></div>}

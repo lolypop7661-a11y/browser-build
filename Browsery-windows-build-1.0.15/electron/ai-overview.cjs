@@ -282,6 +282,61 @@ async function createOverview(query, { enabled, model, onUpdate, signal } = {}) 
 // small state summary, which browsery-knowledge.cjs validates and caps before
 // it is added as a separate system message. The Groq credential stays in
 // Electron's OS-backed secure storage.
+/* ---------------------------------------------------------------------------
+   Hey Groq actions. The model may end a reply with one line:
+     ACTION {"type":"...","arg":"..."}
+   Anything that is not on this list, or does not validate, is dropped and the
+   reply is shown as plain text. The renderer validates the result again
+   before it does anything.
+   --------------------------------------------------------------------------- */
+const ASSISTANT_ACTION_TYPES = new Set(['open_url', 'web_search', 'find_in_page', 'switch_tab', 'open_panel', 'new_tab', 'reopen_tab', 'zoom']);
+const ASSISTANT_PANELS = new Set(['bookmarks', 'history', 'downloads', 'settings', 'extensions', 'shield', 'cookies', 'support', 'vpn', 'music']);
+
+function normalizeAssistantUrl(value) {
+  let candidate = String(value || '').trim();
+  if (!candidate || candidate.length > 2048 || /\s/.test(candidate)) return null;
+  if (!/^https?:\/\//i.test(candidate)) {
+    if (!/^[a-z0-9-]+(\.[a-z0-9-]+)+(:\d{1,5})?(\/\S*)?$/i.test(candidate)) return null;
+    candidate = `https://${candidate}`;
+  }
+  try {
+    const url = new URL(candidate);
+    if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password) return null;
+    return url.toString();
+  } catch {
+    return null;
+  }
+}
+
+function parseAssistantAction(content) {
+  const raw = String(content || '');
+  const pattern = /^[ \t]*ACTION[ \t]*:?[ \t]*(\{[^\n]{0,600}\})[ \t]*$/m;
+  const match = pattern.exec(raw);
+  // Strip every ACTION-looking line from the visible text, valid or not.
+  const text = raw.replace(/^[ \t]*ACTION[ \t]*:?[ \t]*\{[^\n]*\}[ \t]*$/gm, '').trim();
+  if (!match) return { text, action: null };
+  let parsed;
+  try { parsed = JSON.parse(match[1]); } catch { return { text, action: null }; }
+  const type = typeof parsed?.type === 'string' ? parsed.type.trim().toLowerCase() : '';
+  if (!ASSISTANT_ACTION_TYPES.has(type)) return { text, action: null };
+  let arg = typeof parsed.arg === 'string' ? parsed.arg.replace(/\s+/g, ' ').trim().slice(0, 300) : '';
+  if (type === 'open_url') {
+    arg = normalizeAssistantUrl(arg);
+    if (!arg) return { text, action: null };
+  } else if (type === 'web_search' || type === 'find_in_page' || type === 'switch_tab') {
+    if (!arg) return { text, action: null };
+  } else if (type === 'open_panel') {
+    arg = arg.toLowerCase();
+    if (!ASSISTANT_PANELS.has(arg)) return { text, action: null };
+  } else if (type === 'zoom') {
+    arg = arg.toLowerCase();
+    if (!['in', 'out', 'reset'].includes(arg)) return { text, action: null };
+  } else {
+    arg = '';
+  }
+  return { text, action: { type, arg } };
+}
+
 async function createVoiceAssistantReply(prompt, { model, context } = {}) {
   const question = typeof prompt === 'string' ? prompt.replace(/\s+/g, ' ').trim().slice(0, 600) : '';
   if (!question) return { status: 'invalid-prompt' };
@@ -311,8 +366,11 @@ async function createVoiceAssistantReply(prompt, { model, context } = {}) {
       console.warn('Groq voice assistant request returned status:', response.status);
       return { status: [401, 403].includes(response.status) ? 'invalid-key' : response.status === 429 ? 'usage-limit' : 'request-failed' };
     }
-    const text = cleanOverviewText(assistantContent(payload.choices?.[0]?.message?.content)).slice(0, 1200);
-    return text ? { status: 'ready', text } : { status: 'empty' };
+    // Pull the action line out before cleaning: the cleaner strips URLs and braces.
+    const { text: spoken, action } = parseAssistantAction(assistantContent(payload.choices?.[0]?.message?.content));
+    const text = cleanOverviewText(spoken).slice(0, 1200);
+    if (!text && !action) return { status: 'empty' };
+    return action ? { status: 'ready', text, action } : { status: 'ready', text };
   } catch (error) {
     const status = controller.signal.aborted || error.name === 'AbortError' ? 'timeout' : 'request-failed';
     console.warn('Groq voice assistant request failed:', status);
@@ -405,4 +463,4 @@ function renderFirefoxHandoff(query, firefoxOpened, aiEnabled) {
   </script></body></html>`;
 }
 
-module.exports = { getApiKeyStatus, saveApiKey, clearApiKey, createOverview, createVoiceAssistantReply, cleanOverviewText, analyzePageScreenshot, parseScreenAnalysis, renderFirefoxHandoff };
+module.exports = { getApiKeyStatus, saveApiKey, clearApiKey, createOverview, createVoiceAssistantReply, cleanOverviewText, analyzePageScreenshot, parseScreenAnalysis, renderFirefoxHandoff, parseAssistantAction, normalizeAssistantUrl };

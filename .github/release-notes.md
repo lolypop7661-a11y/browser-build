@@ -1,14 +1,7 @@
-## Browsery 1.0.19
+## Browsery 1.0.20
 
-**Setup and accounts**
-- A short setup after you sign in: make Browsery your default browser, add your Groq key, take the tour.
-- Forgot your password? Get a code by email and reset it right in the app.
-- Sign-up is protected by a Cloudflare human check instead of email confirmation.
+**Command palette.** Press Ctrl+K anywhere, even inside a page. One box finds your open tabs, every browser action, your bookmarks and your history. Type an address to open it, or any question to search the web or ask Hey Groq. Abbreviations work: "clt" finds Close tab.
 
-**Help**
-- Hey Groq now knows Browsery inside and out. Ask it where anything is or how to do something.
-- New Help & Support panel: ask Hey Groq first, or open a ticket and get a reply in the app.
+**Hey Groq can do things now.** Ask it to open a site, run a search, open Downloads or any other panel, find words on the page, switch to a tab by name, reopen the tab you just closed, or zoom. It does one thing per request and tells you what it did. It can never close tabs, change settings, fill in forms or delete anything, and tab names stay on your computer.
 
-**20 built-in extensions** including Reader View, Night Shift, Focus Mode, Element Zapper, Image Grabber, Password Generator and Link Inspector.
-
-**Lighter on your computer.** Inactive tabs can sleep after a set time, and Browsery uses less CPU, GPU and memory.
+**Right-click works inside web pages.** Copy and paste, open a link in a new tab, copy or save images, spelling suggestions in text boxes, and on any selected text: Ask Hey Groq about it, or search the web for it.

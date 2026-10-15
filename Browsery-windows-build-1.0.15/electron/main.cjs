@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, session, shell, protocol, dialog, webContents, safeStorage, clipboard, nativeImage } = require('electron');
+const { app, BrowserWindow, ipcMain, session, shell, protocol, dialog, webContents, safeStorage, clipboard, nativeImage, Menu } = require('electron');
 const fs = require('fs');
 const path = require('path');
 const { randomUUID } = require('node:crypto');
@@ -864,6 +864,91 @@ async function handleBrowseryRequest(request, browserSession) {
 
 function send(channel, payload) {
   if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send(channel, payload);
+}
+
+/* ---------------------------------------------------------------------------
+   Right-click inside web pages. Electron ships no context menu of its own, so
+   without this a right-click in a page did nothing at all. Only guest pages
+   (webviews) get it; the shell keeps its own menus.
+   --------------------------------------------------------------------------- */
+const isWebAddress = value => typeof value === 'string' && /^https?:\/\//i.test(value) && value.length <= 4096;
+const shortLabel = (text, max = 32) => {
+  const flat = String(text || '').replace(/\s+/g, ' ').trim();
+  return flat.length > max ? `${flat.slice(0, max - 1)}…` : flat;
+};
+function pageContextMenu(contents, params) {
+  const template = [];
+  const gap = () => { if (template.length && template[template.length - 1].type !== 'separator') template.push({ type: 'separator' }); };
+  const flags = params.editFlags || {};
+  const selection = String(params.selectionText || '').trim();
+
+  // Spelling first, because it is the one thing you right-clicked a red squiggle for.
+  if (params.isEditable && params.misspelledWord) {
+    const suggestions = (params.dictionarySuggestions || []).slice(0, 5);
+    for (const word of suggestions) template.push({ label: word, click: () => contents.replaceMisspelling(word) });
+    if (!suggestions.length) template.push({ label: 'No spelling suggestions', enabled: false });
+    template.push({ label: 'Add to dictionary', click: () => contents.session.addWordToSpellCheckerDictionary(params.misspelledWord) });
+    gap();
+  }
+
+  if (isWebAddress(params.linkURL)) {
+    template.push({ label: 'Open link in new tab', click: () => send('browser:new-tab', params.linkURL) });
+    template.push({ label: 'Copy link address', click: () => clipboard.writeText(params.linkURL) });
+    gap();
+  }
+
+  if (params.mediaType === 'image' && params.srcURL) {
+    if (isWebAddress(params.srcURL)) template.push({ label: 'Open image in new tab', click: () => send('browser:new-tab', params.srcURL) });
+    template.push({ label: 'Copy image', click: () => contents.copyImageAt(params.x, params.y) });
+    if (isWebAddress(params.srcURL)) {
+      template.push({ label: 'Copy image address', click: () => clipboard.writeText(params.srcURL) });
+      // Goes through the normal download manager, so it shows up in Downloads.
+      // The ellipsis promises a dialog, so it only appears when one will open.
+      const asks = browserPreferences.downloadPath === 'Ask every time';
+      template.push({ label: asks ? 'Save image as…' : 'Save image to Downloads', click: () => contents.downloadURL(params.srcURL) });
+    }
+    gap();
+  }
+
+  if (params.isEditable) {
+    template.push(
+      { label: 'Undo', accelerator: 'CmdOrCtrl+Z', enabled: flags.canUndo !== false, click: () => contents.undo() },
+      { label: 'Redo', accelerator: 'CmdOrCtrl+Y', enabled: flags.canRedo !== false, click: () => contents.redo() },
+      { type: 'separator' },
+      { label: 'Cut', accelerator: 'CmdOrCtrl+X', enabled: Boolean(flags.canCut), click: () => contents.cut() },
+      { label: 'Copy', accelerator: 'CmdOrCtrl+C', enabled: Boolean(flags.canCopy), click: () => contents.copy() },
+      { label: 'Paste', accelerator: 'CmdOrCtrl+V', enabled: Boolean(flags.canPaste), click: () => contents.paste() },
+      { label: 'Select all', accelerator: 'CmdOrCtrl+A', click: () => contents.selectAll() },
+    );
+    gap();
+  } else if (selection) {
+    template.push({ label: 'Copy', accelerator: 'CmdOrCtrl+C', click: () => contents.copy() });
+  }
+
+  if (selection) {
+    const ask = selection.slice(0, 500);
+    template.push({ label: `Ask Hey Groq about “${shortLabel(selection)}”`, click: () => send('browser:context-action', { type: 'ask', text: ask }) });
+    template.push({ label: `Search the web for “${shortLabel(selection)}”`, click: () => send('browser:context-action', { type: 'search', text: selection.slice(0, 300) }) });
+    gap();
+  }
+
+  // Plain page: the navigation people reach for out of habit.
+  if (!selection && !params.isEditable && !params.linkURL && params.mediaType !== 'image') {
+    const nav = contents.navigationHistory;
+    const canBack = nav ? nav.canGoBack() : false;
+    const canForward = nav ? nav.canGoForward() : false;
+    template.push(
+      { label: 'Back', accelerator: 'Alt+Left', enabled: canBack, click: () => nav?.goBack() },
+      { label: 'Forward', accelerator: 'Alt+Right', enabled: canForward, click: () => nav?.goForward() },
+      { label: 'Reload', accelerator: 'CmdOrCtrl+R', click: () => contents.reload() },
+      { type: 'separator' },
+      { label: 'Analyze page with Groq', click: () => send('browser:context-action', { type: 'analyze' }) },
+      { label: 'Command palette', accelerator: 'CmdOrCtrl+K', click: () => send('browser:shortcut', 'palette') },
+    );
+  }
+
+  while (template.length && template[template.length - 1].type === 'separator') template.pop();
+  return template;
 }
 
 function browserDataSession(partition) {
@@ -1758,7 +1843,15 @@ if (primaryInstance) app.whenReady().then(async () => {
       else if (mod && key === '0') shortcut = 'zoom-reset';
       else if (input.alt && key === 'arrowleft') shortcut = 'back';
       else if (input.alt && key === 'arrowright') shortcut = 'forward';
+      else if (mod && !input.shift && key === 'k') shortcut = 'palette';
       if (shortcut) { event.preventDefault(); send('browser:shortcut', shortcut); }
+    });
+    contents.on('context-menu', (_event, params) => {
+      if (remoteGlobalState.mode !== 'active') return;
+      let template;
+      try { template = pageContextMenu(contents, params); } catch (error) { console.warn('Page context menu failed:', error.message); return; }
+      if (!template.length || !mainWindow || mainWindow.isDestroyed()) return;
+      Menu.buildFromTemplate(template).popup({ window: mainWindow });
     });
   });
   session.defaultSession.setPermissionRequestHandler((_contents, _permission, callback) => callback(false));

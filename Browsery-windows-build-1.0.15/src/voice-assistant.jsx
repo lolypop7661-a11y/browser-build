@@ -35,19 +35,21 @@ function statusMessage(status) {
   return messages[status] || 'Something interrupted the assistant. Please try again.';
 }
 
-// Tappable starters that show what Hey Groq knows about Browsery itself.
+// Tappable starters: what Hey Groq knows about Browsery, and what it can do.
 const EXAMPLE_QUESTIONS = [
   'Where is the search bar?',
   'Make Browsery use less RAM',
   'What extensions do I have?',
-  'How do I reopen a closed tab?',
+  'Open my downloads',
+  'Search for the weather this weekend',
+  'Reopen the tab I just closed',
 ];
 
 function cleanTranscript(value) {
   return String(value || '').replace(/\s+/g, ' ').trim().slice(0, 600);
 }
 
-export function VoiceAssistantDrawer({ open, onClose, model, getContext, Icon, Button, CloseButton }) {
+export function VoiceAssistantDrawer({ open, onClose, model, getContext, pendingQuestion, onAction, Icon, Button, CloseButton }) {
   const panelRef = useSpringPresence(open, { preset: 'fluid', offset: 90 });
   const recognitionRef = useRef(null);
   const restartTimer = useRef(0);
@@ -59,6 +61,8 @@ export function VoiceAssistantDrawer({ open, onClose, model, getContext, Icon, B
   // Read through a ref so recognition callbacks always get fresh state without restarting.
   const getContextRef = useRef(getContext);
   getContextRef.current = getContext;
+  const onActionRef = useRef(onAction);
+  onActionRef.current = onAction;
   const [voiceSession, setVoiceSession] = useState(() => savedBoolean(VOICE_SESSION_KEY, false));
   const [speakAnswers, setSpeakAnswers] = useState(() => savedBoolean(VOICE_SPEAK_KEY, true));
   const [listening, setListening] = useState(false);
@@ -66,6 +70,7 @@ export function VoiceAssistantDrawer({ open, onClose, model, getContext, Icon, B
   const [draft, setDraft] = useState('');
   const [answer, setAnswer] = useState('');
   const [status, setStatus] = useState('idle');
+  const [actionNote, setActionNote] = useState(null);
 
   useEffect(() => { voiceSessionRef.current = voiceSession; try { localStorage.setItem(VOICE_SESSION_KEY, voiceSession ? '1' : '0'); } catch {} }, [voiceSession]);
   useEffect(() => { speakRef.current = speakAnswers; try { localStorage.setItem(VOICE_SPEAK_KEY, speakAnswers ? '1' : '0'); } catch {} }, [speakAnswers]);
@@ -107,6 +112,7 @@ export function VoiceAssistantDrawer({ open, onClose, model, getContext, Icon, B
     setTranscript(prompt);
     setDraft(prompt);
     setAnswer('');
+    setActionNote(null);
     setStatus('thinking');
     if ('speechSynthesis' in window) { try { window.speechSynthesis.cancel(); } catch {} }
     // A small, renderer-built summary of Browsery's state (no full URLs,
@@ -116,10 +122,18 @@ export function VoiceAssistantDrawer({ open, onClose, model, getContext, Icon, B
     try {
       const result = await desktop.askGroqVoice({ prompt, model, context });
       if (run !== requestRef.current) return;
-      if (result?.status === 'ready' && result.text) {
-        setAnswer(result.text);
+      if (result?.status === 'ready' && (result.text || result.action)) {
+        // Groq may ask Browsery to do one thing from a short, safe list. The
+        // shell validates it again and says what actually happened.
+        let done = null;
+        if (result.action && typeof onActionRef.current === 'function') {
+          try { done = onActionRef.current(result.action) || null; } catch { done = null; }
+          setActionNote(done ? { ok: true, text: done } : { ok: false, text: 'Groq suggested something Browsery cannot do from here, so nothing was changed.' });
+        }
+        const spoken = result.text || done || '';
+        setAnswer(spoken);
         setStatus('ready');
-        speak(result.text);
+        speak(spoken);
       } else {
         setStatus(result?.status || 'request-failed');
       }
@@ -129,6 +143,16 @@ export function VoiceAssistantDrawer({ open, onClose, model, getContext, Icon, B
       if (run === requestRef.current) busyRef.current = false;
     }
   }, [model, speak]);
+
+  const lastPending = useRef(null);
+  useEffect(() => {
+    if (!open || !pendingQuestion?.text || lastPending.current === pendingQuestion.id) return;
+    lastPending.current = pendingQuestion.id;
+    stopRecognition({ stopVoiceSession: true });
+    // A new hand-off supersedes whatever was still in flight.
+    busyRef.current = false;
+    askGroq(pendingQuestion.text);
+  }, [open, pendingQuestion, askGroq, stopRecognition]);
 
   const startRecognition = useCallback(() => {
     if (busyRef.current || recognitionRef.current || !voiceSessionRef.current) return;
@@ -242,7 +266,7 @@ export function VoiceAssistantDrawer({ open, onClose, model, getContext, Icon, B
         <Button className={`voice-speak-toggle ${speakAnswers ? 'on' : ''}`} onClick={() => setSpeakAnswers(value => !value)} aria-pressed={speakAnswers}><Icon name="volume" size={15}/><span>{speakAnswers ? 'Speak answers' : 'Text only'}</span></Button>
       </div>
       <section className="voice-examples" aria-label="Example questions">
-        <span>Ask about Browsery</span>
+        <span>Ask, or tell it what to do</span>
         <div>{EXAMPLE_QUESTIONS.map(question => <button type="button" key={question} onClick={() => { stopRecognition({ stopVoiceSession: true }); askGroq(question); }} disabled={status === 'thinking'}>{question}</button>)}</div>
       </section>
       <form className="voice-compose" onSubmit={submit}>
@@ -251,9 +275,10 @@ export function VoiceAssistantDrawer({ open, onClose, model, getContext, Icon, B
         <Button className="voice-send" type="submit" disabled={!draft.trim() || status === 'thinking'}><Icon name="forward" size={15}/><span>{status === 'thinking' ? 'Thinking…' : 'Ask Groq'}</span></Button>
       </form>
       {transcript && <section className="voice-transcript"><span>You said</span><p>{transcript}</p></section>}
+      {actionNote && <div className={`voice-action-note ${actionNote.ok ? 'is-done' : 'is-skipped'}`} role="status"><Icon name={actionNote.ok ? 'target' : 'alert'} size={14}/><span>{actionNote.text}</span></div>}
       {answer && <section className="voice-answer"><div><Icon name="spark" size={15}/><b>Groq</b><Button className="voice-repeat" onClick={() => speak(answer)} aria-label="Read answer aloud" title="Read answer aloud"><Icon name="volume" size={14}/></Button></div><p>{answer}</p></section>}
       {status !== 'idle' && status !== 'listening' && status !== 'awaiting-command' && status !== 'starting' && status !== 'thinking' && status !== 'ready' && <div className="voice-error" role="status"><Icon name="alert" size={15}/><span>{statusMessage(status)}</span></div>}
-      <p className="voice-privacy">Voice is always opt-in. Browsery only starts listening after you press Start session and stops when you close this panel or stop it. Your speech may be processed by your device or browser’s speech-recognition service; Browsery sends the resulting text—not audio—to Groq, with a short summary of Browsery’s state (a few settings, extension names, tab counts and, outside private sessions, the current site’s name and page title) so it can answer questions about the browser.</p>
+      <p className="voice-privacy">Voice is always opt-in. Browsery only starts listening after you press Start session and stops when you close this panel or stop it. Your speech may be processed by your device or browser’s speech-recognition service; Browsery sends the resulting text—not audio—to Groq, with a short summary of Browsery’s state (a few settings, extension names, tab counts and, outside private sessions, the current site’s name and page title) so it can answer questions about the browser. Groq can also carry out a short list of things you ask for, such as opening a site, a search or a panel, finding words on the page, switching or reopening a tab, or zooming. It can never close tabs, change settings, fill in forms or delete anything.</p>
     </div>
   </aside>;
 }

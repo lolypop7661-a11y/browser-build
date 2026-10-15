@@ -9,3 +9,9 @@
 @keyframes voice-pulse{0%,100%{transform:scale(.88);opacity:.1}50%{transform:scale(1.04);opacity:.42}}@keyframes voice-think{0%,100%{transform:scale(1) rotate(0)}50%{transform:scale(1.055) rotate(7deg)}}
 @media(max-width:620px){.voice-assistant-drawer{width:100%;top:100px}.voice-body{padding:16px}.voice-orbit{width:112px;height:112px}.voice-controls{grid-template-columns:1fr}}
 @media(prefers-reduced-motion:reduce){.voice-orbit.is-listening i,.voice-orbit.is-thinking .voice-core{animation:none}.voice-primary,.voice-speak-toggle{transition:none;will-change:auto}}
+/* What Hey Groq actually did, when it was asked to do something. */
+.voice-action-note{display:flex;align-items:flex-start;gap:8px;margin-top:13px;padding:10px;border:1px solid rgba(102,220,255,.3);border-radius:10px;background:rgba(102,220,255,.07);color:#cfeefa;font-size:9.5px;line-height:1.55}
+.voice-action-note.is-skipped{border-color:#5b5040;background:#29241c;color:#e8d3ad}
+.voice-action-note svg{flex:none;margin-top:1px}
+[data-accent="monochrome"] .voice-action-note{border-color:#4d4d4d;background:#181818;color:#ddd}
+[data-accent="monochrome"] .voice-action-note.is-skipped{border-color:#5a5a5a;background:#1c1c1c;color:#bbb}

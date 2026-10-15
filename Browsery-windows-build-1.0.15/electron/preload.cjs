@@ -47,6 +47,12 @@ contextBridge.exposeInMainWorld('browseryDesktop', {
     ipcRenderer.on('browser:new-tab', listener);
     return () => ipcRenderer.removeListener('browser:new-tab', listener);
   },
+  onContextAction: callback => {
+    if (typeof callback !== 'function') return () => {};
+    const listener = (_event, action) => callback(action);
+    ipcRenderer.on('browser:context-action', listener);
+    return () => ipcRenderer.removeListener('browser:context-action', listener);
+  },
   onReopenClosedTab: callback => {
     if (typeof callback !== 'function') return () => {};
     const listener = (_event, tab) => callback(tab);
