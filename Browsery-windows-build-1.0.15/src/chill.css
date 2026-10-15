@@ -1,0 +1,290 @@
+/* Chill mode: Browsery as a plain everyday browser.
+   Loaded after every other stylesheet; selectors start at .app.chill-mode so
+   nothing here touches the full Browsery look. */
+
+.app.chill-mode {
+  --c-frame: #1d1e21;
+  --c-toolbar: #2a2b2f;
+  --c-field: #1d1e21;
+  --c-field-focus: #2a2b2f;
+  --c-page: #202124;
+  --c-menu: #2c2d31;
+  --c-hover: rgba(255, 255, 255, .08);
+  --c-press: rgba(255, 255, 255, .13);
+  --c-text: #e8e9ec;
+  --c-muted: #a4a7ae;
+  --c-line: #3b3c41;
+  --c-accent: #8ab4f8;
+  --c-accent-ink: #12233d;
+  --c-danger: #f28b82;
+  --c-shadow: 0 8px 28px rgba(0, 0, 0, .45);
+  --c-font: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, sans-serif;
+  color-scheme: dark;
+}
+.app.chill-mode.light {
+  --c-frame: #e8eaed;
+  --c-toolbar: #ffffff;
+  --c-field: #f1f3f4;
+  --c-field-focus: #ffffff;
+  --c-page: #ffffff;
+  --c-menu: #ffffff;
+  --c-hover: rgba(32, 33, 36, .07);
+  --c-press: rgba(32, 33, 36, .12);
+  --c-text: #1f1f1f;
+  --c-muted: #5f6368;
+  --c-line: #dadce0;
+  --c-accent: #1a73e8;
+  --c-accent-ink: #ffffff;
+  --c-danger: #c5221f;
+  --c-shadow: 0 8px 28px rgba(60, 64, 67, .22);
+  color-scheme: light;
+}
+
+/* ---------- no effects ---------- */
+body.chill-mode, .app.chill-mode { background: var(--c-frame) !important; }
+.app.chill-mode, .app.chill-mode button, .app.chill-mode input, .app.chill-mode select { font-family: var(--c-font); }
+.app.chill-mode *, .app.chill-mode *::before, .app.chill-mode *::after {
+  animation: none !important;
+  transition-property: background-color, color, border-color, opacity !important;
+  transition-duration: .12s !important;
+  backdrop-filter: none !important;
+}
+.app.chill-mode .spring-interactive { transform: none !important; scale: none !important; translate: none !important; }
+.app.chill-mode :is(.cursor-canvas, .cursor-dot, .cursor-ring, .sound-visualizer, .aurora, .webgl, .spatial-grid, .browser-shell::before) { display: none !important; }
+body.chill-mode { cursor: auto !important; }
+body.chill-mode * { cursor: revert; }
+
+/* ---------- window frame ---------- */
+.app.chill-mode .browser-shell {
+  inset: 0 !important; border: 0 !important; border-radius: 0 !important; box-shadow: none !important;
+  background: var(--c-page) !important; transform: none !important; color: var(--c-text);
+}
+.app.chill-mode .browser-shell::before { content: none !important; }
+
+/* tab strip */
+.app.chill-mode .tabs-row {
+  height: 42px !important; padding: 0 0 0 8px !important; background: var(--c-frame) !important;
+  border: 0 !important; box-shadow: none !important; align-items: stretch !important; gap: 0 !important;
+  -webkit-app-region: drag;
+}
+.app.chill-mode .tabs-row :is(button, [role="button"], .tab) { -webkit-app-region: no-drag; }
+.app.chill-mode .tabs-row .brand { display: none !important; }
+.app.chill-mode .tabs { flex: 0 1 auto !important; min-width: 0 !important; gap: 2px !important; align-items: end !important; padding-top: 6px; overflow: hidden; }
+.app.chill-mode .tab {
+  height: 36px !important; width: 240px !important; min-width: 56px !important; max-width: 240px !important; flex: 0 1 240px !important;
+  padding: 0 8px 0 12px !important; gap: 8px !important; border: 0 !important; border-radius: 8px 8px 0 0 !important;
+  background: transparent !important; box-shadow: none !important; color: var(--c-muted) !important;
+  font-size: 12.5px !important; font-weight: 400 !important; transform: none !important;
+}
+.app.chill-mode .tab::before, .app.chill-mode .tab::after { display: none !important; }
+.app.chill-mode .tab:hover { background: var(--c-hover) !important; color: var(--c-text) !important; }
+.app.chill-mode .tab.selected { background: var(--c-toolbar) !important; color: var(--c-text) !important; }
+.app.chill-mode .tab .tab-title { font-weight: 400 !important; letter-spacing: 0 !important; }
+.app.chill-mode .tab [aria-label^="Close"] { width: 20px !important; height: 20px !important; border-radius: 50% !important; display: grid !important; place-items: center !important; opacity: .75; background: transparent !important; }
+.app.chill-mode .tab [aria-label^="Close"]:hover { background: var(--c-press) !important; opacity: 1; }
+.app.chill-mode .tabs-row .reopen-tab { display: none !important; }
+.app.chill-mode .tabs-row .add-tab {
+  align-self: center !important; width: 30px !important; height: 30px !important; margin: 4px 0 0 4px !important;
+  border: 0 !important; border-radius: 50% !important; background: transparent !important; box-shadow: none !important; color: var(--c-muted) !important;
+}
+.app.chill-mode .tabs-row .add-tab:hover { background: var(--c-hover) !important; color: var(--c-text) !important; }
+.app.chill-mode .window-controls { margin-left: auto !important; align-self: stretch; color: var(--c-muted) !important; }
+.app.chill-mode .window-controls button { border-radius: 0 !important; background: transparent !important; box-shadow: none !important; height: 100% !important; color: inherit !important; }
+.app.chill-mode .window-controls button:hover { background: var(--c-hover) !important; }
+.app.chill-mode .window-controls .window-close:hover { background: #c42b1c !important; color: #fff !important; }
+
+/* toolbar */
+.app.chill-mode .toolbar {
+  height: 46px !important; min-height: 46px !important; padding: 0 8px !important; gap: 8px !important;
+  background: var(--c-toolbar) !important; border: 0 !important; border-bottom: 1px solid var(--c-line) !important; box-shadow: none !important;
+}
+.app.chill-mode .nav-controls { gap: 2px !important; padding: 0 !important; background: transparent !important; border: 0 !important; box-shadow: none !important; }
+.app.chill-mode :is(.nav-controls .icon-button, .chill-icon) {
+  width: 34px !important; height: 34px !important; min-width: 34px !important; padding: 0 !important; display: grid !important; place-items: center !important;
+  border: 0 !important; border-radius: 50% !important; background: transparent !important; box-shadow: none !important; color: var(--c-text) !important; opacity: 1 !important;
+}
+.app.chill-mode :is(.nav-controls .icon-button, .chill-icon):hover { background: var(--c-hover) !important; }
+.app.chill-mode :is(.nav-controls .icon-button, .chill-icon):active { background: var(--c-press) !important; }
+.app.chill-mode .chill-icon.active { color: var(--c-accent) !important; }
+.app.chill-mode .chill-icon:disabled { opacity: .38 !important; cursor: default; background: transparent !important; }
+.app.chill-mode :is(.icon-button, .chill-icon, button):focus-visible { outline: 2px solid var(--c-accent) !important; outline-offset: 1px !important; }
+.app.chill-mode .omnibox-wrap { flex: 1 1 auto !important; max-width: none !important; margin: 0 !important; }
+.app.chill-mode .omnibox {
+  height: 34px !important; padding: 0 14px !important; gap: 10px !important; border-radius: 17px !important;
+  border: 1px solid transparent !important; background: var(--c-field) !important; box-shadow: none !important; color: var(--c-muted) !important;
+}
+.app.chill-mode .omnibox:hover { background: color-mix(in srgb, var(--c-field) 82%, var(--c-text)) !important; }
+.app.chill-mode .omnibox.focused { background: var(--c-field-focus) !important; border-color: var(--c-accent) !important; }
+.app.chill-mode .omnibox input { color: var(--c-text) !important; font-size: 14px !important; }
+.app.chill-mode .omnibox input::placeholder { color: var(--c-muted) !important; }
+.app.chill-mode .omnibox :is(.analyze-trigger, .omnibox-spark) { display: none !important; }
+.app.chill-mode .suggestions {
+  background: var(--c-menu) !important; border: 1px solid var(--c-line) !important; border-radius: 12px !important;
+  box-shadow: var(--c-shadow) !important; color: var(--c-text) !important;
+}
+.app.chill-mode .suggestions button { background: transparent !important; color: var(--c-text) !important; border-radius: 8px !important; box-shadow: none !important; }
+.app.chill-mode .suggestions :is(button:hover, .suggestion-selected) { background: var(--c-hover) !important; }
+.app.chill-mode .suggestions small { color: var(--c-muted) !important; }
+.chill-actions { display: flex; align-items: center; gap: 2px; margin-left: 2px; }
+.app.chill-mode .chill-update {
+  height: 30px; display: inline-flex; align-items: center; gap: 6px; padding: 0 12px; margin: 0 4px; border: 0; border-radius: 15px;
+  background: var(--c-accent); color: var(--c-accent-ink); font-size: 12.5px; font-weight: 600; cursor: pointer;
+}
+.app.chill-mode .chill-update:disabled { opacity: .7; cursor: default; }
+.app.chill-mode .loading-line { margin-left: 0 !important; height: 2px !important; margin-top: -2px !important; }
+.app.chill-mode.is-loading .loading-line::after { background: var(--c-accent) !important; animation: chill-load 1.1s ease-in-out infinite !important; }
+@keyframes chill-load { from { transform: translateX(-110%); } to { transform: translateX(320%); } }
+.app.chill-mode .viewport { background: var(--c-page) !important; border: 0 !important; border-radius: 0 !important; margin: 0 !important; box-shadow: none !important; }
+
+/* ---------- menu ---------- */
+.chill-menu-wrap { position: relative; }
+.chill-menu {
+  position: absolute; z-index: 200; top: calc(100% + 6px); right: 0; width: 280px; max-height: calc(100vh - 110px); overflow-y: auto;
+  padding: 6px 0; border: 1px solid var(--c-line); border-radius: 10px; background: var(--c-menu); color: var(--c-text); box-shadow: var(--c-shadow);
+}
+.chill-menu button {
+  width: 100%; height: 34px; display: flex; align-items: center; gap: 12px; padding: 0 14px 0 16px; border: 0; background: transparent;
+  color: var(--c-text); font-size: 13px; text-align: left; cursor: pointer;
+}
+.chill-menu button svg { flex: 0 0 auto; color: var(--c-muted); }
+.chill-menu button span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chill-menu button:is(:hover, :focus) { background: var(--c-hover); outline: none; }
+.chill-menu button.accent, .chill-menu button.accent svg { color: var(--c-accent); }
+.chill-menu kbd { font: 12px var(--c-font); color: var(--c-muted); }
+.chill-menu hr { height: 1px; margin: 6px 0; border: 0; background: var(--c-line); }
+
+/* ---------- new tab ---------- */
+.chill-new-tab {
+  position: absolute; inset: 0; overflow: auto; display: flex; justify-content: center;
+  background: var(--c-page); color: var(--c-text); font-family: var(--c-font);
+}
+.chill-home { width: min(720px, calc(100% - 48px)); padding-top: max(80px, 22vh); display: flex; flex-direction: column; align-items: center; gap: 28px; }
+.chill-clock { font-size: 56px; font-weight: 300; letter-spacing: -.02em; line-height: 1; color: var(--c-text); font-variant-numeric: tabular-nums; }
+.chill-search {
+  width: min(584px, 100%); height: 48px; display: flex; align-items: center; gap: 14px; padding: 0 20px; border-radius: 24px;
+  border: 1px solid var(--c-line); background: var(--c-field-focus); color: var(--c-muted); box-shadow: 0 1px 6px rgba(32, 33, 36, .12);
+}
+.chill-search:focus-within { border-color: var(--c-accent); }
+.chill-search input { flex: 1; min-width: 0; height: 100%; border: 0; outline: 0; background: transparent; color: var(--c-text); font: 15px var(--c-font); }
+.chill-search input::placeholder { color: var(--c-muted); }
+.chill-shortcuts { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, 112px); justify-content: center; gap: 4px; width: 100%; }
+.chill-shortcuts li { position: relative; }
+.chill-shortcuts :is(a, .chill-shortcut-add) {
+  width: 112px; height: 112px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
+  border: 0; border-radius: 10px; background: transparent; color: var(--c-text); text-decoration: none; cursor: pointer; font: 12.5px var(--c-font);
+}
+.chill-shortcuts :is(a, .chill-shortcut-add):hover { background: var(--c-hover); }
+.chill-shortcuts :is(a, .chill-shortcut-add):focus-visible { outline: 2px solid var(--c-accent); outline-offset: -2px; }
+.chill-shortcut-icon { width: 48px; height: 48px; border-radius: 50%; display: grid; place-items: center; background: var(--c-field); color: var(--c-muted); overflow: hidden; }
+.chill-shortcut-icon * { color: var(--c-text) !important; }
+.chill-shortcut-icon :is(img, span, b) { width: 24px !important; height: 24px !important; font-size: 14px; line-height: 24px; text-align: center; border-radius: 4px; }
+.chill-shortcut-label { max-width: 96px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chill-shortcut-edit {
+  position: absolute; top: 6px; right: 6px; width: 26px; height: 26px; display: grid; place-items: center; border: 0; border-radius: 50%;
+  background: transparent; color: var(--c-muted); opacity: 0; cursor: pointer;
+}
+.chill-shortcuts li:hover .chill-shortcut-edit, .chill-shortcut-edit:focus-visible { opacity: 1; }
+.chill-shortcut-edit:hover { background: var(--c-press); color: var(--c-text); }
+
+/* ---------- shortcut editor (both modes) ---------- */
+.shortcut-editor-scrim { position: fixed; inset: 0; z-index: 400; display: grid; place-items: center; background: rgba(0, 0, 0, .45); }
+.shortcut-editor {
+  --e-bg: #24262b; --e-field: #1a1b1f; --e-text: #eceef2; --e-muted: #a5a9b1; --e-line: #3d4046; --e-accent: #8ab4f8; --e-ink: #12233d;
+  width: min(380px, calc(100vw - 32px)); display: grid; gap: 8px; padding: 22px 22px 18px; border: 1px solid var(--e-line); border-radius: 14px;
+  background: var(--e-bg); color: var(--e-text); box-shadow: 0 18px 60px rgba(0, 0, 0, .5); font-family: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+}
+.light .shortcut-editor { --e-bg: #fff; --e-field: #f1f3f4; --e-text: #1f1f1f; --e-muted: #5f6368; --e-line: #dadce0; --e-accent: #1a73e8; --e-ink: #fff; }
+.shortcut-editor h2 { margin: 0 0 8px; font-size: 17px; font-weight: 600; }
+.shortcut-editor label { margin-top: 4px; font-size: 12px; color: var(--e-muted); }
+.shortcut-editor input { height: 38px; padding: 0 12px; border: 1px solid var(--e-line); border-radius: 8px; background: var(--e-field); color: var(--e-text); font-size: 14px; outline: none; }
+.shortcut-editor input:focus { border-color: var(--e-accent); }
+.shortcut-editor input[aria-invalid="true"] { border-color: #f28b82; }
+.shortcut-error { margin: 0; font-size: 12px; color: #f28b82; }
+.light .shortcut-error { color: #c5221f; }
+.shortcut-editor-actions { display: flex; align-items: center; gap: 8px; margin-top: 14px; }
+.shortcut-editor-actions > span { flex: 1; }
+.chill-button {
+  height: 34px; display: inline-flex; align-items: center; gap: 6px; padding: 0 16px; border: 1px solid var(--e-line, var(--c-line)); border-radius: 17px;
+  background: transparent; color: var(--e-accent, var(--c-accent)); font-size: 13px; font-weight: 600; cursor: pointer;
+}
+.chill-button:hover { background: rgba(138, 180, 248, .1); }
+.chill-button.primary { border-color: transparent; background: var(--e-accent, var(--c-accent)); color: var(--e-ink, var(--c-accent-ink)); }
+.chill-button.primary:hover { filter: brightness(1.08); }
+.chill-button.danger { color: #f28b82; padding: 0 12px; }
+.light .chill-button.danger { color: #c5221f; }
+.chill-button:focus-visible { outline: 2px solid var(--e-accent, var(--c-accent)); outline-offset: 2px; }
+
+/* ---------- panels ----------
+   Side panels keep one neutral dark look in both themes: their contents were
+   designed for a dark surface, and a readable panel beats a matching one. */
+.app.chill-mode {
+  --p-bg: #26272b; --p-raised: #2f3035; --p-field: #1d1e21; --p-text: #e8e9ec; --p-muted: #a4a7ae; --p-line: #3b3c41; --p-accent: #8ab4f8;
+}
+.app.chill-mode .drawer {
+  top: 88px !important; right: 0 !important; bottom: 0 !important; background: var(--p-bg) !important; color: var(--p-text) !important;
+  border: 0 !important; border-left: 1px solid var(--p-line) !important; border-radius: 0 !important;
+  box-shadow: -10px 0 30px rgba(0, 0, 0, .22) !important; filter: none !important; transform: none !important;
+}
+.app.chill-mode .drawer:not(.open) { opacity: 0 !important; pointer-events: none !important; visibility: hidden; }
+.app.chill-mode .drawer.open { opacity: 1 !important; visibility: visible; }
+.app.chill-mode .drawer .drawer-kicker { color: var(--p-muted) !important; letter-spacing: .02em !important; }
+.app.chill-mode .drawer h2 { color: var(--p-text) !important; font-weight: 600 !important; }
+
+/* settings: a plain side page with a category list */
+.app.chill-mode .settings-drawer {
+  width: min(800px, 100%) !important; left: auto !important; display: grid !important;
+  grid-template-columns: 200px minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto;
+}
+.app.chill-mode .settings-drawer .settings-nav {
+  position: static !important; inset: auto !important; grid-column: 1; grid-row: 1 / 4; height: auto !important;
+  display: flex !important; flex-direction: column !important; align-items: stretch !important; gap: 2px !important;
+  padding: 16px 10px !important; border: 0 !important; border-right: 1px solid var(--p-line) !important; background: transparent !important; overflow-y: auto !important;
+}
+.app.chill-mode .settings-drawer .settings-nav button {
+  position: static !important; flex: 0 0 auto !important; width: auto !important; min-width: 0 !important; height: 36px !important; padding: 0 12px !important;
+  display: flex !important; align-items: center !important; justify-content: flex-start !important; gap: 12px !important;
+  border: 0 !important; border-radius: 18px !important; background: transparent !important; box-shadow: none !important; transform: none !important;
+  color: var(--p-text) !important; font-size: 13px !important;
+}
+.app.chill-mode .settings-drawer .settings-nav button:hover { background: rgba(255, 255, 255, .07) !important; }
+.app.chill-mode .settings-drawer .settings-nav button.active { background: rgba(138, 180, 248, .16) !important; color: var(--p-accent) !important; }
+.app.chill-mode .settings-drawer .settings-nav button span { display: inline !important; font-size: 13px !important; white-space: nowrap; }
+.app.chill-mode .settings-drawer .settings-nav button em { display: inline !important; position: static !important; margin-left: auto; font-size: 11px !important; color: var(--p-muted) !important; }
+.app.chill-mode .settings-drawer .drawer-head { grid-column: 2; grid-row: 1; height: 60px !important; padding: 0 20px !important; border-bottom: 1px solid var(--p-line) !important; }
+.app.chill-mode .settings-drawer .drawer-head h2 { font-size: 20px !important; }
+.app.chill-mode .settings-drawer .drawer-kicker { display: none !important; }
+.app.chill-mode .settings-drawer .settings-body { grid-column: 2; grid-row: 2; display: block !important; height: auto !important; min-height: 0; overflow-y: auto !important; padding: 18px 20px !important; }
+.app.chill-mode .settings-drawer .settings-content { height: auto !important; padding: 0 !important; overflow: visible !important; }
+.app.chill-mode .settings-drawer :is(.settings-dock, .motion-preview) { display: none !important; }
+.app.chill-mode .settings-drawer .drawer-footer {
+  position: static !important; grid-column: 2; grid-row: 3; display: flex !important; align-items: center; justify-content: space-between; gap: 12px;
+  height: auto !important; padding: 10px 20px !important; border-top: 1px solid var(--p-line) !important; background: transparent !important; color: var(--p-muted) !important; font-size: 12px;
+}
+.app.chill-mode .settings-drawer :is(.setting-row, .setting-range) { background: transparent !important; border-color: var(--p-line) !important; color: var(--p-text) !important; box-shadow: none !important; transform: none !important; }
+.app.chill-mode .settings-drawer :is(select, .setting-text) { background: var(--p-field) !important; color: var(--p-text) !important; border: 1px solid var(--p-line) !important; border-radius: 8px !important; box-shadow: none !important; }
+.app.chill-mode .settings-drawer .controls { background: transparent !important; border-color: var(--p-line) !important; box-shadow: none !important; }
+.app.chill-mode .chill-menu button:focus-visible { outline: none !important; }
+
+/* settings card (lives in the dark panel in both modes) */
+.chill-settings-card {
+  display: flex; align-items: flex-start; gap: 16px; margin: 0 0 18px; padding: 16px 18px; border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, .14); background: rgba(255, 255, 255, .04);
+}
+.chill-settings-card.on { border-color: rgba(138, 180, 248, .55); background: rgba(138, 180, 248, .08); }
+.chill-settings-card > div { flex: 1; min-width: 0; }
+.chill-settings-card b { display: block; font-size: 14.5px; margin-bottom: 4px; }
+.chill-settings-card p { margin: 0; font-size: 12.5px; line-height: 1.5; opacity: .78; }
+.chill-switch {
+  flex: 0 0 auto; position: relative; width: 40px; height: 22px; margin-top: 2px; padding: 0; border: 0; border-radius: 11px;
+  background: rgba(255, 255, 255, .25); cursor: pointer;
+}
+.chill-switch i { position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: left .15s; }
+.chill-switch.on { background: #8ab4f8; }
+.chill-switch.on i { left: 21px; }
+.chill-switch:focus-visible { outline: 2px solid #8ab4f8; outline-offset: 2px; }
+.chill-paused-note { margin: 0 0 14px; padding: 10px 12px; border-radius: 10px; font-size: 12.5px; line-height: 1.45; background: rgba(138, 180, 248, .1); }
+
+/* toast and find bar, calmer */
+.app.chill-mode .toast { background: var(--c-menu) !important; color: var(--c-text) !important; border: 1px solid var(--c-line) !important; box-shadow: var(--c-shadow) !important; }
+.app.chill-mode .drawer .drawer-head .icon-button { color: var(--p-text) !important; background: transparent !important; border-color: transparent !important; box-shadow: none !important; border-radius: 50% !important; opacity: 1 !important; }
+.app.chill-mode .drawer .drawer-head .icon-button:hover { background: rgba(255, 255, 255, .08) !important; }

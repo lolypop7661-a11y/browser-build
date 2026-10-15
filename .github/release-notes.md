@@ -1,5 +1,9 @@
 ## Browsery 1.0.20
 
+**Chill mode.** Want Browsery to be just a normal browser? Turn on Chill mode at the top of Settings, from Ctrl+K, or when you first set up Browsery. It starts instantly with no launch video, shows a simple new tab with your shortcuts, keeps the toolbar to the basics with everything else in one ⋯ menu, and switches off 3D, sounds, the cursor trail and animations. Pages show while they load instead of behind a cover. Your effect settings are kept and come back when you turn it off.
+
+**Shortcuts you can actually add.** Adding or editing a new-tab shortcut now opens a small form, in both modes. The theme you pick is also remembered after a restart.
+
 **Command palette.** Press Ctrl+K anywhere, even inside a page. One box finds your open tabs, every browser action, your bookmarks and your history. Type an address to open it, or any question to search the web or ask Hey Groq. Abbreviations work: "clt" finds Close tab.
 
 **Hey Groq can do things now.** Ask it to open a site, run a search, open Downloads or any other panel, find words on the page, switch to a tab by name, reopen the tab you just closed, or zoom. It does one thing per request and tells you what it did. It can never close tabs, change settings, fill in forms or delete anything, and tab names stay on your computer.

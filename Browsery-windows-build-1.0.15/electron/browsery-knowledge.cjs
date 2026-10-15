@@ -39,6 +39,12 @@ Memory saving: "Unload inactive tabs" (Settings, Browser) closes the page proces
 KEYBOARD SHORTCUTS (Ctrl, or Cmd on Mac)
 Ctrl+K command palette; Ctrl+L focus address bar; Ctrl+T new tab; Ctrl+W close tab; Ctrl+Shift+T reopen closed tab; Ctrl+R reload; Ctrl+F find in page (Enter for next match, Esc closes); Ctrl+H history; Ctrl+J downloads; Ctrl+D bookmark or unbookmark this page; Ctrl+Shift+B bookmarks panel; Ctrl+Plus or Ctrl+= zoom in; Ctrl+Minus zoom out; Ctrl+0 reset zoom; Alt+Left back; Alt+Right forward; Esc closes the find bar or the open panel. There is no zoom button; zoom uses the shortcuts (50% to 200%) or the command palette. No other shortcuts exist.
 
+CHILL MODE (Settings → the Chill mode switch at the top, the ⋯ menu, Ctrl+K "chill", or the first-run setup)
+- Makes Browsery a plain everyday browser: no launch video, no Saturn/3D new tab, no ambient or click sounds, no cursor trail, no spring animations, no full-page "Opening page…" cover (a thin loading bar shows progress instead).
+- The toolbar shrinks to Back, Forward, Reload, Home, the address bar, Bookmark, Privacy shield, Extensions, Downloads and a ⋯ menu. Everything else (Hey Groq, Analyze, Music, VPN, Cookies, theme, Help, Guide, Settings) is in the ⋯ menu.
+- The new tab is a simple search box with shortcut tiles. Click "Add shortcut", or the ⋯ on a tile to edit or remove it.
+- Graphics, Spatial UI and Sound settings are kept, only paused; they come back when Chill mode is turned off. Turn it off from the ⋯ menu ("Turn off Chill mode") or the switch in Settings.
+
 COMMAND PALETTE (Ctrl+K, or "Command palette" on the right-click menu of a page)
 One search box over the page. Type to find an open tab, a browser action (New tab, Reopen closed tab, Close tab, Close other tabs, Pin this tab, Reload page, Find in page, Bookmark this page, Bookmarks, History, Downloads, Hey Groq, Analyze this page with Groq, Extensions, Privacy shield, Cookies and site data, Settings, Zoom in, Zoom out, Reset zoom, Switch to light or dark theme, Proton VPN, Music, Help and support), a bookmark, or a page from history. Typing an address offers "Open <address>" in a new tab; any text also offers "Search the web" and "Ask Hey Groq". Up and Down move, Enter runs, Esc or Ctrl+K again closes. Abbreviations work, for example "clt" finds Close tab. Nothing is sent anywhere until you pick a row.
 
@@ -122,6 +128,7 @@ const EXTENSION_NAMES = Object.freeze({
 // Only these settings may be reported to Groq. Each entry is
 // [group, label, type, allowed options (select only)].
 const CONTEXT_SETTINGS = Object.freeze({
+  chill: ['Settings (top)', 'Chill mode', 'toggle'],
   power: ['Graphics', 'Low-power mode', 'toggle'],
   gpu: ['Graphics', 'GPU acceleration', 'toggle'],
   fps: ['Graphics', 'Frame rate limit', 'select', ['30 FPS', '60 FPS', '120 FPS', '144 FPS']],

@@ -11,7 +11,7 @@ export function markOnboardingComplete(userId) {
   try { localStorage.setItem(onboardingKey(userId), '1'); } catch {}
 }
 
-const STEPS = ['welcome', 'default', 'groq', 'tour', 'done'];
+const STEPS = ['welcome', 'style', 'default', 'groq', 'tour', 'done'];
 const GROQ_KEYS_URL = 'https://console.groq.com/keys';
 const FOCUSABLE = 'button:not([disabled]),[href],input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
 
@@ -27,7 +27,7 @@ function defaultBrowserCopy(platform) {
   return { body: 'Set Browsery as your default web browser from your system settings.', action: 'Open system settings' };
 }
 
-export function SetupWizard({ open, account, desktop, platform = '', onFinish, onOpenLink, Icon }) {
+export function SetupWizard({ open, account, desktop, platform = '', chill = false, onChooseStyle, onFinish, onOpenLink, Icon }) {
   const [stepIndex, setStepIndex] = useState(0);
   const [minimized, setMinimized] = useState(false);
   const [defaultResult, setDefaultResult] = useState({ state: 'idle', message: '' });
@@ -151,8 +151,17 @@ export function SetupWizard({ open, account, desktop, platform = '', onFinish, o
       {step === 'welcome' && <>
         <div className="setup-mark"><img src="./assets/browsery-icon.png" alt=""/></div>
         <h2 id="setup-title" aria-live="polite">Welcome to Browsery.</h2>
-        <p id="setup-description">You’re signed in as <b className="setup-email">{email}</b>. Three short, optional steps get Browsery ready for you. Everything here can be changed later.</p>
-        <ul className="setup-list"><li><Icon name="globe" size={15}/>Choose your default browser</li><li><Icon name="key" size={15}/>Add a Groq key for the AI features</li><li><Icon name="help" size={15}/>Take a two-minute tour</li></ul>
+        <p id="setup-description">You’re signed in as <b className="setup-email">{email}</b>. Four short, optional steps get Browsery ready for you. Everything here can be changed later.</p>
+        <ul className="setup-list"><li><Icon name="focus" size={15}/>Pick full Browsery or Chill mode</li><li><Icon name="globe" size={15}/>Choose your default browser</li><li><Icon name="key" size={15}/>Add a Groq key for the AI features</li><li><Icon name="help" size={15}/>Take a two-minute tour</li></ul>
+      </>}
+
+      {step === 'style' && <>
+        <h2 id="setup-title" aria-live="polite">How should Browsery feel?</h2>
+        <p id="setup-description">You can switch any time from Settings or the menu.</p>
+        <div className="setup-style-options" role="radiogroup" aria-label="Browsery style">
+          <button type="button" role="radio" aria-checked={!chill} data-setup-autofocus={!chill || undefined} className={`setup-style ${!chill ? 'selected' : ''}`} onClick={() => onChooseStyle?.(false)}><b>Full Browsery</b><span>3D new tab, launch video, ambient sound, cursor trail and spring animations.</span></button>
+          <button type="button" role="radio" aria-checked={chill} data-setup-autofocus={chill || undefined} className={`setup-style ${chill ? 'selected' : ''}`} onClick={() => onChooseStyle?.(true)}><b>Chill mode</b><span>A plain, fast, everyday browser. Simple new tab, simple toolbar, no effects or sounds.</span></button>
+        </div>
       </>}
 
       {step === 'default' && <>
@@ -177,7 +186,7 @@ export function SetupWizard({ open, account, desktop, platform = '', onFinish, o
 
       {step === 'tour' && <>
         <h2 id="setup-title" aria-live="polite">Take the quick tour?</h2>
-        <p id="setup-description">A short guided tour opens the real panels: tabs and search, extensions, privacy, Groq and settings. It takes about two minutes and never changes a setting. Replay it any time with Guide at the far right of the toolbar.</p>
+        <p id="setup-description">A short guided tour opens the real panels: tabs and search, extensions, privacy, Groq and settings. It takes about two minutes and never changes a setting. Replay it any time with Guide at the far right of the toolbar (in Chill mode, it is in the ⋯ menu).</p>
       </>}
 
       {step === 'done' && <>
@@ -187,6 +196,7 @@ export function SetupWizard({ open, account, desktop, platform = '', onFinish, o
           <li><Icon name="globe" size={15}/>{defaultResult.state === 'opened' ? 'Default-browser settings were opened for you.' : 'Default browser: Settings → Browser → Personal browser.'}</li>
           <li><Icon name="key" size={15}/>{keySaved || keyStatus.configured ? 'Your Groq key is saved on this device.' : 'Groq key: Settings → AI Overview, whenever you want AI features.'}</li>
           <li><Icon name="support" size={15}/>Questions? Help &amp; Support is the chat button next to Guide.</li>
+          <li><Icon name="focus" size={15}/>{chill ? 'Chill mode is on. Turn it off from the ⋯ menu or Settings.' : 'Want a plain browser? Turn on Chill mode at the top of Settings.'}</li>
           <li><Icon name="reload" size={15}/>Run this setup again from Settings → Browser → Setup wizard.</li>
         </ul>
       </>}
@@ -195,6 +205,7 @@ export function SetupWizard({ open, account, desktop, platform = '', onFinish, o
         {stepIndex > 0 && step !== 'done' ? <button type="button" className="setup-secondary" onClick={back} disabled={busy}>Back</button> : <span/>}
         <div>
           {step === 'welcome' && <button type="button" data-setup-primary className="setup-primary" onClick={next}>Let’s go<Icon name="forward" size={15}/></button>}
+          {step === 'style' && <button type="button" data-setup-primary className="setup-primary" onClick={next}>Continue<Icon name="forward" size={15}/></button>}
           {step === 'default' && <><button type="button" className="setup-secondary" onClick={next} disabled={busy}>{defaultResult.state === 'opened' ? 'Skip' : 'Not now'}</button>{defaultResult.state === 'opened' && <button type="button" data-setup-primary className="setup-primary" onClick={next}>Continue<Icon name="forward" size={15}/></button>}</>}
           {step === 'groq' && <>{!keyReady && <button type="button" className="setup-secondary" onClick={next} disabled={busy}>Skip</button>}{keyReady ? <button type="button" data-setup-primary className="setup-primary" onClick={next}>Continue<Icon name="forward" size={15}/></button> : <button type="button" data-setup-primary className="setup-primary" onClick={saveKey} disabled={busy || !keyDraft.trim()}>{busy ? 'Saving…' : 'Save key'}</button>}</>}
           {step === 'tour' && <><button type="button" className="setup-secondary" onClick={next}>Skip</button><button type="button" data-setup-primary className="setup-primary" onClick={() => finish(true)}>Start tour<Icon name="forward" size={15}/></button></>}
