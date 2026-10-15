@@ -45,7 +45,7 @@ Instead of (or as well as) the device-paired key, you can make your own Browsery
 1. In Supabase, open **Authentication → Users**, find your Browsery account, and copy its **UID**.
 2. Open **Edge Functions → Secrets** (or run `npx supabase secrets set ...`) and add `BROWSERY_OWNER_USER_IDS` with that UID. Separate several owners with commas.
 3. Redeploy the function so it has the owner-account check: `npx supabase functions deploy browsery-global-control`.
-4. Restart Browsery (version 1.0.19 or later) and sign in with that account. The **Owner** button appears in the toolbar.
+4. Restart Browsery (version 1.1.0 or later) and sign in with that account. The **Owner** button appears in the toolbar.
 
 The server checks your session token with Supabase Auth on every owner request, so the list cannot be faked from the app. Owner accounts cannot be banned from the Owner panel. Anyone who signs in to your account gets owner controls, so use a strong, unique password.
 

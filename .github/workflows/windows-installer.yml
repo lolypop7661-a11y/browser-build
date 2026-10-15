@@ -30,6 +30,9 @@ jobs:
       - uses: pnpm/action-setup@v6
         with:
           version: '11.25.0'
+      - name: Read app version
+        shell: bash
+        run: echo "APP_VERSION=$(node -p "require('./package.json').version")" >> "$GITHUB_ENV"
       - name: Install locked dependencies
         run: pnpm install --frozen-lockfile
       - name: Install Electron runtime
@@ -41,25 +44,25 @@ jobs:
         with:
           name: Browsery-Windows-installer
           path: |
-            Browsery-windows-build-1.0.15/outputs/windows-setup-wizard-1.0.19/Browsery-1.0.19-x64.exe
-            Browsery-windows-build-1.0.15/outputs/windows-setup-wizard-1.0.19/latest.yml
-            Browsery-windows-build-1.0.15/outputs/windows-setup-wizard-1.0.19/Browsery-1.0.19-x64.exe.blockmap
-            Browsery-windows-build-1.0.15/outputs/windows-setup-wizard-1.0.19/Browsery-1.0.19-x64.exe.sha256
-            Browsery-windows-build-1.0.15/outputs/windows-setup-wizard-1.0.19/verification.json
+            Browsery-windows-build-1.0.15/outputs/windows-setup-wizard-${{ env.APP_VERSION }}/Browsery-${{ env.APP_VERSION }}-x64.exe
+            Browsery-windows-build-1.0.15/outputs/windows-setup-wizard-${{ env.APP_VERSION }}/latest.yml
+            Browsery-windows-build-1.0.15/outputs/windows-setup-wizard-${{ env.APP_VERSION }}/Browsery-${{ env.APP_VERSION }}-x64.exe.blockmap
+            Browsery-windows-build-1.0.15/outputs/windows-setup-wizard-${{ env.APP_VERSION }}/Browsery-${{ env.APP_VERSION }}-x64.exe.sha256
+            Browsery-windows-build-1.0.15/outputs/windows-setup-wizard-${{ env.APP_VERSION }}/verification.json
           if-no-files-found: error
           compression-level: 0
           retention-days: 7
-      - name: Publish Browsery 1.0.19
+      - name: Publish Browsery release
         if: ${{ inputs.publish }}
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: >-
-          gh release create v1.0.19
+          gh release create "v$APP_VERSION"
           --target "$GITHUB_SHA"
-          --title "Browsery 1.0.19"
-          --notes "20 new built-in extensions (Reader View, Night Shift, Focus Mode, Element Zapper and more), lower CPU, GPU and memory use with inactive-tab unloading, visual fixes, a Cloudflare Turnstile human check in place of email confirmation, and Hey Groq now knows Browsery and can walk you through any feature."
-          outputs/windows-setup-wizard-1.0.19/Browsery-1.0.19-x64.exe
-          outputs/windows-setup-wizard-1.0.19/latest.yml
-          outputs/windows-setup-wizard-1.0.19/Browsery-1.0.19-x64.exe.blockmap
-          outputs/windows-setup-wizard-1.0.19/Browsery-1.0.19-x64.exe.sha256
+          --title "Browsery $APP_VERSION"
+          --notes-file ../.github/release-notes.md
+          outputs/windows-setup-wizard-${{ env.APP_VERSION }}/Browsery-${{ env.APP_VERSION }}-x64.exe
+          outputs/windows-setup-wizard-${{ env.APP_VERSION }}/latest.yml
+          outputs/windows-setup-wizard-${{ env.APP_VERSION }}/Browsery-${{ env.APP_VERSION }}-x64.exe.blockmap
+          outputs/windows-setup-wizard-${{ env.APP_VERSION }}/Browsery-${{ env.APP_VERSION }}-x64.exe.sha256
