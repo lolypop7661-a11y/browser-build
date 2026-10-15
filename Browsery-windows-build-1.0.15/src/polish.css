@@ -19,6 +19,9 @@
 .desktop-browser[data-accent="monochrome"] .voice-speak-toggle { border-color: #444; background: #161616; color: #bbb; }
 .desktop-browser[data-accent="monochrome"] .voice-speak-toggle.on { border-color: #888; background: #262626; color: #fff; }
 .desktop-browser[data-accent="monochrome"] .voice-assistant-drawer :is(textarea, .voice-question) { border-color: #333; background: #111; color: #eee; }
+.desktop-browser[data-accent="monochrome"] .voice-examples button { border-color: #333; background: #121212; color: #bbb; }
+.desktop-browser[data-accent="monochrome"] .voice-examples button:hover:not(:disabled) { border-color: #777; color: #fff; }
+.desktop-browser[data-accent="monochrome"] .voice-examples button:focus-visible { outline-color: #ededed; }
 
 /* The Music drawer was never wired to the slide-in animation, so it stayed invisible;
    now that it opens, give it the same solid surface as the other drawers. */

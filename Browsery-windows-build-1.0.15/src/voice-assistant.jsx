@@ -35,11 +35,19 @@ function statusMessage(status) {
   return messages[status] || 'Something interrupted the assistant. Please try again.';
 }
 
+// Tappable starters that show what Hey Groq knows about Browsery itself.
+const EXAMPLE_QUESTIONS = [
+  'Where is the search bar?',
+  'Make Browsery use less RAM',
+  'What extensions do I have?',
+  'How do I reopen a closed tab?',
+];
+
 function cleanTranscript(value) {
   return String(value || '').replace(/\s+/g, ' ').trim().slice(0, 600);
 }
 
-export function VoiceAssistantDrawer({ open, onClose, model, Icon, Button, CloseButton }) {
+export function VoiceAssistantDrawer({ open, onClose, model, getContext, Icon, Button, CloseButton }) {
   const panelRef = useSpringPresence(open, { preset: 'fluid', offset: 90 });
   const recognitionRef = useRef(null);
   const restartTimer = useRef(0);
@@ -48,6 +56,9 @@ export function VoiceAssistantDrawer({ open, onClose, model, Icon, Button, Close
   const busyRef = useRef(false);
   const awaitingWakeCommand = useRef(false);
   const requestRef = useRef(0);
+  // Read through a ref so recognition callbacks always get fresh state without restarting.
+  const getContextRef = useRef(getContext);
+  getContextRef.current = getContext;
   const [voiceSession, setVoiceSession] = useState(() => savedBoolean(VOICE_SESSION_KEY, false));
   const [speakAnswers, setSpeakAnswers] = useState(() => savedBoolean(VOICE_SPEAK_KEY, true));
   const [listening, setListening] = useState(false);
@@ -98,8 +109,12 @@ export function VoiceAssistantDrawer({ open, onClose, model, Icon, Button, Close
     setAnswer('');
     setStatus('thinking');
     if ('speechSynthesis' in window) { try { window.speechSynthesis.cancel(); } catch {} }
+    // A small, renderer-built summary of Browsery's state (no full URLs,
+    // cookies, passwords or history). The main process re-validates it.
+    let context;
+    try { context = typeof getContextRef.current === 'function' ? getContextRef.current() : undefined; } catch { context = undefined; }
     try {
-      const result = await desktop.askGroqVoice({ prompt, model });
+      const result = await desktop.askGroqVoice({ prompt, model, context });
       if (run !== requestRef.current) return;
       if (result?.status === 'ready' && result.text) {
         setAnswer(result.text);
@@ -226,6 +241,10 @@ export function VoiceAssistantDrawer({ open, onClose, model, Icon, Button, Close
           : <Button className="voice-primary" onClick={enableVoiceSession}><Icon name="spark" size={15}/><span>Start voice session</span></Button>}
         <Button className={`voice-speak-toggle ${speakAnswers ? 'on' : ''}`} onClick={() => setSpeakAnswers(value => !value)} aria-pressed={speakAnswers}><Icon name="volume" size={15}/><span>{speakAnswers ? 'Speak answers' : 'Text only'}</span></Button>
       </div>
+      <section className="voice-examples" aria-label="Example questions">
+        <span>Ask about Browsery</span>
+        <div>{EXAMPLE_QUESTIONS.map(question => <button type="button" key={question} onClick={() => { stopRecognition({ stopVoiceSession: true }); askGroq(question); }} disabled={status === 'thinking'}>{question}</button>)}</div>
+      </section>
       <form className="voice-compose" onSubmit={submit}>
         <label htmlFor="groq-voice-question">Ask in text</label>
         <textarea id="groq-voice-question" value={draft} onChange={event => setDraft(event.target.value.slice(0, 600))} placeholder="Type a question for Groq" rows="3" disabled={status === 'thinking'}/>
@@ -234,7 +253,7 @@ export function VoiceAssistantDrawer({ open, onClose, model, Icon, Button, Close
       {transcript && <section className="voice-transcript"><span>You said</span><p>{transcript}</p></section>}
       {answer && <section className="voice-answer"><div><Icon name="spark" size={15}/><b>Groq</b><Button className="voice-repeat" onClick={() => speak(answer)} aria-label="Read answer aloud" title="Read answer aloud"><Icon name="volume" size={14}/></Button></div><p>{answer}</p></section>}
       {status !== 'idle' && status !== 'listening' && status !== 'awaiting-command' && status !== 'starting' && status !== 'thinking' && status !== 'ready' && <div className="voice-error" role="status"><Icon name="alert" size={15}/><span>{statusMessage(status)}</span></div>}
-      <p className="voice-privacy">Voice is always opt-in. Browsery only starts listening after you press Start session and stops when you close this panel or stop it. Your speech may be processed by your device or browser’s speech-recognition service; Browsery sends the resulting text—not audio—to Groq.</p>
+      <p className="voice-privacy">Voice is always opt-in. Browsery only starts listening after you press Start session and stops when you close this panel or stop it. Your speech may be processed by your device or browser’s speech-recognition service; Browsery sends the resulting text—not audio—to Groq, with a short summary of Browsery’s state (a few settings, extension names, tab counts and, outside private sessions, the current site’s name and page title) so it can answer questions about the browser.</p>
     </div>
   </aside>;
 }

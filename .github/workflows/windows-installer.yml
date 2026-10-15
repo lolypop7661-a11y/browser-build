@@ -2,6 +2,11 @@ name: Build Browsery Windows installer
 
 on:
   workflow_dispatch:
+    inputs:
+      publish:
+        description: Publish a public GitHub release (off = private test build, installer saved as a workflow artifact only)
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -45,6 +50,7 @@ jobs:
           compression-level: 0
           retention-days: 7
       - name: Publish Browsery 1.0.19
+        if: ${{ inputs.publish }}
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
@@ -52,7 +58,7 @@ jobs:
           gh release create v1.0.19
           --target "$GITHUB_SHA"
           --title "Browsery 1.0.19"
-          --notes "20 new built-in extensions (Reader View, Night Shift, Focus Mode, Element Zapper and more), lower CPU, GPU and memory use with inactive-tab unloading, visual fixes, and a Cloudflare Turnstile human check in place of email confirmation."
+          --notes "20 new built-in extensions (Reader View, Night Shift, Focus Mode, Element Zapper and more), lower CPU, GPU and memory use with inactive-tab unloading, visual fixes, a Cloudflare Turnstile human check in place of email confirmation, and Hey Groq now knows Browsery and can walk you through any feature."
           outputs/windows-setup-wizard-1.0.19/Browsery-1.0.19-x64.exe
           outputs/windows-setup-wizard-1.0.19/latest.yml
           outputs/windows-setup-wizard-1.0.19/Browsery-1.0.19-x64.exe.blockmap

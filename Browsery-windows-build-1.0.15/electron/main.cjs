@@ -1606,10 +1606,18 @@ if (primaryInstance) app.whenReady().then(async () => {
   ipcMain.handle('ai-key:status', event => trustedShell(event) ? getApiKeyStatus() : { configured: false, stored: false, encryptionAvailable: false, storageStatus: 'unavailable' });
   ipcMain.handle('ai-key:save', (event, key) => trustedShell(event) ? saveApiKey(key) : { ok: false, message: 'Credential changes are only available from Browsery Settings.' });
   ipcMain.handle('ai-key:clear', event => trustedShell(event) ? clearApiKey() : { ok: false, message: 'Credential changes are only available from Browsery Settings.' });
-  ipcMain.handle('ai:voice-assistant', async (event, { prompt, model } = {}) => {
+  ipcMain.handle('ai:voice-assistant', async (event, { prompt, model, context } = {}) => {
     if (!trustedShell(event)) return { status: 'request-failed' };
     if (typeof prompt !== 'string' || prompt.length > 2000) return { status: 'invalid-prompt' };
-    return createVoiceAssistantReply(prompt, { model });
+    // The optional Browsery-state summary is re-validated field by field and
+    // capped to ~1500 characters by browsery-knowledge.cjs (in this process)
+    // before it reaches Groq. An oversized or malformed object is dropped here
+    // so it can never block the question itself.
+    let rawContext = null;
+    try {
+      if (context && typeof context === 'object' && !Array.isArray(context) && JSON.stringify(context).length <= 16_000) rawContext = context;
+    } catch { rawContext = null; }
+    return createVoiceAssistantReply(prompt, { model, context: rawContext });
   });
   ipcMain.handle('ai:analyze-visible-page', async (event, { webContentsId } = {}) => {
     if (!trustedShell(event) || !Number.isSafeInteger(webContentsId)) return { status: 'request-failed' };

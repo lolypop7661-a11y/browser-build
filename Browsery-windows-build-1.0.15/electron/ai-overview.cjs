@@ -3,6 +3,11 @@ const fs = require('fs');
 const path = require('path');
 const { randomUUID } = require('node:crypto');
 const { TextDecoder } = require('node:util');
+const { buildVoiceAssistantMessages } = require('./browsery-knowledge.cjs');
+
+function appVersion() {
+  try { return app.getVersion(); } catch { return undefined; }
+}
 
 function keyFile() {
   return path.join(app.getPath('userData'), 'groq-api-key.bin');
@@ -273,9 +278,11 @@ async function createOverview(query, { enabled, model, onUpdate, signal } = {}) 
 }
 
 // Voice requests deliberately use a compact, direct completion rather than the
-// web-search overview path. The renderer only ever sends a transcript and the
-// Groq credential stays in Electron's OS-backed secure storage.
-async function createVoiceAssistantReply(prompt, { model } = {}) {
+// web-search overview path. The renderer sends a transcript plus an optional
+// small state summary, which browsery-knowledge.cjs validates and caps before
+// it is added as a separate system message. The Groq credential stays in
+// Electron's OS-backed secure storage.
+async function createVoiceAssistantReply(prompt, { model, context } = {}) {
   const question = typeof prompt === 'string' ? prompt.replace(/\s+/g, ' ').trim().slice(0, 600) : '';
   if (!question) return { status: 'invalid-prompt' };
   const apiKey = readApiKey();
@@ -291,12 +298,10 @@ async function createVoiceAssistantReply(prompt, { model } = {}) {
       signal: controller.signal,
       body: JSON.stringify({
         model: selectedModel,
-        messages: [
-          { role: 'system', content: 'You are Hey Groq inside Browsery. Answer directly and helpfully in plain text. Be concise enough to read aloud: usually one short paragraph, no headings, bullets, citations, URLs, or filler. If you are uncertain or the user needs professional help, say so plainly.' },
-          { role: 'user', content: question },
-        ],
-        temperature: 0.55,
-        max_completion_tokens: 360,
+        messages: buildVoiceAssistantMessages(question, context, { version: appVersion() }),
+        temperature: 0.4,
+        // Reasoning tokens count toward this limit; leave room for a short answer after them.
+        max_completion_tokens: 640,
         stream: false,
         reasoning_effort: 'low',
       }),

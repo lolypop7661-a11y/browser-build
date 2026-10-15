@@ -52,6 +52,22 @@ consistent Developer ID signature is needed for reliable app identity across
 updates; unsigned or changing signatures can cause additional Keychain prompts.
 Browsery does not fall back to plaintext storage when secure storage fails.
 
+## Hey Groq knows Browsery
+
+Hey Groq is Browsery's built-in assistant. Besides general questions, it can
+answer "where is the search bar?", "how do I make it use less RAM?" or "what
+does Focus Mode do?" with the real button names and steps. Its knowledge lives
+in `electron/browsery-knowledge.cjs`, written from the source code; update that
+file when a button, setting, shortcut or extension changes. The panel has
+example question chips to get started.
+
+With each question the renderer sends a small state summary: selected
+settings, installed extension names, tab counts, and (outside private sessions)
+the current tab's title and hostname. Full URLs, search text, cookies,
+passwords and history are never included. The main process re-validates every
+field against an allowlist and caps the summary at about 1,500 characters
+before it is sent to Groq as a separate system message.
+
 ## Development
 
 ```bash
