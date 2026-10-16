@@ -53,7 +53,8 @@ jobs:
           test "${PIPESTATUS[0]}" -eq 0
       - name: Show build errors
         if: failure()
-        run: grep -E '^e: |error:|What went wrong|FAILED|Unresolved|> ' build.log | head -80 || true
+        run: |
+          grep -E '^e: |error:|What went wrong|FAILED|Unresolved|> ' build.log | head -80 || true
       - name: Name the APK
         run: |
           mkdir -p out
