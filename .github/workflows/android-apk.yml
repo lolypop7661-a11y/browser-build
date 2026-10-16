@@ -1,0 +1,74 @@
+name: Build Browsery for Android
+
+on:
+  push:
+    branches: [main]
+    paths: ['Browsery-android/**', '.github/workflows/android-apk.yml']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version name, for example 1.0.0
+        required: true
+        default: '1.0.0'
+      publish:
+        description: Publish the APK as a GitHub pre-release (never marked latest, so the Windows updater is unaffected)
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+defaults:
+  run:
+    working-directory: Browsery-android
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      VERSION_NAME: ${{ inputs.version || '1.0.0' }}
+      VERSION_CODE: ${{ github.run_number }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
+      # Keep one debug signing key between builds so new APKs install over old ones.
+      - name: Restore signing key
+        uses: actions/cache@v4
+        with:
+          path: ~/.android/debug.keystore
+          key: browsery-android-debug-keystore-v1
+      - name: Build APK
+        run: gradle --no-daemon assembleRelease
+      - name: Name the APK
+        run: |
+          mkdir -p out
+          cp app/build/outputs/apk/release/app-release.apk "out/Browsery-android-${VERSION_NAME}.apk"
+          sha256sum "out/Browsery-android-${VERSION_NAME}.apk" | tee "out/Browsery-android-${VERSION_NAME}.apk.sha256"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Browsery-android
+          path: Browsery-android/out/*
+          if-no-files-found: error
+          retention-days: 14
+      - name: Publish pre-release
+        if: ${{ inputs.publish }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >-
+          gh release create "android-v${VERSION_NAME}"
+          --target "$GITHUB_SHA"
+          --title "Browsery for Android ${VERSION_NAME}"
+          --notes-file ../.github/android-release-notes.md
+          --prerelease --latest=false
+          out/Browsery-android-${VERSION_NAME}.apk
+          out/Browsery-android-${VERSION_NAME}.apk.sha256
