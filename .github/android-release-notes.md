@@ -7,4 +7,4 @@ The Browsery space look on your phone, in the Marea colours: a Saturn new tab wi
 - **Hey Groq** answers questions about the page you're on, by typing or by voice, with your own Groq API key (Settings → Hey Groq). It can open sites, search and find words for you.
 - **Chill mode** gives a plain look that follows your phone's light or dark theme.
 
-**Install:** download `Browsery-android-….apk` on your phone, open it, and allow installing from your browser or Files app when Android asks. Android 10 or newer.
+**Install:** download `Browsery-android-….apk` on your phone, open it, and allow installing from your browser or Files app when Android asks. Android 7.0 or newer (BlueStacks works too).
