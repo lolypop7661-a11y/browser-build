@@ -1163,7 +1163,7 @@ class MainActivity : AppCompatActivity() {
     private fun openGroq(prefill: String? = null) {
         val page = column().apply {
             isClickable = true
-            background = if (pal.space) GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, intArrayOf(alpha(pal.accentSoft, 0.9f), pal.void, pal.void)) else box(pal.void, 0)
+            background = if (pal.space) GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, intArrayOf(androidx.core.graphics.ColorUtils.blendARGB(pal.void, pal.accentSoft, 0.7f), pal.void, pal.void)) else box(pal.void, 0)
         }
         val head = row(spacing = 12).apply { setPadding(dp(16), dp(14), dp(8), dp(12)) }
         head.addView(ImageView(this).apply {
@@ -1270,7 +1270,7 @@ class MainActivity : AppCompatActivity() {
         val mic = iconButton(R.drawable.ic_mic, "Talk to Hey Groq", pal.onAccent, pal, 68, 28, box(pal.accent, 34)) { listenFor { send(it) } }
         if (pal.space) mic.glow(pal.accent, 16)
         bottom.addView(mic, lp(dp(68), dp(68)))
-        bottom.addView(label("Tap to talk", 13f, pal.inkMuted))
+        bottom.addView(label("Tap to talk", 13f, pal.inkMuted).apply { gravity = Gravity.CENTER }, lp(MATCH, WRAP))
         page.addView(bottom, lp(MATCH, WRAP))
         openOverlay(page, dim = false)
         scroll.post { scroll.fullScroll(View.FOCUS_DOWN) }

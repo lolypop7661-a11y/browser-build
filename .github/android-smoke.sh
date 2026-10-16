@@ -24,7 +24,14 @@ adb shell am start -a android.intent.action.VIEW -d "https://en.m.wikipedia.org/
 shot 05-page 12
 adb shell input tap $((W*9/10)) $((H-H*45/1000)); shot 06-page-menu 3
 adb shell input keyevent KEYCODE_BACK; sleep 1
-# chill mode via settings would need taps; turn it on through prefs-free path: open menu and tap the chill switch row is layout dependent, so skip
+# Chill mode: open the menu on a new tab and flip the Chill switch
+adb shell input tap $((W/2)) $((H-H*45/1000)); sleep 2
+adb shell input keyevent KEYCODE_BACK; sleep 1
+adb shell input tap $((W*9/10)) $((H-H*45/1000)); sleep 3
+adb exec-out uiautomator dump /dev/tty > $OUT/menu-tree.xml || true
+adb shell input tap 945 2040; shot 07-chill 4
+adb shell am start -a android.intent.action.VIEW -d "https://example.com" app.browsery.android
+shot 08-chill-page 8
 adb logcat -d -b crash > $OUT/crash.txt
 adb logcat -d | grep -E "AndroidRuntime|FATAL|app.browsery" | tail -200 > $OUT/logcat.txt
 adb shell pidof app.browsery.android > $OUT/pid.txt || echo "not running" > $OUT/pid.txt
