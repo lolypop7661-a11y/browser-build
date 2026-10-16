@@ -30,6 +30,7 @@ import './performance.css';
 import './polish.css';
 import './setup-wizard.css';
 import './support.css';
+import './futura.css';
 import { ChillMenu, ChillNewTab, ChillSettingsCard, CHILL_PAUSED_SECTIONS, ShortcutEditor, chillView, readSavedChill } from './chill.jsx';
 
 const Icon = ({ name, size = 18, stroke = 1.7 }) => {
