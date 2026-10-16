@@ -1,0 +1,2 @@
+screen 1080 x 2400
+chill bounds: 

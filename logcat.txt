@@ -1,0 +1,93 @@
+10-16 18:55:18.295  1749  2037 V installed: DexInv: --- END '/data/app/app.browsery.android-OvB8e_ILjSxj2EK_FX3hlA==/base.apk' (success) ---
+10-16 18:55:19.051  1972  3043 I ActivityManager: START u0 {flg=0x10000000 cmp=app.browsery.android/.MainActivity} from uid 2000
+10-16 18:55:19.352  1972  1989 I ActivityManager: Start proc 4944:app.browsery.android/u0a86 for activity app.browsery.android/.MainActivity
+10-16 18:55:19.691  2273  2273 D ImsResolver: maybeAddedImsService, packageName: app.browsery.android
+10-16 18:55:20.640  4944  4989 E cr_VariationsUtils: Failed reading seed file "/data/user/0/app.browsery.android/app_webview/variations_seed_new": /data/user/0/app.browsery.android/app_webview/variations_seed_new (No such file or directory)
+10-16 18:55:20.640  4944  4989 E cr_VariationsUtils: Failed reading seed file "/data/user/0/app.browsery.android/app_webview/variations_seed": /data/user/0/app.browsery.android/app_webview/variations_seed (No such file or directory)
+10-16 18:55:22.867  2136  4329 W GCM     : Unexpected forwarded intent: Intent { act=android.intent.action.PACKAGE_ADDED dat=package:app.browsery.android flg=0x4000010 cmp=com.google.android.gms/.chimera.PersistentIntentOperationService (has extras) }
+10-16 18:55:22.881  2136  3460 W GCM     : Unexpected forwarded intent: Intent { act=android.intent.action.PACKAGE_ADDED dat=package:app.browsery.android flg=0x4000010 cmp=com.google.android.gms/.chimera.PersistentIntentOperationService (has extras) }
+10-16 18:55:22.938  2479  4910 I ChromeSync: [Sync,SyncIntentOperation] Handling the intent: Intent { act=android.intent.action.PACKAGE_ADDED dat=package:app.browsery.android flg=0x4000010 cmp=com.google.android.gms/.chimera.GmsIntentOperationService (has extras) }.
+10-16 18:55:22.943  2479  4916 I FontLog : Package app.browsery.android has no metadata [CONTEXT service_id=132 ]
+10-16 18:55:23.216  2479  4910 I ChromeSync: [Persistence,AffiliationManager] One of affiliation or grouping data for android://NaJXigdbXv4u8mD7Pku_Vp4RdBlJEuEkQf1Qp3BCrUA8lIBZYjpcyqo37D3FTc4wDvbF3p29fyHkY7xN8cCZGw==@app.browsery.android/ was not found. Marking affiliation data as stale...
+10-16 18:55:23.414  1972  1997 I ActivityManager: Displayed app.browsery.android/.MainActivity: +4s69ms
+10-16 18:55:23.593  1923  1927 W SurfaceFlinger: Attempting to set client state on removed layer: Splash Screen app.browsery.android#0
+10-16 18:55:23.594  1923  1927 W SurfaceFlinger: Attempting to destroy on removed layer: Splash Screen app.browsery.android#0
+10-16 18:55:26.295  4944  5092 D ProfileInstaller: Installing profile for app.browsery.android
+10-16 18:55:27.889  5112  5112 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 2000 <<<<<<
+10-16 18:55:28.066  5112  5112 D AndroidRuntime: Calling main entry com.android.commands.input.Input
+10-16 18:55:28.083  5112  5112 D AndroidRuntime: Shutting down VM
+10-16 18:55:31.658  5170  5170 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 2000 <<<<<<
+10-16 18:55:31.707  5170  5170 D AndroidRuntime: Calling main entry com.android.commands.input.Input
+10-16 18:55:31.743  5170  5170 D AndroidRuntime: Shutting down VM
+10-16 18:55:32.271  1923  2448 W SurfaceFlinger: Attempting to set client state on removed layer: Surface(name=AppWindowToken{d119d token=Token{13fb874 ActivityRecord{cc1e847 u0 app.browsery.android/.MainActivity t6}}})/@0x459cb35 - animation-leash#0
+10-16 18:55:32.271  1923  2448 W SurfaceFlinger: Attempting to destroy on removed layer: Surface(name=AppWindowToken{d119d token=Token{13fb874 ActivityRecord{cc1e847 u0 app.browsery.android/.MainActivity t6}}})/@0x459cb35 - animation-leash#0
+10-16 18:55:32.421  1923  1927 W SurfaceFlinger: Attempting to destroy on removed layer: AppWindowToken{d119d token=Token{13fb874 ActivityRecord{cc1e847 u0 app.browsery.android/.MainActivity t6}}}#0
+10-16 18:55:33.435  5195  5195 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 2000 <<<<<<
+10-16 18:55:33.575  5195  5195 D AndroidRuntime: Calling main entry com.android.commands.input.Input
+10-16 18:55:33.607  5195  5195 D AndroidRuntime: Shutting down VM
+10-16 18:55:37.526  5295  5295 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 2000 <<<<<<
+10-16 18:55:37.630  5295  5295 D AndroidRuntime: Calling main entry com.android.commands.input.Input
+10-16 18:55:37.637  5295  5295 D AndroidRuntime: Shutting down VM
+10-16 18:55:37.639  5295  5305 I AndroidRuntime: NOTE: attach of thread 'Binder:5295_2' failed
+10-16 18:55:38.794  5312  5312 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 2000 <<<<<<
+10-16 18:55:38.861  5312  5312 D AndroidRuntime: Calling main entry com.android.commands.input.Input
+10-16 18:55:38.943  5312  5312 D AndroidRuntime: Shutting down VM
+10-16 18:55:41.744  1972  2842 W BroadcastQueue: Background execution not allowed: receiving Intent { act=android.intent.action.PACKAGE_ADDED dat=package:app.browsery.android flg=0x4000010 (has extras) } to com.android.musicfx/.Compatibility$Receiver
+10-16 18:55:41.745  1972  1987 W BroadcastQueue: Background execution not allowed: receiving Intent { act=android.intent.action.PACKAGE_ADDED dat=package:app.browsery.android flg=0x4000010 (has extras) } to com.google.android.gms/.games.chimera.GamesSystemBroadcastReceiverProxy
+10-16 18:55:41.745  1972  1987 W BroadcastQueue: Background execution not allowed: receiving Intent { act=android.intent.action.PACKAGE_ADDED dat=package:app.browsery.android flg=0x4000010 (has extras) } to com.google.android.gms/.gass.chimera.PackageChangeBroadcastReceiver
+10-16 18:55:41.745  1972  1987 W BroadcastQueue: Background execution not allowed: receiving Intent { act=android.intent.action.PACKAGE_ADDED dat=package:app.browsery.android flg=0x4000010 (has extras) } to com.google.android.gms/.chimera.GmsIntentOperationService$PersistentTrustedReceiver
+10-16 18:55:41.745  1972  1987 W BroadcastQueue: Background execution not allowed: receiving Intent { act=android.intent.action.PACKAGE_ADDED dat=package:app.browsery.android flg=0x4000010 (has extras) } to com.google.android.googlequicksearchbox/com.google.android.apps.gsa.googlequicksearchbox.GelStubAppWatcher
+10-16 18:55:41.745  1972  1987 W BroadcastQueue: Background execution not allowed: receiving Intent { act=android.intent.action.PACKAGE_ADDED dat=package:app.browsery.android flg=0x4000010 (has extras) } to com.google.android.ims/.receivers.RcsAutoStartReceiver
+10-16 18:55:42.846  5435  5435 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 2000 <<<<<<
+10-16 18:55:42.906  5435  5435 D AndroidRuntime: Calling main entry com.android.commands.input.Input
+10-16 18:55:42.914  5435  5435 D AndroidRuntime: Shutting down VM
+10-16 18:55:44.029  1972  3845 I ActivityManager: START u0 {act=android.intent.action.VIEW dat=https://en.m.wikipedia.org/... flg=0x10000000 pkg=app.browsery.android cmp=app.browsery.android/.MainActivity} from uid 2000
+10-16 18:55:44.780  1972  1989 I ActivityManager: Start proc 5465:com.android.chrome:sandboxed_process0/u0i0 for webview_service app.browsery.android/org.chromium.content.app.SandboxedProcessService0
+10-16 18:55:45.856  1972  1997 I ActivityManager: Displayed app.browsery.android/.MainActivity: +1s723ms
+10-16 18:55:46.075  4944  4982 W cr_CrashFileManager: /data/user/0/app.browsery.android/cache/WebView/Crash Reports does not exist or is not a directory
+10-16 18:55:48.108  4944  5020 I chatty  : uid=10086(app.browsery.android) RenderThread identical 1 line
+10-16 18:55:49.266  4944  5020 I chatty  : uid=10086(app.browsery.android) RenderThread identical 2 lines
+10-16 18:55:49.789  4944  5020 I chatty  : uid=10086(app.browsery.android) RenderThread identical 2 lines
+10-16 18:55:50.139  4944  5020 I chatty  : uid=10086(app.browsery.android) RenderThread identical 1 line
+10-16 18:55:52.886  4944  5020 I chatty  : uid=10086(app.browsery.android) RenderThread identical 1 line
+10-16 18:55:53.872  4944  5020 I chatty  : uid=10086(app.browsery.android) RenderThread identical 1 line
+10-16 18:55:54.786  4944  5020 I chatty  : uid=10086(app.browsery.android) RenderThread identical 1 line
+10-16 18:55:56.894  4944  5020 I chatty  : uid=10086(app.browsery.android) RenderThread identical 3 lines
+10-16 18:55:57.077  4944  5020 I chatty  : uid=10086(app.browsery.android) RenderThread identical 1 line
+10-16 18:55:57.397  4944  5020 I chatty  : uid=10086(app.browsery.android) RenderThread identical 2 lines
+10-16 18:55:59.342  4944  5020 I chatty  : uid=10086(app.browsery.android) RenderThread identical 1 line
+10-16 18:55:59.633  4944  5020 I chatty  : uid=10086(app.browsery.android) RenderThread identical 1 line
+10-16 18:56:00.039  4944  5020 I chatty  : uid=10086(app.browsery.android) RenderThread identical 4 lines
+10-16 18:56:00.187  4944  5020 I chatty  : uid=10086(app.browsery.android) RenderThread identical 1 line
+10-16 18:56:01.006  4944  5020 I chatty  : uid=10086(app.browsery.android) RenderThread identical 1 line
+10-16 18:56:01.414  4944  5020 I chatty  : uid=10086(app.browsery.android) RenderThread identical 2 lines
+10-16 18:56:01.669  4944  5020 I chatty  : uid=10086(app.browsery.android) RenderThread identical 1 line
+10-16 18:56:01.826  4944  5020 I chatty  : uid=10086(app.browsery.android) RenderThread identical 1 line
+10-16 18:56:03.274  4944  5020 I chatty  : uid=10086(app.browsery.android) RenderThread identical 2 lines
+10-16 18:56:03.360  5561  5561 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 2000 <<<<<<
+10-16 18:56:05.034  4944  5020 I chatty  : uid=10086(app.browsery.android) RenderThread identical 1 line
+10-16 18:56:05.357  4944  5020 I chatty  : uid=10086(app.browsery.android) RenderThread identical 2 lines
+10-16 18:56:06.472  4944  5020 I chatty  : uid=10086(app.browsery.android) RenderThread identical 2 lines
+10-16 18:56:06.803  5561  5561 D AndroidRuntime: Calling main entry com.android.commands.input.Input
+10-16 18:56:06.905  5561  5561 D AndroidRuntime: Shutting down VM
+10-16 18:56:10.640  5615  5615 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 2000 <<<<<<
+10-16 18:56:10.795  5615  5615 D AndroidRuntime: Calling main entry com.android.commands.input.Input
+10-16 18:56:10.897  5615  5615 D AndroidRuntime: Shutting down VM
+10-16 18:56:11.114  1972  4616 W ActivityManager: Scheduling restart of crashed service app.browsery.android/org.chromium.content.app.SandboxedProcessService0 in 1000ms
+10-16 18:56:11.971  1972  4616 I ActivityManager: START u0 {flg=0x10000000 cmp=app.browsery.android/.MainActivity} from uid 2000
+10-16 18:56:15.049  5633  5633 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 2000 <<<<<<
+10-16 18:56:15.101  5633  5633 D AndroidRuntime: Calling main entry com.android.commands.input.Input
+10-16 18:56:15.105  5633  5633 D AndroidRuntime: Shutting down VM
+10-16 18:56:18.224  5684  5684 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 2000 <<<<<<
+10-16 18:56:18.624  5684  5684 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+10-16 18:56:19.767  5684  5684 D AndroidRuntime: Shutting down VM
+10-16 18:56:24.130  1972  2826 I ActivityManager: START u0 {act=android.intent.action.VIEW dat=https://example.com/... flg=0x10000000 pkg=app.browsery.android cmp=app.browsery.android/.MainActivity} from uid 2000
+10-16 18:56:24.220  1972  1989 I ActivityManager: Start proc 5711:com.android.chrome:sandboxed_process1/u0i1 for webview_service app.browsery.android/org.chromium.content.app.SandboxedProcessService1
+10-16 18:56:24.543  4944  5020 I chatty  : uid=10086(app.browsery.android) RenderThread identical 1 line
+10-16 18:56:25.525  4944  5020 I chatty  : uid=10086(app.browsery.android) RenderThread identical 16 lines
+10-16 18:56:26.193  4944  5020 I chatty  : uid=10086(app.browsery.android) RenderThread identical 12 lines
+10-16 18:56:26.564  4944  5020 I chatty  : uid=10086(app.browsery.android) RenderThread identical 1 line
+10-16 18:56:26.977  4944  5020 I chatty  : uid=10086(app.browsery.android) RenderThread identical 4 lines
+10-16 18:56:27.546  4944  5020 I chatty  : uid=10086(app.browsery.android) RenderThread identical 8 lines
+10-16 18:56:28.094  4944  5020 I chatty  : uid=10086(app.browsery.android) RenderThread identical 10 lines
+10-16 18:56:28.242  4944  5020 I chatty  : uid=10086(app.browsery.android) RenderThread identical 1 line
