@@ -281,7 +281,7 @@ class MainActivity : AppCompatActivity() {
             isSingleLine = true
             imeOptions = EditorInfo.IME_ACTION_GO
             inputType = InputType.TYPE_TEXT_VARIATION_URI or InputType.TYPE_CLASS_TEXT
-            selectAllOnFocus = true
+            setSelectAllOnFocus(true)
             setPadding(dp(6), 0, dp(6), 0)
             setOnEditorActionListener { v, actionId, event ->
                 if (actionId == EditorInfo.IME_ACTION_GO || event?.keyCode == KeyEvent.KEYCODE_ENTER) {
@@ -535,7 +535,7 @@ class MainActivity : AppCompatActivity() {
                         view.loadUrl(uri.toString().replaceFirst("http://", "https://")); true
                     } else false
                     "intent" -> {
-                        runCatching { startActivity(Intent.parseUri(uri.toString(), Intent.URI_INTENT_SCHEME).addCategory(Intent.CATEGORY_BROWSABLE).setComponent(null).setSelector(null)) }
+                        runCatching { val i = Intent.parseUri(uri.toString(), Intent.URI_INTENT_SCHEME); i.addCategory(Intent.CATEGORY_BROWSABLE); i.component = null; i.selector = null; startActivity(i) }
                             .onFailure { runCatching { Intent.parseUri(uri.toString(), Intent.URI_INTENT_SCHEME).getStringExtra("browser_fallback_url") }.getOrNull()?.takeIf { it.startsWith("https://") }?.let { view.loadUrl(it) } }
                         true
                     }
