@@ -24,12 +24,18 @@ adb shell am start -a android.intent.action.VIEW -d "https://en.m.wikipedia.org/
 shot 05-page 12
 adb shell input tap $((W*9/10)) $((H-H*45/1000)); shot 06-page-menu 3
 adb shell input keyevent KEYCODE_BACK; sleep 1
-# Chill mode: open the menu on a new tab and flip the Chill switch
-adb shell input tap $((W/2)) $((H-H*45/1000)); sleep 2
-adb shell input keyevent KEYCODE_BACK; sleep 1
+# Chill mode: open the menu on the new tab and flip the Chill switch, found by its label
+adb shell am start -n app.browsery.android/.MainActivity; sleep 3
 adb shell input tap $((W*9/10)) $((H-H*45/1000)); sleep 3
-adb exec-out uiautomator dump /dev/tty > $OUT/menu-tree.xml || true
-adb shell input tap 945 2040; shot 07-chill 4
+adb shell uiautomator dump /sdcard/ui.xml >/dev/null; adb pull /sdcard/ui.xml $OUT/menu-tree.xml >/dev/null
+B=$(grep -o 'content-desc="Chill mode[^"]*"[^>]*bounds="\[[0-9]*,[0-9]*\]\[[0-9]*,[0-9]*\]"' $OUT/menu-tree.xml | head -1 | grep -o '\[[0-9]*,[0-9]*\]\[[0-9]*,[0-9]*\]')
+echo "chill bounds: $B" >> $OUT/info.txt
+if [ -n "$B" ]; then
+  set -- $(echo "$B" | tr -d '[]' | tr ',' ' ' | sed 's/\(.*\) \(.*\)/\1 \2/'); X1=${1}; Y1=${2}
+  NUMS=$(echo "$B" | grep -o '[0-9]*'); X1=$(echo "$NUMS" | sed -n 1p); Y1=$(echo "$NUMS" | sed -n 2p); X2=$(echo "$NUMS" | sed -n 3p); Y2=$(echo "$NUMS" | sed -n 4p)
+  adb shell input tap $(((X1+X2)/2)) $(((Y1+Y2)/2))
+fi
+shot 07-chill 4
 adb shell am start -a android.intent.action.VIEW -d "https://example.com" app.browsery.android
 shot 08-chill-page 8
 adb logcat -d -b crash > $OUT/crash.txt
