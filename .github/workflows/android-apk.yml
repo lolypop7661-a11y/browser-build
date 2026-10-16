@@ -54,7 +54,9 @@ jobs:
       - name: Show build errors
         if: failure()
         run: |
-          grep -E '^e: |error:|What went wrong|FAILED|Unresolved|> ' build.log | head -80 || true
+          grep -E '^e: |error:|What went wrong|FAILED|Unresolved|Could not|> ' build.log | head -120 > errors.txt || true
+          split -l 12 errors.txt part_ || true
+          for f in part_*; do [ -f "$f" ] && echo "::error title=Android build::$(sed ':a;N;$!ba;s/%/%25/g;s/\r//g;s/\n/%0A/g' "$f")"; done
       - name: Name the APK
         run: |
           mkdir -p out
