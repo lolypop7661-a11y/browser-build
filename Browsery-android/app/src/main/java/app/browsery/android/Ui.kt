@@ -78,8 +78,10 @@ fun Context.ripple(content: Drawable?, pal: Pal, radius: Number = 12): RippleDra
 /** Tinted shadow: a soft coloured glow under raised Browsery surfaces (Android 9+). */
 fun View.glow(color: Int, elevationDp: Number) {
     elevation = context.dpf(elevationDp)
-    outlineAmbientShadowColor = color
-    outlineSpotShadowColor = color
+    if (android.os.Build.VERSION.SDK_INT >= 28) {
+        outlineAmbientShadowColor = color
+        outlineSpotShadowColor = color
+    }
 }
 
 fun Context.label(text: CharSequence, size: Float, color: Int, bold: Boolean = false, family: Typeface = Typeface.SANS_SERIF): TextView =

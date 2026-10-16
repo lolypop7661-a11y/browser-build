@@ -2,6 +2,10 @@ name: Android smoke test
 
 on:
   workflow_dispatch:
+    inputs:
+      api:
+        description: Android API level for the emulator
+        default: '34'
 
 permissions:
   contents: write
@@ -32,7 +36,7 @@ jobs:
       - name: Run on an emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 34
+          api-level: ${{ inputs.api }}
           target: google_apis
           arch: x86_64
           profile: pixel_6

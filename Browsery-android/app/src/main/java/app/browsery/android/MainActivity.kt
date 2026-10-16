@@ -123,6 +123,13 @@ class MainActivity : AppCompatActivity() {
         voiceTarget = null
     }
 
+    private var pendingDownload: (() -> Unit)? = null
+    private val askStorage = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        val next = pendingDownload
+        pendingDownload = null
+        if (granted) next?.invoke() else toast("Browsery needs storage access to save downloads on this Android version")
+    }
+
     // ------------------------------------------------------------------ lifecycle
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -612,23 +619,32 @@ class MainActivity : AppCompatActivity() {
                 return try { pickFiles.launch(params.createIntent()); true } catch (_: ActivityNotFoundException) { fileCallback = null; false }
             }
         }
-        web.setDownloadListener { url, userAgent, disposition, mime, _ ->
-            runCatching {
-                val name = URLUtil.guessFileName(url, disposition, mime)
-                val req = DownloadManager.Request(Uri.parse(url)).apply {
-                    setMimeType(mime)
-                    addRequestHeader("User-Agent", userAgent)
-                    CookieManager.getInstance().getCookie(url)?.let { addRequestHeader("Cookie", it) }
-                    setTitle(name)
-                    setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
-                    setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, name)
-                }
-                (getSystemService(DOWNLOAD_SERVICE) as DownloadManager).enqueue(req)
-                toast("Downloading $name")
-            }.onFailure { toast("Could not start that download") }
-        }
+        web.setDownloadListener { url, userAgent, disposition, mime, _ -> download(url, userAgent, disposition, mime) }
         web.setFindListener { activeMatch, matches, _ -> (findBar?.tag as? TextView)?.text = if (matches == 0) "0/0" else "${activeMatch + 1}/$matches" }
         return web
+    }
+
+    private fun download(url: String, userAgent: String?, disposition: String?, mime: String?) {
+        val needsPermission = android.os.Build.VERSION.SDK_INT < 29 &&
+            androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.WRITE_EXTERNAL_STORAGE) != android.content.pm.PackageManager.PERMISSION_GRANTED
+        if (needsPermission) {
+            pendingDownload = { download(url, userAgent, disposition, mime) }
+            askStorage.launch(android.Manifest.permission.WRITE_EXTERNAL_STORAGE)
+            return
+        }
+        runCatching {
+            val name = URLUtil.guessFileName(url, disposition, mime)
+            val req = DownloadManager.Request(Uri.parse(url)).apply {
+                setMimeType(mime)
+                userAgent?.let { addRequestHeader("User-Agent", it) }
+                CookieManager.getInstance().getCookie(url)?.let { addRequestHeader("Cookie", it) }
+                setTitle(name)
+                setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+                setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, name)
+            }
+            (getSystemService(DOWNLOAD_SERVICE) as DownloadManager).enqueue(req)
+            toast("Downloading $name")
+        }.onFailure { toast("Could not start that download") }
     }
 
     private fun desktopAgent(mobile: String): String =
