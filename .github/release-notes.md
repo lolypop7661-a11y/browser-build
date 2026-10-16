@@ -1,4 +1,8 @@
-## Browsery 1.0.21
+## Browsery 1.0.22
+
+**A fresh look for full Browsery.** The Saturn space keeps its layout and mood, now in the Marea colours: a deep green-black instead of pure black, warm text, a soft teal edge light on the glass panels and the address bar, and terracotta for the active tab, Hey Groq, the search button and switches that are on. Settings, the side panels and the Ctrl+K palette match. Chill mode and the light theme are unchanged.
+
+## Earlier: Browsery 1.0.21
 
 **Signing in works again.** Browsery no longer forgets your account when it starts while your connection is slow or offline. Before, two checks at startup could cancel your saved sign-in, and you had to sign in again. Emails are now matched without caring about capital letters.
 
