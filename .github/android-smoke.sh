@@ -4,6 +4,7 @@ set -x
 OUT=qa-out; mkdir -p $OUT
 APK=Browsery-android/app/build/outputs/apk/release/app-release.apk
 adb install -r "$APK"
+cp "$APK" "$OUT/Browsery-android-1.0.0.apk"
 adb logcat -c
 shot() { sleep "${2:-4}"; adb exec-out screencap -p > "$OUT/$1.png"; }
 size=$(adb shell wm size | grep -o '[0-9]*x[0-9]*' | tail -1); W=${size%x*}; H=${size#*x}
