@@ -1,0 +1,52 @@
+name: iOS build
+
+on:
+  push:
+    paths:
+      - 'Browsery-ios/**'
+      - '.github/workflows/ios-build.yml'
+      - '.github/ios-smoke.sh'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+      - name: Pick Xcode
+        run: |
+          ls -d /Applications/Xcode*.app
+          X=$(ls -d /Applications/Xcode_16*.app | sort -V | tail -1)
+          sudo xcode-select -s "$X"
+          xcodebuild -version
+      - name: Build for the iOS Simulator
+        working-directory: Browsery-ios
+        run: |
+          set +e
+          xcodebuild -project Browsery.xcodeproj -scheme Browsery -configuration Debug \
+            -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath build CODE_SIGNING_ALLOWED=NO build > build.log 2>&1
+          status=$?
+          grep -E "(error|warning):" build.log | grep -v "^ld: warning" | sort -u | head -60 | while IFS= read -r l; do
+            case "$l" in *error:*) echo "::error::${l#/Users/runner/work/}";; *) echo "::warning::${l#/Users/runner/work/}";; esac
+          done
+          tail -5 build.log
+          exit $status
+      - name: Screenshots in the simulator
+        run: bash .github/ios-smoke.sh
+      - name: Publish screenshots to the ios-qa branch
+        if: always()
+        run: |
+          mkdir -p qa-out
+          cp Browsery-ios/build.log qa-out/ 2>/dev/null || true
+          cd qa-out
+          git init -q -b ios-qa
+          git config user.name "browsery-ci"
+          git config user.email "ci@users.noreply.github.com"
+          git add -A
+          git commit -qm "iOS smoke test ${GITHUB_RUN_ID}"
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${GITHUB_REPOSITORY}.git" ios-qa
