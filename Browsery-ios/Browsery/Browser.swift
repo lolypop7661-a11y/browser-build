@@ -380,6 +380,7 @@ extension Tab: WKNavigationDelegate, WKUIDelegate, WKDownloadDelegate {
         if night { webView.evaluateJavaScript(PageScripts.nightOn) }
         if !isPrivate, let u = webView.url { browser?.store.addVisit(url: u, title: webView.title ?? "") }
         browser?.saveSession()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { [weak self] in self?.captureSnapshot() }
     }
 
     func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {

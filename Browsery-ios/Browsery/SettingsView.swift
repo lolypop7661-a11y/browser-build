@@ -13,9 +13,9 @@ struct SettingsView: View {
         ScrollView {
             VStack(spacing: 18) {
                 group("BROWSING") {
-                    row("Search engine", "Used in the address bar") {
+                    row("Search engine", store.engine == "Browsery" ? "Browsery Search, powered by Mojeek" : "Used in the address bar") {
                         Picker("Search engine", selection: $store.engine) {
-                            ForEach(Store.engines, id: \.self) { Text($0 == "Browsery" ? "Browsery (Mojeek)" : $0).tag($0) }
+                            ForEach(Store.engines, id: \.self) { Text($0).tag($0) }
                         }
                         .pickerStyle(.menu)
                         .tint(pal.secondaryInk)
